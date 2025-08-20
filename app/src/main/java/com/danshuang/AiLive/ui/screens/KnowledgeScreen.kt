@@ -33,7 +33,7 @@ import androidx.compose.material3.Tab
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -64,11 +64,8 @@ data class QAItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KnowledgeScreen() {
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    var currentSwipeId by remember { mutableStateOf<Int?>(null) }
-
     val categories = listOf("应用中", "行业问答")
-
+    
     // 美业领域问答数据
     val beautyAppQA = listOf(
         QAItem(1, "应用中", "如何选择适合自己肤质的护肤品？", "根据肤质类型选择：干性皮肤选择滋润型，油性皮肤选择清爽控油型，混合性皮肤分区护理，敏感性皮肤选择温和无刺激产品。建议先做皮肤测试再购买。"),
@@ -93,11 +90,11 @@ fun KnowledgeScreen() {
         QAItem(17, "行业问答", "美业客户投诉如何处理？", "第一时间安抚情绪→详细了解问题→提出解决方案→及时补偿→跟进回访→记录案例培训→完善服务流程避免再次发生。")
     )
 
-    // 合并所有问答数据
-    var qaList by remember {
-        mutableStateOf(beautyAppQA + beautyIndustryQA)
-    }
-
+    val sampleQAData = beautyAppQA + beautyIndustryQA
+    
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    var qaList by remember { mutableStateOf(sampleQAData) }
+    var currentSwipeId by remember { mutableStateOf<Int?>(null) }
     var showEditDialog by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<QAItem?>(null) }
     var editQuestion by remember { mutableStateOf("") }
@@ -105,8 +102,8 @@ fun KnowledgeScreen() {
 
     Scaffold(
         topBar = {
-            TopAppBar(
-                colors = TopAppBarDefaults.topAppBarColors(
+            CenterAlignedTopAppBar(
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
                     containerColor = MaterialTheme.colorScheme.secondaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
                 ),
@@ -123,7 +120,6 @@ fun KnowledgeScreen() {
                 }
             )
         },
-
     ) { innerPadding ->
         Column(
             modifier = Modifier
