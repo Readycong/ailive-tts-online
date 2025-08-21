@@ -11,6 +11,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -20,6 +21,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
+import coil.compose.rememberAsyncImagePainter
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -45,16 +47,16 @@ fun HomeScreen() {
 
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
+            TopAppBar(
                 colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White,
+                    titleContentColor = MaterialTheme.colorScheme.primaryContainer,
                 ),
                 title = {
-                    Text("AiLive")
+                    Text("首页")
                 }
             )
-        }
+        },
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
@@ -62,10 +64,6 @@ fun HomeScreen() {
                 .padding(innerPadding),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            // 搜索栏
-            item {
-                SearchBarSection()
-            }
 
             // Banner轮播图
             item {
@@ -77,12 +75,12 @@ fun HomeScreen() {
                 QuickActionsSection()
             }
 
-            // 推荐内容标题
+            // 核心功能标题
             item {
-                SectionTitle(title = "推荐内容")
+                SectionTitle(title = "核心功能")
             }
 
-            // 推荐内容列表
+            // 核心功能列表
             items(6) { index ->
                 RecommendedContentItem(index = index)
             }
@@ -95,46 +93,15 @@ fun HomeScreen() {
     }
 }
 
-@Composable
-private fun SearchBarSection() {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp),
-        shape = RoundedCornerShape(25.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "搜索",
-                tint = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = "搜索你感兴趣的内容...",
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
-                fontSize = 14.sp
-            )
-        }
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerState) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(180.dp)
+            .height(130.dp)
             .padding(horizontal = 16.dp)
+            .padding(top = 16.dp)
     ) {
         HorizontalPager(
             state = pagerState,
@@ -162,9 +129,9 @@ private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerSta
                     ) {
                         Text(
                             text = when (page) {
-                                0 -> "AI 智能助手"
+                                0 -> "AI门店营销利器"
                                 1 -> "实时互动直播"
-                                else -> "精彩内容推荐"
+                                else -> "专为美业打造"
                             },
                             color = Color.White,
                             fontSize = 20.sp,
@@ -175,7 +142,7 @@ private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerSta
                             text = when (page) {
                                 0 -> "智能对话，贴心服务"
                                 1 -> "高清流畅，互动无限"
-                                else -> "发现更多有趣内容"
+                                else -> "实测优化AI大模型"
                             },
                             color = Color.White.copy(alpha = 0.8f),
                             fontSize = 14.sp
@@ -216,18 +183,75 @@ private fun QuickActionsSection() {
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
         Text(
-            text = "快捷功能",
+            text = "直播账户",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 12.dp)
         )
-        
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+
+        LiveAccountItem()
+//        Spacer(modifier = Modifier.height(16.dp))
+//        LazyRow(
+//            horizontalArrangement = Arrangement.spacedBy(12.dp)
+//        ) {
+//            items(quickActions.size) { index ->
+//                QuickActionItem(action = quickActions[index])
+//            }
+//        }
+    }
+}
+
+@Composable
+private fun LiveAccountItem() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        // 头像
+        Image(
+            painter = painterResource(id = R.drawable.ic_douyin_logo),
+            contentDescription = "用户头像",
+            modifier = Modifier
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(Color.Gray),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        // 用户信息
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            items(quickActions.size) { index ->
-                QuickActionItem(action = quickActions[index])
+            Text(
+                text = "抖音账号名称",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF4CAF50))
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = "在线",
+                    fontSize = 12.sp,
+                    color = Color(0xFF4CAF50)
+                )
             }
+        }
+        // 修改按钮
+        Button(
+            onClick = { /* TODO: 实现修改逻辑 */ },
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.height(36.dp)
+        ) {
+            Text(text = "换账户", fontSize = 14.sp)
         }
     }
 }
@@ -285,7 +309,7 @@ private fun RecommendedContentItem(index: Int) {
             .padding(horizontal = 16.dp),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = coreModuleLists[index].backgroundColor
         )
     ) {
         Row(
@@ -308,41 +332,32 @@ private fun RecommendedContentItem(index: Int) {
                         }
                     )
             ) {
-                // 这里可以放置实际图片
+                Image(
+                    painter = rememberAsyncImagePainter("https://huichuang100.com/upload/attachment/image/100002/202508/13/17550533666292cbd50e7ac20ecf53870c9836e3de_local.png"),
+                    contentDescription = "核心功能图片",
+                    modifier = Modifier.fillMaxSize()
+                        .size(80.dp)
+                        .clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Crop
+                )
             }
-            
+
             Spacer(modifier = Modifier.width(12.dp))
-            
+
             Column(
                 modifier = Modifier.weight(1f)
             ) {
                 Text(
-                    text = "推荐内容 ${index + 1}",
+                    text = coreModuleLists[index].title,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp
                 )
                 Spacer(modifier = Modifier.height(4.dp))
                 Text(
-                    text = "这是第${index + 1}个推荐内容的描述信息，展示精彩内容。",
+                    text = coreModuleLists[index].desc,
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "${1000 + index * 234} 浏览",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = "${50 + index * 12} 点赞",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
-                    )
-                }
             }
         }
     }
@@ -363,6 +378,21 @@ private val quickActions = listOf(
     QuickAction("发现", R.drawable.ic_discover, Color(0xFFFF9800)),
     QuickAction("消息", R.drawable.ic_message, Color(0xFF9C27B0)),
     QuickAction("收藏", R.drawable.ic_favorite, Color(0xFF607D8B))
+)
+
+data class CoreModule(
+    val title: String,
+    val icon: Int,
+    val desc: String,
+    val backgroundColor: Color
+)
+private val coreModuleLists = listOf(
+    CoreModule("门店大模型", R.drawable.ic_ai, "智能对话，贴心服务", Color(0xFF4CAF50)),
+    CoreModule("知识库", R.drawable.ic_live, "高清流畅，互动无限", Color(0xFFE91E63)),
+    CoreModule("语音克隆", R.drawable.ic_video, "精彩内容，随时观看", Color(0xFF2196F3)),
+    CoreModule("控制参数", R.drawable.ic_discover, "探索新鲜事物", Color(0xFFFF9800)),
+    CoreModule("直播回顾", R.drawable.ic_message, "即时通讯，畅快交流", Color(0xFF9C27B0)),
+    CoreModule("权益兑换", R.drawable.ic_favorite, "珍藏喜欢的内容", Color(0xFF607D8B))
 )
 
 @Preview(showBackground = true)

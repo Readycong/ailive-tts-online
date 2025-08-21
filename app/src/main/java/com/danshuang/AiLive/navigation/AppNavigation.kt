@@ -23,6 +23,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.tooling.preview.Preview
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.ui.screens.AILiveScreen
 import com.danshuang.AiLive.ui.screens.HomeScreen
@@ -30,6 +31,7 @@ import com.danshuang.AiLive.ui.screens.KnowledgeScreen
 import com.danshuang.AiLive.ui.screens.LoginScreen
 import com.danshuang.AiLive.ui.screens.ModelScreen
 import com.danshuang.AiLive.ui.screens.ProfileScreen
+import com.danshuang.AiLive.ui.theme.AiLiveTheme
 
 sealed class BottomNavItem(
     val title: String,
