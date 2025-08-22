@@ -9,6 +9,7 @@ import com.danshuang.AiLive.ui.screens.ContentEditScreen
 import com.danshuang.AiLive.ui.screens.HomeScreen
 import com.danshuang.AiLive.ui.screens.AILiveScreen
 import com.danshuang.AiLive.ui.screens.KnowledgeScreen
+import com.danshuang.AiLive.ui.screens.LiveScriptScreen
 import com.danshuang.AiLive.ui.screens.ModelScreen
 import com.danshuang.AiLive.ui.screens.ProfileScreen
 
@@ -21,11 +22,15 @@ sealed class Screen(val route: String) {
     data object ContentEdit : Screen("content_edit/{contentKey}") {
         fun createRoute(contentKey: String) = "content_edit/$contentKey"
     }
+    data object LiveScript : Screen("live_script/{scriptKey}") {
+        fun createRoute(scriptKey: String) = "live_script/$scriptKey"
+    }
 }
 
 class NavigationState {
     var currentScreen by mutableStateOf<Screen>(Screen.Home)
     var contentEditKey by mutableStateOf<String?>(null)
+    var liveScriptKey by mutableStateOf<String?>(null)
     
     fun navigateTo(screen: Screen) {
         currentScreen = screen
@@ -36,10 +41,24 @@ class NavigationState {
         currentScreen = Screen.ContentEdit
     }
     
+    fun navigateToLiveScript(key: String) {
+        liveScriptKey = key
+        currentScreen = Screen.LiveScript
+    }
+    
     fun navigateUp() {
-        if (currentScreen == Screen.ContentEdit) {
-            contentEditKey = null
-            currentScreen = Screen.Model
+        when (currentScreen) {
+            is Screen.ContentEdit -> {
+                contentEditKey = null
+                currentScreen = Screen.Model
+            }
+            is Screen.LiveScript -> {
+                liveScriptKey = null
+                currentScreen = Screen.Model
+            }
+            else -> {
+                currentScreen = Screen.Home
+            }
         }
     }
 }
@@ -65,6 +84,14 @@ fun AppNavigation(
                 ContentEditScreen(
                     navController = navigationState,
                     contentKey = key
+                )
+            }
+        }
+        is Screen.LiveScript -> {
+            navigationState.liveScriptKey?.let { key ->
+                LiveScriptScreen(
+                    navController = navigationState,
+                    scriptKey = key
                 )
             }
         }

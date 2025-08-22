@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.activity.compose.BackHandler
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.ui.screens.LoginScreen
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
@@ -79,10 +80,26 @@ fun MainAppNavigation(
         BottomNavItem.Profile
     )
 
+    // 处理系统返回键
+    BackHandler(enabled = true) {
+        // 当在内容编辑页面或话术页面时，返回ModelScreen
+        when (navigationState.currentScreen) {
+            is Screen.ContentEdit, is Screen.LiveScript -> {
+                navigationState.navigateUp()
+            }
+            else -> {
+                // 在其他页面，使用默认的返回行为
+                // 这里可以添加其他页面的返回处理
+                // 默认行为是退出应用
+            }
+        }
+    }
+
     Scaffold(
         bottomBar = {
-            // 在内容编辑页面隐藏底部导航
-            if (navigationState.currentScreen !is Screen.ContentEdit) {
+            // 在内容编辑页面和话术页面隐藏底部导航
+            if (navigationState.currentScreen !is Screen.ContentEdit && 
+                navigationState.currentScreen !is Screen.LiveScript) {
                 NavigationBar(
                     containerColor = backgroundLight,
                 ) {

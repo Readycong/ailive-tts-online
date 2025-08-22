@@ -149,7 +149,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.FavoriteBorder,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
-
+                    navigationState.navigateToLiveScript("greeting")
                 }
             ),
             QuickActionVectorData(
@@ -157,7 +157,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.List,
                 backgroundColor = Color(0xFF4CAF50),
                 onClick = {
-
+                    navigationState.navigateToLiveScript("promotion")
                 }
             ),
             QuickActionVectorData(
@@ -165,7 +165,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.Call,
                 backgroundColor = Color(0xFFFF9800),
                 onClick = {
-
+                    navigationState.navigateToLiveScript("consultation")
                 }
             ),
             QuickActionVectorData(
@@ -173,7 +173,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.ShoppingCart,
                 backgroundColor = Color(0xFF9C27B0),
                 onClick = {
-
+                    navigationState.navigateToLiveScript("conversion")
                 }
             ),
             QuickActionVectorData(
@@ -181,7 +181,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.ThumbUp,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
-
+                    navigationState.navigateToLiveScript("thanks")
                 }
             )
         )
