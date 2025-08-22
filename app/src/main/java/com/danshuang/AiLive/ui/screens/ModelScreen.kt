@@ -20,8 +20,8 @@ import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
@@ -41,6 +41,7 @@ import com.danshuang.AiLive.navigation.NavigationState
 import com.danshuang.AiLive.ui.components.QuickActionVectorData
 import com.danshuang.AiLive.ui.components.QuickActionVectorCard
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
+import com.danshuang.AiLive.data.VoiceSettings
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -170,18 +171,10 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             ),
             QuickActionVectorData(
                 title = "促成",
-                icon = Icons.Default.ShoppingCart,
+                icon = Icons.Default.Phone,
                 backgroundColor = Color(0xFF9C27B0),
                 onClick = {
                     navigationState.navigateToLiveScript("conversion")
-                }
-            ),
-            QuickActionVectorData(
-                title = "感谢",
-                icon = Icons.Default.ThumbUp,
-                backgroundColor = Color(0xFF2196F3),
-                onClick = {
-                    navigationState.navigateToLiveScript("thanks")
                 }
             )
         )
@@ -192,6 +185,23 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             items(quickLiveScriptActions) { action ->
                 QuickActionVectorCard(
                     data = action
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                QuickActionVectorCard(
+                    data = QuickActionVectorData(
+                        title = "感谢",
+                        icon = Icons.Default.Settings,
+                        backgroundColor = Color(0xFF2196F3),
+                        onClick = {
+                            navigationState.navigateToLiveScript("thanks")
+                        }
+                    )
                 )
             }
         }
@@ -258,12 +268,14 @@ private fun QuickActionsSection(navigationState: NavigationState) {
 
                 }
             ),
+
+
             QuickActionVectorData(
                 title = "语音调速",
                 icon = Icons.Default.Phone,
                 backgroundColor = Color(0xFF9C27B0),
                 onClick = {
-
+                    navigationState.navigateToVoiceSettings()
                 }
             )
         )

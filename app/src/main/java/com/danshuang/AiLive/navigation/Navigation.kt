@@ -35,6 +35,9 @@ sealed class Screen(val route: String) {
     data object CommentRestrictions : Screen("comment_restrictions") {
         fun createRoute() = "comment_restrictions"
     }
+    data object VoiceSettings : Screen("voice_settings") {
+        fun createRoute() = "voice_settings"
+    }
 }
 
 class NavigationState {
@@ -67,6 +70,10 @@ class NavigationState {
     fun navigateToCommentRestrictions() {
         currentScreen = Screen.CommentRestrictions
     }
+
+    fun navigateToVoiceSettings() {
+        currentScreen = Screen.VoiceSettings
+    }
     
     fun navigateUp() {
         when (currentScreen) {
@@ -85,6 +92,9 @@ class NavigationState {
                 currentScreen = Screen.Model
             }
             is Screen.CommentRestrictions -> {
+                currentScreen = Screen.Model
+            }
+            is Screen.VoiceSettings -> {
                 currentScreen = Screen.Model
             }
             else -> {
@@ -141,6 +151,11 @@ fun AppNavigation(
                 com.danshuang.AiLive.ui.screens.RestrictionSettingsScreen(
                     navController = navigationState,
                     restrictionType = "comment"
+                )
+            }
+            is Screen.VoiceSettings -> {
+                com.danshuang.AiLive.ui.screens.VoiceSettingsScreen(
+                    navController = navigationState
                 )
             }
     }
