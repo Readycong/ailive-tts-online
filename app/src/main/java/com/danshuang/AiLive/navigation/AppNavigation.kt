@@ -97,9 +97,10 @@ fun MainAppNavigation(
 
     Scaffold(
         bottomBar = {
-            // 在内容编辑页面和话术页面隐藏底部导航
+            // 在内容编辑页面、话术页面和招呼设置页面隐藏底部导航
             if (navigationState.currentScreen !is Screen.ContentEdit && 
-                navigationState.currentScreen !is Screen.LiveScript) {
+                navigationState.currentScreen !is Screen.LiveScript &&
+                navigationState.currentScreen !is Screen.GreetingSettings) {
                 NavigationBar(
                     containerColor = backgroundLight,
                 ) {

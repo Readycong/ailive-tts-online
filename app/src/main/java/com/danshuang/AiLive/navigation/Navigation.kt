@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import com.danshuang.AiLive.ui.screens.ContentEditScreen
 import com.danshuang.AiLive.ui.screens.HomeScreen
 import com.danshuang.AiLive.ui.screens.AILiveScreen
+import com.danshuang.AiLive.ui.screens.GreetingSettingsScreen
 import com.danshuang.AiLive.ui.screens.KnowledgeScreen
 import com.danshuang.AiLive.ui.screens.LiveScriptScreen
 import com.danshuang.AiLive.ui.screens.ModelScreen
@@ -24,6 +25,9 @@ sealed class Screen(val route: String) {
     }
     data object LiveScript : Screen("live_script/{scriptKey}") {
         fun createRoute(scriptKey: String) = "live_script/$scriptKey"
+    }
+    data object GreetingSettings : Screen("greeting_settings") {
+        fun createRoute() = "greeting_settings"
     }
 }
 
@@ -46,6 +50,10 @@ class NavigationState {
         currentScreen = Screen.LiveScript
     }
     
+    fun navigateToGreetingSettings() {
+        currentScreen = Screen.GreetingSettings
+    }
+    
     fun navigateUp() {
         when (currentScreen) {
             is Screen.ContentEdit -> {
@@ -54,6 +62,9 @@ class NavigationState {
             }
             is Screen.LiveScript -> {
                 liveScriptKey = null
+                currentScreen = Screen.Model
+            }
+            is Screen.GreetingSettings -> {
                 currentScreen = Screen.Model
             }
             else -> {
@@ -94,6 +105,11 @@ fun AppNavigation(
                     scriptKey = key
                 )
             }
+        }
+        is Screen.GreetingSettings -> {
+            GreetingSettingsScreen(
+                navController = navigationState
+            )
         }
     }
 }

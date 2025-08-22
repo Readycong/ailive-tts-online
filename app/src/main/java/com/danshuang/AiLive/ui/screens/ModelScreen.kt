@@ -10,16 +10,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.List
+import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Home
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.ThumbUp
 import androidx.compose.material.icons.filled.Warning
@@ -154,7 +154,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             ),
             QuickActionVectorData(
                 title = "品宣",
-                icon = Icons.Default.List,
+                icon = Icons.AutoMirrored.Filled.List,
                 backgroundColor = Color(0xFF4CAF50),
                 onClick = {
                     navigationState.navigateToLiveScript("promotion")
@@ -207,10 +207,10 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         val quickLiveSettingActions = listOf(
             QuickActionVectorData(
                 title = "招呼设置",
-                icon = Icons.Default.Send,
+                icon = Icons.AutoMirrored.Filled.Send,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
-
+                    navigationState.navigateToGreetingSettings()
                 }
             ),
             QuickActionVectorData(
