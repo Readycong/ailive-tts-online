@@ -11,14 +11,18 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Phone
+import androidx.compose.material.icons.filled.Send
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.ThumbUp
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -182,12 +186,92 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             )
         )
 
-        Spacer(modifier = Modifier.height(16.dp))
-
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(quickLiveScriptActions) { action ->
+                QuickActionVectorCard(
+                    data = action
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "控制参数",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        val quickLiveSettingActions = listOf(
+            QuickActionVectorData(
+                title = "招呼设置",
+                icon = Icons.Default.Send,
+                backgroundColor = Color(0xFF2196F3),
+                onClick = {
+
+                }
+            ),
+            QuickActionVectorData(
+                title = "呢称限制",
+                icon = Icons.Default.Warning,
+                backgroundColor = Color(0xFF4CAF50),
+                onClick = {
+
+                }
+            ),
+            QuickActionVectorData(
+                title = "评论限制",
+                icon = Icons.Default.Warning,
+                backgroundColor = Color(0xFFFF9800),
+                onClick = {
+
+                }
+            )
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(quickLiveSettingActions) { action ->
+                QuickActionVectorCard(
+                    data = action
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Text(
+            text = "语音管理",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+        val quickVoiceCloningActions = listOf(
+            QuickActionVectorData(
+                title = "声音克隆",
+                icon = Icons.Default.Face,
+                backgroundColor = Color(0xFF2196F3),
+                onClick = {
+
+                }
+            ),
+            QuickActionVectorData(
+                title = "语音调速",
+                icon = Icons.Default.Phone,
+                backgroundColor = Color(0xFF9C27B0),
+                onClick = {
+
+                }
+            )
+        )
+
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(quickVoiceCloningActions) { action ->
                 QuickActionVectorCard(
                     data = action
                 )
