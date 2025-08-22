@@ -1,144 +1,193 @@
 package com.danshuang.AiLive.ui.screens
 
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.runtime.Composable
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import coil.compose.rememberAsyncImagePainter
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.danshuang.AiLive.R
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
+import kotlinx.coroutines.delay
+import com.danshuang.AiLive.ui.theme.backgroundLight
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen() {
+    val pagerState = rememberPagerState(pageCount = { 3 })
+    
+    // 自动轮播
+    LaunchedEffect(pagerState) {
+        while (true) {
+            delay(3000)
+            val nextPage = (pagerState.currentPage + 1) % pagerState.pageCount
+            pagerState.animateScrollToPage(nextPage)
+        }
+    }
+
     Scaffold(
         topBar = {
-            CenterAlignedTopAppBar(
-                title = { Text("AiLive") },
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+            TopAppBar(
+                colors = TopAppBarDefaults.topAppBarColors(
                     containerColor = MaterialTheme.colorScheme.primary,
-                    titleContentColor = Color.White
-                )
+                    titleContentColor = MaterialTheme.colorScheme.primaryContainer,
+                ),
+                title = {
+                    Text("首页")
+                }
             )
-        }
-    ) { paddingValues ->
+        },
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+
+            // Banner轮播图
             item {
-                // 欢迎区域
-                Card(
+                BannerSection(pagerState = pagerState)
+            }
+
+            // 快捷功能入口
+            item {
+                QuickActionsSection()
+            }
+
+            // 核心功能标题
+            item {
+                SectionTitle(title = "核心功能")
+            }
+
+            item {
+                Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+                    for (row in 0 until 3) {
+                        Row {
+                            for (col in 0 until 2) {
+                                val index = row * 2 + col
+                                if (index < noteCards.size) {
+                                    NoteCardItem(
+                                        card = noteCards[index],
+                                        modifier = Modifier
+                                            .weight(1f)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // 底部间距
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerState) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(130.dp)
+            .padding(horizontal = 16.dp)
+            .padding(top = 16.dp)
+    ) {
+        HorizontalPager(
+            state = pagerState,
+            modifier = Modifier.fillMaxSize()
+        ) { page ->
+            Card(
+                modifier = Modifier.fillMaxSize(),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                    )
+                        .fillMaxSize()
+                        .background(
+                            when (page) {
+                                0 -> Color(0xFF4CAF50)
+                                1 -> Color(0xFF2196F3)
+                                else -> Color(0xFFFF9800)
+                            }
+                        ),
+                    contentAlignment = Alignment.Center
                 ) {
                     Column(
-                        modifier = Modifier.padding(16.dp)
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center
                     ) {
                         Text(
-                            text = "欢迎使用 AiLive",
-                            style = MaterialTheme.typography.headlineSmall,
+                            text = when (page) {
+                                0 -> "AI门店营销利器"
+                                1 -> "实时互动直播"
+                                else -> "为美业直播而生"
+                            },
+                            color = Color.White,
+                            fontSize = 20.sp,
                             fontWeight = FontWeight.Bold
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            text = "开始您的直播之旅",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.8f)
+                            text = when (page) {
+                                0 -> "智能对话，贴心服务"
+                                1 -> "实时推理，智慧互动"
+                                else -> "整合行业直播数据"
+                            },
+                            color = Color.White.copy(alpha = 0.8f),
+                            fontSize = 14.sp
                         )
                     }
                 }
             }
+        }
 
-            item {
-                // 直播账号信息
-                Card(
+        // 指示器
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            repeat(pagerState.pageCount) { iteration ->
+                val color = if (pagerState.currentPage == iteration) {
+                    Color.White
+                } else {
+                    Color.White.copy(alpha = 0.4f)
+                }
+                Box(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 16.dp),
-                    colors = CardDefaults.cardColors(
-                        containerColor = MaterialTheme.colorScheme.surface
-                    )
-                ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column {
-                            Text(
-                                text = "直播账号",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "管理您的直播设置",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
-                            )
-                        }
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                            contentDescription = "进入",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
-            }
-
-            item {
-                // 功能区网格
-                Text(
-                    text = "功能",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(bottom = 8.dp)
-                )
-            }
-
-            items(5) { index ->
-                val features = listOf(
-                    "开始直播" to "立即开始新的直播",
-                    "直播历史" to "查看历史直播记录",
-                    "粉丝管理" to "管理您的粉丝",
-                    "收益统计" to "查看直播收益数据",
-                    "设置" to "应用设置和偏好"
-                )
-
-                FeatureCard(
-                    title = features[index].first,
-                    description = features[index].second
+                        .padding(2.dp)
+                        .clip(CircleShape)
+                        .background(color)
+                        .size(8.dp)
                 )
             }
         }
@@ -146,46 +195,192 @@ fun HomeScreen() {
 }
 
 @Composable
-fun FeatureCard(
-    title: String,
-    description: String
-) {
-    Card(
+private fun QuickActionsSection() {
+    Column(
+        modifier = Modifier.padding(horizontal = 16.dp)
+    ) {
+        Text(
+            text = "直播账户",
+            fontSize = 18.sp,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(bottom = 12.dp)
+        )
+
+        LiveAccountItem()
+//        Spacer(modifier = Modifier.height(16.dp))
+//        LazyRow(
+//            horizontalArrangement = Arrangement.spacedBy(12.dp)
+//        ) {
+//            items(quickActions.size) { index ->
+//                QuickActionItem(action = quickActions[index])
+//            }
+//        }
+    }
+}
+
+@Composable
+private fun LiveAccountItem() {
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(bottom = 8.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
-        )
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
+        // 头像
+        Image(
+            painter = painterResource(id = R.drawable.ic_douyin_logo),
+            contentDescription = "用户头像",
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .size(80.dp)
+                .clip(CircleShape)
+                .background(Color.Gray),
+            contentScale = ContentScale.Crop
+        )
+        Spacer(modifier = Modifier.width(12.dp))
+        // 用户信息
+        Column(
+            modifier = Modifier.weight(1f)
         ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+            Text(
+                text = "抖音账号名称",
+                fontWeight = FontWeight.Bold,
+                fontSize = 20.sp
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF4CAF50))
                 )
+                Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                    text = "在线",
+                    fontSize = 12.sp,
+                    color = Color(0xFF4CAF50)
                 )
             }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = "进入",
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(24.dp)
+        }
+        // 修改按钮
+        Button(
+            onClick = { /* TODO: 实现修改逻辑 */ },
+            shape = RoundedCornerShape(8.dp),
+            modifier = Modifier.height(36.dp)
+        ) {
+            Text(text = "换账户", fontSize = 14.sp)
+        }
+    }
+}
+
+// 1. 数据类
+data class NoteCard(
+    val title: String,
+    val subtitle: String,
+    val url: String
+)
+
+// 2. 示例数据
+private val noteCards = listOf(
+    NoteCard("门店大模型", "智能对话，贴心服务", "https://www.huichuang100.com/android/v2/z/ai-model.png"),
+    NoteCard("知识库", "专用解答，行业知识驱动", "https://www.huichuang100.com/android/v2/z/kb-lib.png"),
+    NoteCard("语音克隆", "让客户记住您的声音，提升辨识度", "https://www.huichuang100.com/android/v2/z/voice-cloning.png"),
+    NoteCard("直播参数", "对话过程控制优化", "https://www.huichuang100.com/android/v2/z/live-params.png"),
+    NoteCard("直播回顾", "回看每场AI对话，同步优化", "https://www.huichuang100.com/android/v2/z/ai-review.png"),
+    NoteCard("卡密续费", "卡密兑换，账户续费", "https://www.huichuang100.com/android/v2/z/account-rights.png")
+)
+
+// 3. 卡片组件
+@Composable
+fun NoteCardItem(card: NoteCard, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .width(0.dp)
+            .aspectRatio(1f)
+            .padding(8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundLight
+        )
+    ) {
+        Column {
+            Image(
+                painter = rememberAsyncImagePainter(card.url),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = card.title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+            Text(
+                text = card.subtitle,
+                color = Color.Gray,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 12.dp)
             )
         }
     }
 }
+
+@Composable
+private fun QuickActionItem(action: QuickAction) {
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier.width(80.dp)
+    ) {
+        Card(
+            modifier = Modifier.size(60.dp),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = action.backgroundColor
+            )
+        ) {
+            Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = action.icon),
+                    contentDescription = action.title,
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(
+            text = action.title,
+            fontSize = 12.sp,
+            color = MaterialTheme.colorScheme.onSurface,
+            textAlign = TextAlign.Center
+        )
+    }
+}
+
+@Composable
+private fun SectionTitle(title: String) {
+    Text(
+        text = title,
+        fontSize = 18.sp,
+        fontWeight = FontWeight.Bold,
+        modifier = Modifier.padding(horizontal = 16.dp)
+    )
+}
+
+// 快捷功能数据类
+data class QuickAction(
+    val title: String,
+    val icon: Int,
+    val backgroundColor: Color
+)
 
 @Preview(showBackground = true)
 @Composable
