@@ -265,7 +265,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.Face,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
-
+                    navigationState.navigateToVoiceCloning()
                 }
             ),
 

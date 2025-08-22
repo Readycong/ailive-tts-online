@@ -38,6 +38,9 @@ sealed class Screen(val route: String) {
     data object VoiceSettings : Screen("voice_settings") {
         fun createRoute() = "voice_settings"
     }
+    data object VoiceCloning : Screen("voice_cloning") {
+        fun createRoute() = "voice_cloning"
+    }
 }
 
 class NavigationState {
@@ -74,6 +77,10 @@ class NavigationState {
     fun navigateToVoiceSettings() {
         currentScreen = Screen.VoiceSettings
     }
+
+    fun navigateToVoiceCloning() {
+        currentScreen = Screen.VoiceCloning
+    }
     
     fun navigateUp() {
         when (currentScreen) {
@@ -95,6 +102,9 @@ class NavigationState {
                 currentScreen = Screen.Model
             }
             is Screen.VoiceSettings -> {
+                currentScreen = Screen.Model
+            }
+            is Screen.VoiceCloning -> {
                 currentScreen = Screen.Model
             }
             else -> {
@@ -155,6 +165,11 @@ fun AppNavigation(
             }
             is Screen.VoiceSettings -> {
                 com.danshuang.AiLive.ui.screens.VoiceSettingsScreen(
+                    navController = navigationState
+                )
+            }
+            is Screen.VoiceCloning -> {
+                com.danshuang.AiLive.ui.screens.VoiceCloningScreen(
                     navController = navigationState
                 )
             }
