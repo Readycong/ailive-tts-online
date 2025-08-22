@@ -218,7 +218,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.Warning,
                 backgroundColor = Color(0xFF4CAF50),
                 onClick = {
-
+                    navigationState.navigateToNicknameRestrictions()
                 }
             ),
             QuickActionVectorData(
@@ -226,7 +226,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.Warning,
                 backgroundColor = Color(0xFFFF9800),
                 onClick = {
-
+                    navigationState.navigateToCommentRestrictions()
                 }
             )
         )

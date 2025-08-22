@@ -29,6 +29,12 @@ sealed class Screen(val route: String) {
     data object GreetingSettings : Screen("greeting_settings") {
         fun createRoute() = "greeting_settings"
     }
+    data object NicknameRestrictions : Screen("nickname_restrictions") {
+        fun createRoute() = "nickname_restrictions"
+    }
+    data object CommentRestrictions : Screen("comment_restrictions") {
+        fun createRoute() = "comment_restrictions"
+    }
 }
 
 class NavigationState {
@@ -54,6 +60,14 @@ class NavigationState {
         currentScreen = Screen.GreetingSettings
     }
     
+    fun navigateToNicknameRestrictions() {
+        currentScreen = Screen.NicknameRestrictions
+    }
+    
+    fun navigateToCommentRestrictions() {
+        currentScreen = Screen.CommentRestrictions
+    }
+    
     fun navigateUp() {
         when (currentScreen) {
             is Screen.ContentEdit -> {
@@ -65,6 +79,12 @@ class NavigationState {
                 currentScreen = Screen.Model
             }
             is Screen.GreetingSettings -> {
+                currentScreen = Screen.Model
+            }
+            is Screen.NicknameRestrictions -> {
+                currentScreen = Screen.Model
+            }
+            is Screen.CommentRestrictions -> {
                 currentScreen = Screen.Model
             }
             else -> {
@@ -107,9 +127,21 @@ fun AppNavigation(
             }
         }
         is Screen.GreetingSettings -> {
-            GreetingSettingsScreen(
-                navController = navigationState
-            )
-        }
+                GreetingSettingsScreen(
+                    navController = navigationState
+                )
+            }
+            is Screen.NicknameRestrictions -> {
+                com.danshuang.AiLive.ui.screens.RestrictionSettingsScreen(
+                    navController = navigationState,
+                    restrictionType = "nickname"
+                )
+            }
+            is Screen.CommentRestrictions -> {
+                com.danshuang.AiLive.ui.screens.RestrictionSettingsScreen(
+                    navController = navigationState,
+                    restrictionType = "comment"
+                )
+            }
     }
 }
