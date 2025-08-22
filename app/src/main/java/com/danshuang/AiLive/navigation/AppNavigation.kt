@@ -32,6 +32,7 @@ import com.danshuang.AiLive.ui.screens.LoginScreen
 import com.danshuang.AiLive.ui.screens.ModelScreen
 import com.danshuang.AiLive.ui.screens.ProfileScreen
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
+import com.danshuang.AiLive.ui.theme.backgroundLight
 
 sealed class BottomNavItem(
     val title: String,
@@ -39,9 +40,9 @@ sealed class BottomNavItem(
     val route: String
 ) {
     data object Home : BottomNavItem("主页", Icons.Default.Home, "home")
-    data object Knowledge : BottomNavItem("知识库", Icons.Default.Search, "knowledge")
+    data object Model : BottomNavItem("大模型", Icons.Default.Person, "model")
     data object AILive : BottomNavItem("AI直播", Icons.Default.PlayArrow, "ai_live")
-    data object Model : BottomNavItem("主播模型", Icons.Default.Person, "model")
+    data object Knowledge : BottomNavItem("知识库", Icons.Default.Search, "knowledge")
     data object Profile : BottomNavItem("我的", Icons.Default.AccountCircle, "profile")
 }
 
@@ -77,16 +78,16 @@ fun MainAppNavigation(
     var selectedItem by remember { mutableStateOf(0) }
     val items = listOf(
         BottomNavItem.Home,
-        BottomNavItem.Knowledge,
-        BottomNavItem.AILive,
         BottomNavItem.Model,
+        BottomNavItem.AILive,
+        BottomNavItem.Knowledge,
         BottomNavItem.Profile
     )
 
     Scaffold(
         bottomBar = {
             NavigationBar(
-                containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                containerColor = backgroundLight,
             ) {
                 items.forEachIndexed { index, item ->
                     NavigationBarItem(
@@ -106,9 +107,9 @@ fun MainAppNavigation(
         ) {
             when (selectedItem) {
                 0 -> HomeScreen()
-                1 -> KnowledgeScreen()
+                1 -> ModelScreen()
                 2 -> AILiveScreen()
-                3 -> ModelScreen()
+                3 -> KnowledgeScreen()
                 4 -> ProfileScreen(onLogout = onLogout)
             }
         }

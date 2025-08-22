@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.danshuang.AiLive.R
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import kotlinx.coroutines.delay
+import com.danshuang.AiLive.ui.theme.backgroundLight
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -80,9 +81,25 @@ fun HomeScreen() {
                 SectionTitle(title = "核心功能")
             }
 
-            // 核心功能列表
-            items(6) { index ->
-                RecommendedContentItem(index = index)
+            item {
+                Column(modifier = Modifier.padding(horizontal = 8.dp)) {
+                    for (row in 0 until 3) {
+                        Row {
+                            for (col in 0 until 2) {
+                                val index = row * 2 + col
+                                if (index < noteCards.size) {
+                                    NoteCardItem(
+                                        card = noteCards[index],
+                                        modifier = Modifier
+                                            .weight(1f)
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.weight(1f))
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
             // 底部间距
@@ -131,7 +148,7 @@ private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerSta
                             text = when (page) {
                                 0 -> "AI门店营销利器"
                                 1 -> "实时互动直播"
-                                else -> "专为美业打造"
+                                else -> "为美业直播而生"
                             },
                             color = Color.White,
                             fontSize = 20.sp,
@@ -141,8 +158,8 @@ private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerSta
                         Text(
                             text = when (page) {
                                 0 -> "智能对话，贴心服务"
-                                1 -> "高清流畅，互动无限"
-                                else -> "实测优化AI大模型"
+                                1 -> "实时推理，智慧互动"
+                                else -> "整合行业直播数据"
                             },
                             color = Color.White.copy(alpha = 0.8f),
                             fontSize = 14.sp
@@ -252,6 +269,63 @@ private fun LiveAccountItem() {
             modifier = Modifier.height(36.dp)
         ) {
             Text(text = "换账户", fontSize = 14.sp)
+        }
+    }
+}
+
+// 1. 数据类
+data class NoteCard(
+    val title: String,
+    val subtitle: String,
+    val url: String
+)
+
+// 2. 示例数据
+private val noteCards = listOf(
+    NoteCard("门店大模型", "智能对话，贴心服务", "https://www.huichuang100.com/android/v2/z/ai-model.png"),
+    NoteCard("知识库", "专用解答，行业知识驱动", "https://www.huichuang100.com/android/v2/z/kb-lib.png"),
+    NoteCard("语音克隆", "让客户记住您的声音，提升辨识度", "https://www.huichuang100.com/android/v2/z/voice-cloning.png"),
+    NoteCard("直播参数", "对话过程控制优化", "https://www.huichuang100.com/android/v2/z/live-params.png"),
+    NoteCard("直播回顾", "回看每场AI对话，同步优化", "https://www.huichuang100.com/android/v2/z/ai-review.png"),
+    NoteCard("卡密续费", "卡密兑换，账户续费", "https://www.huichuang100.com/android/v2/z/account-rights.png")
+)
+
+// 3. 卡片组件
+@Composable
+fun NoteCardItem(card: NoteCard, modifier: Modifier = Modifier) {
+    Card(
+        modifier = modifier
+            .width(0.dp)
+            .aspectRatio(1f)
+            .padding(8.dp),
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(2.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = backgroundLight
+        )
+    ) {
+        Column {
+            Image(
+                painter = rememberAsyncImagePainter(card.url),
+                contentDescription = null,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp),
+                contentScale = ContentScale.Crop
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = card.title,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
+            Text(
+                text = card.subtitle,
+                color = Color.Gray,
+                fontSize = 14.sp,
+                modifier = Modifier.padding(horizontal = 12.dp)
+            )
         }
     }
 }
