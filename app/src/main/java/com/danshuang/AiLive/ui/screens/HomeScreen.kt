@@ -207,14 +207,6 @@ private fun QuickActionsSection() {
         )
 
         LiveAccountItem()
-//        Spacer(modifier = Modifier.height(16.dp))
-//        LazyRow(
-//            horizontalArrangement = Arrangement.spacedBy(12.dp)
-//        ) {
-//            items(quickActions.size) { index ->
-//                QuickActionItem(action = quickActions[index])
-//            }
-//        }
     }
 }
 
@@ -331,41 +323,6 @@ fun NoteCardItem(card: NoteCard, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun QuickActionItem(action: QuickAction) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = Modifier.width(80.dp)
-    ) {
-        Card(
-            modifier = Modifier.size(60.dp),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = action.backgroundColor
-            )
-        ) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    painter = painterResource(id = action.icon),
-                    contentDescription = action.title,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-        }
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = action.title,
-            fontSize = 12.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-            textAlign = TextAlign.Center
-        )
-    }
-}
-
-@Composable
 private fun SectionTitle(title: String) {
     Text(
         text = title,
@@ -374,13 +331,6 @@ private fun SectionTitle(title: String) {
         modifier = Modifier.padding(horizontal = 16.dp)
     )
 }
-
-// 快捷功能数据类
-data class QuickAction(
-    val title: String,
-    val icon: Int,
-    val backgroundColor: Color
-)
 
 @Preview(showBackground = true)
 @Composable

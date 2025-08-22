@@ -25,12 +25,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import com.danshuang.AiLive.data.LoginRepository
-import com.danshuang.AiLive.ui.screens.AILiveScreen
-import com.danshuang.AiLive.ui.screens.HomeScreen
-import com.danshuang.AiLive.ui.screens.KnowledgeScreen
 import com.danshuang.AiLive.ui.screens.LoginScreen
-import com.danshuang.AiLive.ui.screens.ModelScreen
-import com.danshuang.AiLive.ui.screens.ProfileScreen
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.ui.theme.backgroundLight
 
@@ -75,7 +70,7 @@ fun AppNavigation() {
 fun MainAppNavigation(
     onLogout: () -> Unit = {}
 ) {
-    var selectedItem by remember { mutableStateOf(0) }
+    val navigationState = rememberNavigationState()
     val items = listOf(
         BottomNavItem.Home,
         BottomNavItem.Model,
@@ -86,16 +81,34 @@ fun MainAppNavigation(
 
     Scaffold(
         bottomBar = {
-            NavigationBar(
-                containerColor = backgroundLight,
-            ) {
-                items.forEachIndexed { index, item ->
-                    NavigationBarItem(
-                        icon = { Icon(item.icon, contentDescription = item.title) },
-                        label = { Text(item.title) },
-                        selected = selectedItem == index,
-                        onClick = { selectedItem = index }
-                    )
+            // 在内容编辑页面隐藏底部导航
+            if (navigationState.currentScreen !is Screen.ContentEdit) {
+                NavigationBar(
+                    containerColor = backgroundLight,
+                ) {
+                    items.forEachIndexed { index, item ->
+                        NavigationBarItem(
+                            icon = { Icon(item.icon, contentDescription = item.title) },
+                            label = { Text(item.title) },
+                            selected = when (navigationState.currentScreen) {
+                                is Screen.Home -> index == 0
+                                is Screen.Model -> index == 1
+                                is Screen.AILive -> index == 2
+                                is Screen.Knowledge -> index == 3
+                                is Screen.Profile -> index == 4
+                                else -> false
+                            },
+                            onClick = {
+                                when (index) {
+                                    0 -> navigationState.navigateTo(Screen.Home)
+                                    1 -> navigationState.navigateTo(Screen.Model)
+                                    2 -> navigationState.navigateTo(Screen.AILive)
+                                    3 -> navigationState.navigateTo(Screen.Knowledge)
+                                    4 -> navigationState.navigateTo(Screen.Profile)
+                                }
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -105,13 +118,10 @@ fun MainAppNavigation(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            when (selectedItem) {
-                0 -> HomeScreen()
-                1 -> ModelScreen()
-                2 -> AILiveScreen()
-                3 -> KnowledgeScreen()
-                4 -> ProfileScreen(onLogout = onLogout)
-            }
+            AppNavigation(
+                navigationState = navigationState,
+                onLogout = onLogout
+            )
         }
     }
 }
