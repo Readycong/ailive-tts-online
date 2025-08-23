@@ -201,7 +201,7 @@ fun RecordingButton(
             contentAlignment = Alignment.Center
         ) {
             Icon(
-                imageVector = Icons.Default.Phone,
+                imageVector = Icons.Default.PlayArrow,
                 contentDescription = "录音",
                 tint = backgroundColor,
                 modifier = Modifier.size(48.dp)
