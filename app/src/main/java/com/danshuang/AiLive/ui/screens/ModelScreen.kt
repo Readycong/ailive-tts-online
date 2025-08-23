@@ -139,7 +139,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "直播话术",
+            text = "直播话术循环",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 12.dp)

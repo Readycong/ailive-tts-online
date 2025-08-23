@@ -44,6 +44,11 @@ android {
 
 dependencies {
 
+    // Retrofit依赖
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.9.3")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
@@ -56,6 +61,8 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.compose.material.icons.core)
+    implementation(libs.androidx.compose.material.icons.extended)
     implementation("io.coil-kt:coil-compose:2.4.0")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

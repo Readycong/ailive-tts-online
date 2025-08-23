@@ -13,6 +13,8 @@ import com.danshuang.AiLive.ui.screens.KnowledgeScreen
 import com.danshuang.AiLive.ui.screens.LiveScriptScreen
 import com.danshuang.AiLive.ui.screens.ModelScreen
 import com.danshuang.AiLive.ui.screens.ProfileScreen
+import com.danshuang.AiLive.ui.screens.ChangePasswordScreen
+import com.danshuang.AiLive.ui.screens.HelpScreen
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -20,6 +22,8 @@ sealed class Screen(val route: String) {
     data object AILive : Screen("ai_live")
     data object Knowledge : Screen("knowledge")
     data object Profile : Screen("profile")
+    data object ChangePassword : Screen("change_password")
+    data object Help : Screen("help")
     data object ContentEdit : Screen("content_edit/{contentKey}") {
         fun createRoute(contentKey: String) = "content_edit/$contentKey"
     }
@@ -81,7 +85,15 @@ class NavigationState {
     fun navigateToVoiceCloning() {
         currentScreen = Screen.VoiceCloning
     }
-    
+
+    fun navigateToChangePassword() {
+        currentScreen = Screen.ChangePassword
+    }
+
+    fun navigateToHelp() {
+        currentScreen = Screen.Help
+    }
+
     fun navigateUp() {
         when (currentScreen) {
             is Screen.ContentEdit -> {
@@ -107,6 +119,12 @@ class NavigationState {
             is Screen.VoiceCloning -> {
                 currentScreen = Screen.Model
             }
+            is Screen.ChangePassword -> {
+                currentScreen = Screen.Profile
+            }
+            is Screen.Help -> {
+                currentScreen = Screen.Profile
+            }
             else -> {
                 currentScreen = Screen.Home
             }
@@ -129,7 +147,17 @@ fun AppNavigation(
         is Screen.Model -> ModelScreen(navigationState)
         is Screen.AILive -> AILiveScreen()
         is Screen.Knowledge -> KnowledgeScreen()
-        is Screen.Profile -> ProfileScreen(onLogout = onLogout)
+        is Screen.Profile -> ProfileScreen(
+            onLogout = onLogout,
+            onNavigateToChangePassword = { navigationState.navigateToChangePassword() },
+            onNavigateToHelp = { navigationState.navigateToHelp() }
+        )
+        is Screen.ChangePassword -> ChangePasswordScreen(
+            onBack = { navigationState.navigateUp() }
+        )
+        is Screen.Help -> HelpScreen(
+            onBack = { navigationState.navigateUp() }
+        )
         is Screen.ContentEdit -> {
             navigationState.contentEditKey?.let { key ->
                 ContentEditScreen(
