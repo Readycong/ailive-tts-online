@@ -14,15 +14,14 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Call
 import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.ui.res.painterResource
+import com.danshuang.AiLive.R
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -42,6 +41,8 @@ import com.danshuang.AiLive.ui.components.QuickActionVectorData
 import com.danshuang.AiLive.ui.components.QuickActionVectorCard
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.data.VoiceSettings
+import com.danshuang.AiLive.ui.components.QuickActionData
+import com.danshuang.AiLive.ui.components.QuickActionCard
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -145,33 +146,33 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             modifier = Modifier.padding(bottom = 12.dp)
         )
         val quickLiveScriptActions = listOf(
-            QuickActionVectorData(
+            QuickActionData(
                 title = "问候",
-                icon = Icons.Default.FavoriteBorder,
+                icon = R.drawable.ic_number_1,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
                     navigationState.navigateToLiveScript("greeting")
                 }
             ),
-            QuickActionVectorData(
+            QuickActionData(
                 title = "品宣",
-                icon = Icons.AutoMirrored.Filled.List,
+                icon = R.drawable.ic_number_2,
                 backgroundColor = Color(0xFF4CAF50),
                 onClick = {
                     navigationState.navigateToLiveScript("promotion")
                 }
             ),
-            QuickActionVectorData(
+            QuickActionData(
                 title = "留咨",
-                icon = Icons.Default.Call,
+                icon = R.drawable.ic_number_3,
                 backgroundColor = Color(0xFFFF9800),
                 onClick = {
                     navigationState.navigateToLiveScript("consultation")
                 }
             ),
-            QuickActionVectorData(
+            QuickActionData(
                 title = "促成",
-                icon = Icons.Default.Phone,
+                icon = R.drawable.ic_number_4,
                 backgroundColor = Color(0xFF9C27B0),
                 onClick = {
                     navigationState.navigateToLiveScript("conversion")
@@ -183,8 +184,8 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(quickLiveScriptActions) { action ->
-                QuickActionVectorCard(
-                    data = action
+                QuickActionCard(
+                    action = action
                 )
             }
         }
@@ -193,15 +194,15 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                QuickActionVectorCard(
-                    data = QuickActionVectorData(
-                        title = "感谢",
-                        icon = Icons.Default.Settings,
-                        backgroundColor = Color(0xFF2196F3),
-                        onClick = {
-                            navigationState.navigateToLiveScript("thanks")
-                        }
-                    )
+                QuickActionCard(
+                    action = QuickActionData(
+                            title = "感谢",
+                            icon = R.drawable.ic_number_5,
+                            backgroundColor = Color(0xFF2196F3),
+                            onClick = {
+                                navigationState.navigateToLiveScript("thanks")
+                            }
+                        )
                 )
             }
         }
