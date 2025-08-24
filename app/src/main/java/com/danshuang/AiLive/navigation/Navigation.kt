@@ -24,6 +24,9 @@ sealed class Screen(val route: String) {
     data object Profile : Screen("profile")
     data object ChangePassword : Screen("change_password")
     data object Help : Screen("help")
+    data object AccountBinding : Screen("account_binding") {
+        fun createRoute() = "account_binding"
+    }
     data object ContentEdit : Screen("content_edit/{contentKey}") {
         fun createRoute(contentKey: String) = "content_edit/$contentKey"
     }
@@ -94,6 +97,10 @@ class NavigationState {
         currentScreen = Screen.Help
     }
 
+    fun navigateToAccountBinding() {
+        currentScreen = Screen.AccountBinding
+    }
+
     fun navigateUp() {
         when (currentScreen) {
             is Screen.ContentEdit -> {
@@ -125,6 +132,9 @@ class NavigationState {
             is Screen.Help -> {
                 currentScreen = Screen.Profile
             }
+            is Screen.AccountBinding -> {
+                currentScreen = Screen.Home
+            }
             else -> {
                 currentScreen = Screen.Home
             }
@@ -143,7 +153,7 @@ fun AppNavigation(
     onLogout: () -> Unit = {}
 ) {
     when (navigationState.currentScreen) {
-        is Screen.Home -> HomeScreen()
+        is Screen.Home -> HomeScreen(navController = navigationState)
         is Screen.Model -> ModelScreen(navigationState)
         is Screen.AILive -> AILiveScreen()
         is Screen.Knowledge -> KnowledgeScreen()
@@ -198,6 +208,11 @@ fun AppNavigation(
             }
             is Screen.VoiceCloning -> {
                 com.danshuang.AiLive.ui.screens.VoiceCloningScreen(
+                    navController = navigationState
+                )
+            }
+            is Screen.AccountBinding -> {
+                com.danshuang.AiLive.ui.screens.AccountBindingScreen(
                     navController = navigationState
                 )
             }

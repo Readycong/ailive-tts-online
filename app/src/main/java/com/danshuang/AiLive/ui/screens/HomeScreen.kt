@@ -28,13 +28,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danshuang.AiLive.R
+import com.danshuang.AiLive.navigation.NavigationState
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import kotlinx.coroutines.delay
 import com.danshuang.AiLive.ui.theme.backgroundLight
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun HomeScreen() {
+fun HomeScreen(navController: NavigationState) {
     val pagerState = rememberPagerState(pageCount = { 3 })
     
     // 自动轮播
@@ -72,9 +73,9 @@ fun HomeScreen() {
             }
 
             // 快捷功能入口
-            item {
-                QuickActionsSection()
-            }
+        item {
+            QuickActionsSection(navController = navController)
+        }
 
             // 核心功能标题
             item {
@@ -195,7 +196,7 @@ private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerSta
 }
 
 @Composable
-private fun QuickActionsSection() {
+private fun QuickActionsSection(navController: NavigationState) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
@@ -206,12 +207,12 @@ private fun QuickActionsSection() {
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        LiveAccountItem()
+        LiveAccountItem(navController = navController)
     }
 }
 
 @Composable
-private fun LiveAccountItem() {
+private fun LiveAccountItem(navController: NavigationState) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -256,11 +257,11 @@ private fun LiveAccountItem() {
         }
         // 修改按钮
         Button(
-            onClick = { /* TODO: 实现修改逻辑 */ },
+            onClick = { navController.navigateToAccountBinding() },
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.height(36.dp)
         ) {
-            Text(text = "换账户", fontSize = 14.sp)
+            Text(text = "更换账户", fontSize = 14.sp)
         }
     }
 }
@@ -336,6 +337,6 @@ private fun SectionTitle(title: String) {
 @Composable
 fun HomeScreenPreview() {
     AiLiveTheme {
-        HomeScreen()
+        HomeScreen(navController = remember { NavigationState() })
     }
 }

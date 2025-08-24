@@ -67,13 +67,13 @@ fun ChangePasswordScreen(
     var errorMessage by remember { mutableStateOf("") }
 
     // 验证表单
-    val isFormValid by derivedStateOf {
+    val isFormValid by remember { derivedStateOf {
         oldPassword.isNotEmpty() &&
         newPassword.isNotEmpty() &&
         confirmPassword.isNotEmpty() &&
         newPassword == confirmPassword &&
         newPassword.length >= 6
-    }
+    } }
 
     // 提交密码修改
     fun submitChangePassword() {
