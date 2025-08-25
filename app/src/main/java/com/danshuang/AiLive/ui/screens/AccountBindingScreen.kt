@@ -54,6 +54,13 @@ fun AccountBindingScreen(
     var accountInfo by remember { mutableStateOf<UserAccountInfo?>(null) }
     var showWebView by remember { mutableStateOf(false) }
     var showDropdownMenu by remember { mutableStateOf(false) }
+    var userHomeUrl by remember { mutableStateOf("") }
+    
+    // 提取URL的函数
+    fun extractUrlFromText(text: String): String? {
+        val urlPattern = Regex("https?://[^\\s]+")
+        return urlPattern.find(text)?.value
+    }
 
     LaunchedEffect(bindingTrigger) {
         if (bindingTrigger) {
@@ -67,15 +74,31 @@ fun AccountBindingScreen(
     }
     
     // 模拟获取账户信息
-    LaunchedEffect(currentStep) {
+    LaunchedEffect(currentStep, userHomeUrl) {
         if (currentStep == BindingStep.ACCOUNT_PREVIEW && accountInfo == null) {
             isLoading = true
-            kotlinx.coroutines.delay(1500) // 模拟加载时间
-            accountInfo = UserAccountInfo(
-                nickname = "抖音用户${(Math.random() * 10000).toInt()}",
-                isLive = Math.random() > 0.5
-            )
-            isLoading = false
+            // 如果有真实的抖音URL，等待WebView加载并提取信息
+            if (userHomeUrl.contains("douyin.com") || userHomeUrl.contains("v.douyin.com")) {
+                // 等待WebView加载并提取信息，不再模拟
+                // 设置一个超时，防止无限等待
+                kotlinx.coroutines.delay(10000) // 10秒超时
+                if (accountInfo == null) {
+                    // 超时后使用默认信息
+                    accountInfo = UserAccountInfo(
+                        nickname = "抖音用户",
+                        isLive = false
+                    )
+                    isLoading = false
+                }
+            } else {
+                // 非抖音链接，使用模拟数据
+                kotlinx.coroutines.delay(1500) // 模拟加载时间
+                accountInfo = UserAccountInfo(
+                    nickname = "示例用户${(Math.random() * 10000).toInt()}",
+                    isLive = Math.random() > 0.5
+                )
+                isLoading = false
+            }
         }
     }
 
@@ -125,9 +148,18 @@ fun AccountBindingScreen(
             // WebView 调试区域 - 在所有内容之前显示
             item {
                 WebViewControlSection(
-                    url = accountUrl.text.ifEmpty { "https://www.douyin.com" },
+                    url = userHomeUrl.ifEmpty { "about:blank" },
                     isVisible = showWebView,
-                    onVisibilityChange = { showWebView = it }
+                    onVisibilityChange = { showWebView = it },
+                    onAccountInfoExtracted = { avatar, nickname, isLive ->
+                        // 当从网页提取到账户信息时更新状态
+                        accountInfo = UserAccountInfo(
+                            avatar = avatar,
+                            nickname = nickname,
+                            isLive = isLive
+                        )
+                        isLoading = false
+                    }
                 )
             }
             
@@ -148,7 +180,15 @@ fun AccountBindingScreen(
                             onUrlChange = { accountUrl = it },
                             onNextStep = {
                                 if (accountUrl.text.isNotBlank()) {
-                                    currentStep = BindingStep.ACCOUNT_PREVIEW
+                                    // 提取URL并保存
+                                    val extractedUrl = extractUrlFromText(accountUrl.text)
+                                    if (extractedUrl != null) {
+                                        userHomeUrl = extractedUrl
+                                        currentStep = BindingStep.ACCOUNT_PREVIEW
+                                    } else {
+                                        // 如果没有找到有效的URL，显示错误提示
+                                        bindingResult = "未找到有效的网址，请检查输入内容"
+                                    }
                                 }
                             },
                             isEnabled = accountUrl.text.isNotBlank()
@@ -565,7 +605,8 @@ private fun AccountPreviewStep(
 private fun WebViewControlSection(
     url: String,
     isVisible: Boolean,
-    onVisibilityChange: (Boolean) -> Unit = {}
+    onVisibilityChange: (Boolean) -> Unit = {},
+    onAccountInfoExtracted: (String, String, Boolean) -> Unit = { _, _, _ -> }
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -655,6 +696,79 @@ private fun WebViewControlSection(
                                             webViewHeight = newHeight
                                         } catch (e: Exception) {
                                             webViewHeight = 400.dp
+                                        }
+                                    }
+                                    
+                                    // 提取账户信息 - 仅当URL包含抖音链接时执行
+                                    if (url?.contains("douyin.com") == true || url?.contains("v.douyin.com") == true) {
+                                        view?.evaluateJavascript(
+                                            """
+                                            (function(){
+                                                try {
+                                                    // 提取头像
+                                                    var avatar = '';
+                                                    var avatarImg = document.querySelector('[data-e2e="user-avatar"] img, .avatar img, img[alt*="头像"], img[src*="avatar"]');
+                                                    if (avatarImg) {
+                                                        avatar = avatarImg.src || avatarImg.getAttribute('data-src') || '';
+                                                    }
+                                                    
+                                                    // 提取昵称
+                                                    var nickname = '';
+                                                    var nicknameEl = document.querySelector('[data-e2e="user-title"], .user-info .nickname, .user-name, h1, .account-info .name');
+                                                    if (nicknameEl) {
+                                                        nickname = nicknameEl.textContent || nicknameEl.innerText || '';
+                                                    }
+                                                    
+                                                    // 提取直播状态 - 查找直播相关的元素
+                                                    var isLive = false;
+                                                    var liveElements = document.querySelectorAll('*');
+                                                    for (var i = 0; i < liveElements.length; i++) {
+                                                        var text = liveElements[i].textContent || liveElements[i].innerText || '';
+                                                        if (text.includes('正在直播') || text.includes('直播中') || text.includes('LIVE') || 
+                                                            liveElements[i].className.includes('live') || 
+                                                            liveElements[i].getAttribute('data-e2e') === 'live-status') {
+                                                            isLive = true;
+                                                            break;
+                                                        }
+                                                    }
+                                                    
+                                                    return JSON.stringify({
+                                                        avatar: avatar.trim(),
+                                                        nickname: nickname.trim(),
+                                                        isLive: isLive
+                                                    });
+                                                } catch (e) {
+                                                    return JSON.stringify({
+                                                        avatar: '',
+                                                        nickname: '解析失败',
+                                                        isLive: false
+                                                    });
+                                                }
+                                            })();
+                                            """.trimIndent()
+                                        ) { result ->
+                                            try {
+                                                // 解析JSON结果
+                                                val jsonResult = result.removeSurrounding("\"")
+                                                    .replace("\\\"", "\"")  // 处理转义的引号
+                                                
+                                                // 简单的JSON解析（因为结构固定）
+                                                val avatarMatch = Regex("\"avatar\":\"([^\"]*)\"").find(jsonResult)
+                                                val nicknameMatch = Regex("\"nickname\":\"([^\"]*)\"").find(jsonResult)
+                                                val isLiveMatch = Regex("\"isLive\":(true|false)").find(jsonResult)
+                                                
+                                                val avatar = avatarMatch?.groupValues?.get(1) ?: ""
+                                                val nickname = nicknameMatch?.groupValues?.get(1) ?: "未知用户"
+                                                val isLive = isLiveMatch?.groupValues?.get(1) == "true"
+                                                
+                                                // 回调提取到的信息
+                                                if (nickname.isNotEmpty() && nickname != "解析失败") {
+                                                    onAccountInfoExtracted(avatar, nickname, isLive)
+                                                }
+                                            } catch (e: Exception) {
+                                                // 解析失败时使用默认信息
+                                                onAccountInfoExtracted("", "抖音用户", false)
+                                            }
                                         }
                                     }
                                 }
