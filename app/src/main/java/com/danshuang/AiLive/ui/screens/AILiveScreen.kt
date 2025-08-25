@@ -12,6 +12,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
+import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,6 +25,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
+import com.danshuang.AiLive.navigation.NavigationState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -71,8 +73,8 @@ object LiveMessageManager {
         )
         _messages.add(newMessage)
         
-        // 保持最多100条消息
-        if (_messages.size > 100) {
+        // 保持最多1000条消息
+        if (_messages.size > 1000) {
             _messages.removeAt(0)
         }
     }
@@ -85,7 +87,9 @@ object LiveMessageManager {
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun AILiveScreen() {
+fun AILiveScreen(
+    navController: NavigationState? = null
+) {
     var liveMonitorEnabled by remember { mutableStateOf(false) }
     var aiLiveEnabled by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -179,56 +183,157 @@ fun AILiveScreen() {
         }
     }
     
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // 上部：左右布局的两个Switch按钮
-        SwitchControlSection(
-            liveMonitorEnabled = liveMonitorEnabled,
-            onLiveMonitorChanged = { liveMonitorEnabled = it },
-            aiLiveEnabled = aiLiveEnabled,
-            onAiLiveChanged = { aiLiveEnabled = it }
-        )
-        
-        // 下部：实时刷新的直播间动态信息列表
-        LiveMessageList(
-            modifier = Modifier.weight(1f),
-            listState = listState,
-            isAtBottom = isAtBottom,
-            onScrollToBottom = {
-                forceScrollToBottom = true // 设置强制滚动标记
-                autoScrollEnabled = true
-                userScrolling = false
-                // 立即滚动到底部 - 使用更可靠的滚动方式
-                if (LiveMessageManager.messages.isNotEmpty()) {
-                    coroutineScope.launch {
-                        try {
-                            // 先用不带动画的方式快速滚动
-                            listState.scrollToItem(
-                                index = LiveMessageManager.messages.size - 1,
-                                scrollOffset = 0
-                            )
-                            // 等待一帧后再次确认位置
-                            delay(50)
-                            listState.animateScrollToItem(
-                                index = LiveMessageManager.messages.size - 1,
-                                scrollOffset = 0
-                            )
-                        } catch (e: Exception) {
-                            // 降级到普通滚动
+    // 使用Scaffold来组织TopBar和内容
+    Scaffold(
+        topBar = {
+            AILiveTopBar(
+                onNavigateBack = { navController?.navigateUp() }
+            )
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(paddingValues)
+                .background(MaterialTheme.colorScheme.background)
+        ) {
+            // 上部：左右布局的两个Switch按钮
+            SwitchControlSection(
+                liveMonitorEnabled = liveMonitorEnabled,
+                onLiveMonitorChanged = { liveMonitorEnabled = it },
+                aiLiveEnabled = aiLiveEnabled,
+                onAiLiveChanged = { aiLiveEnabled = it }
+            )
+            
+            // 下部：实时刷新的直播间动态信息列表
+            LiveMessageList(
+                modifier = Modifier.weight(1f),
+                listState = listState,
+                isAtBottom = isAtBottom,
+                onScrollToBottom = {
+                    forceScrollToBottom = true // 设置强制滚动标记
+                    autoScrollEnabled = true
+                    userScrolling = false
+                    // 立即滚动到底部 - 使用更可靠的滚动方式
+                    if (LiveMessageManager.messages.isNotEmpty()) {
+                        coroutineScope.launch {
                             try {
-                                listState.scrollToItem(LiveMessageManager.messages.size - 1)
-                            } catch (e2: Exception) {
-                                // 忽略所有错误
+                                // 先用不带动画的方式快速滚动
+                                listState.scrollToItem(
+                                    index = LiveMessageManager.messages.size - 1,
+                                    scrollOffset = 0
+                                )
+                                // 等待一帧后再次确认位置
+                                delay(50)
+                                listState.animateScrollToItem(
+                                    index = LiveMessageManager.messages.size - 1,
+                                    scrollOffset = 0
+                                )
+                            } catch (e: Exception) {
+                                // 降级到普通滚动
+                                try {
+                                    listState.scrollToItem(LiveMessageManager.messages.size - 1)
+                                } catch (e2: Exception) {
+                                    // 忽略所有错误
+                                }
                             }
                         }
                     }
                 }
-            }
-        )
+            )
+        }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun AILiveTopBar(
+    onNavigateBack: () -> Unit = {}
+) {
+    var showMenu by remember { mutableStateOf(false) }
+    
+    TopAppBar(
+        title = {
+            Text(
+                text = "AI直播监控",
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        },
+        navigationIcon = {
+            IconButton(
+                onClick = onNavigateBack
+            ) {
+                Icon(
+                    imageVector = Icons.Default.ArrowBack,
+                    contentDescription = "返回",
+                    tint = MaterialTheme.colorScheme.onSurface
+                )
+            }
+        },
+        actions = {
+            Box {
+                IconButton(
+                    onClick = { showMenu = true }
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.MoreVert,
+                        contentDescription = "更多选项",
+                        tint = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                
+                DropdownMenu(
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false }
+                ) {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "网页调试",
+                                fontSize = 16.sp
+                            )
+                        },
+                        onClick = {
+                            showMenu = false
+                            // TODO: 添加网页调试功能
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.BugReport,
+                                contentDescription = "网页调试",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    )
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                text = "清空消息",
+                                fontSize = 16.sp
+                            )
+                        },
+                        onClick = {
+                            LiveMessageManager.clearMessages()
+                            showMenu = false
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Default.ClearAll,
+                                contentDescription = "清空消息",
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    )
+                }
+            }
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surface,
+            titleContentColor = MaterialTheme.colorScheme.onSurface
+        )
+    )
 }
 
 @Composable
@@ -242,7 +347,10 @@ private fun SwitchControlSection(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        elevation = CardDefaults.cardElevation(4.dp)
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surface // 使用surface作为背景
+        )
     ) {
         Row(
             modifier = Modifier
@@ -286,11 +394,16 @@ private fun SwitchItem(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = title,
-            modifier = Modifier.size(32.dp),
-            tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange,
+            colors = SwitchDefaults.colors(
+                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                uncheckedThumbColor = MaterialTheme.colorScheme.outline, // unchecked拇指颜色
+                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant, // unchecked轨道颜色
+                uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f) // 边框颜色
+            )
         )
         
         Spacer(modifier = Modifier.height(8.dp))
@@ -300,14 +413,10 @@ private fun SwitchItem(
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
-            color = MaterialTheme.colorScheme.onSurface
-        )
-        
-        Spacer(modifier = Modifier.height(4.dp))
-        
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange
+            color = if (checked) 
+                MaterialTheme.colorScheme.onSurface 
+            else 
+                MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) // unchecked时文字也更淡
         )
     }
 }

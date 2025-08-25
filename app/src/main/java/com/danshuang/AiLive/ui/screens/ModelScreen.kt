@@ -207,7 +207,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             }
             item {
                 Text(
-                    text = "AI主播会按照顺序循环这些话术，\n同项中有多条将随机播报一条",
+                    text = "AI主播会按照1->5顺序播放话术库，\n同项中有多条内容将随机播报其中的一条",
                     fontSize = 12.sp,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 12.dp)

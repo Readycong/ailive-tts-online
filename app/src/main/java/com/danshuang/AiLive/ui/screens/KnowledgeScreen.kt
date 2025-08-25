@@ -50,8 +50,10 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
+import com.danshuang.AiLive.navigation.NavigationState
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.ui.zIndex
 
 data class QAItem(
@@ -63,7 +65,9 @@ data class QAItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun KnowledgeScreen() {
+fun KnowledgeScreen(
+    navController: NavigationState? = null
+) {
     var selectedTabIndex by remember { mutableStateOf(0) }
     var currentSwipeId by remember { mutableStateOf<Int?>(null) }
 
@@ -112,6 +116,16 @@ fun KnowledgeScreen() {
                 ),
                 title = {
                     Text("知识库")
+                },
+                navigationIcon = {
+                    if (navController != null) {
+                        IconButton(onClick = { navController.navigateUp() }) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "返回"
+                            )
+                        }
+                    }
                 },
                 actions = {
                     IconButton(onClick = { showEditDialog = true }) {

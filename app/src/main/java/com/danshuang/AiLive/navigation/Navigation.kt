@@ -155,8 +155,8 @@ fun AppNavigation(
     when (navigationState.currentScreen) {
         is Screen.Home -> HomeScreen(navController = navigationState)
         is Screen.Model -> ModelScreen(navigationState)
-        is Screen.AILive -> AILiveScreen()
-        is Screen.Knowledge -> KnowledgeScreen()
+        is Screen.AILive -> AILiveScreen(navController = navigationState)
+        is Screen.Knowledge -> KnowledgeScreen(navController = navigationState)
         is Screen.Profile -> ProfileScreen(
             onLogout = onLogout,
             onNavigateToChangePassword = { navigationState.navigateToChangePassword() },
