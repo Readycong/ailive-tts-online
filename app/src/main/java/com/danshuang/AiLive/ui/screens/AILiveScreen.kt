@@ -19,6 +19,8 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -197,62 +199,71 @@ fun AILiveScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background)
+                .background(MaterialTheme.colorScheme.background),
+            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            // 上部：左右布局的两个Switch按钮
-            SwitchControlSection(
-                liveMonitorEnabled = liveMonitorEnabled,
-                onLiveMonitorChanged = { liveMonitorEnabled = it },
-                aiLiveEnabled = aiLiveEnabled,
-                onAiLiveChanged = { aiLiveEnabled = it }
-            )
+            item {
+                // 上部：左右布局的两个Switch按钮
+                SwitchControlSection(
+                    liveMonitorEnabled = liveMonitorEnabled,
+                    onLiveMonitorChanged = { liveMonitorEnabled = it },
+                    aiLiveEnabled = aiLiveEnabled,
+                    onAiLiveChanged = { aiLiveEnabled = it }
+                )
+            }
             
-            // WebView控制区域
-            WebViewControlSection(
-                url = liveUrl,
-                isVisible = showWebView
-            )
+            item {
+                // WebView控制区域
+                WebViewControlSection(
+                    url = liveUrl,
+                    isVisible = showWebView,
+                    onVisibilityChange = { showWebView = it }
+                )
+            }
             
-            // 下部：实时刷新的直播间动态信息列表
-            LiveMessageList(
-                modifier = Modifier.weight(1f),
-                listState = listState,
-                isAtBottom = isAtBottom,
-                onScrollToBottom = {
-                    forceScrollToBottom = true // 设置强制滚动标记
-                    autoScrollEnabled = true
-                    userScrolling = false
-                    // 立即滚动到底部 - 使用更可靠的滚动方式
-                    if (LiveMessageManager.messages.isNotEmpty()) {
-                        coroutineScope.launch {
-                            try {
-                                // 先用不带动画的方式快速滚动
-                                listState.scrollToItem(
-                                    index = LiveMessageManager.messages.size - 1,
-                                    scrollOffset = 0
-                                )
-                                // 等待一帧后再次确认位置
-                                delay(50)
-                                listState.animateScrollToItem(
-                                    index = LiveMessageManager.messages.size - 1,
-                                    scrollOffset = 0
-                                )
-                            } catch (e: Exception) {
-                                // 降级到普通滚动
+            item {
+                // 下部：实时刷新的直播间动态信息列表
+                LiveMessageList(
+                    modifier = Modifier.fillMaxWidth(),
+                    listState = listState,
+                    isAtBottom = isAtBottom,
+                    showWebView = showWebView,
+                    onScrollToBottom = {
+                        forceScrollToBottom = true // 设置强制滚动标记
+                        autoScrollEnabled = true
+                        userScrolling = false
+                        // 立即滚动到底部 - 使用更可靠的滚动方式
+                        if (LiveMessageManager.messages.isNotEmpty()) {
+                            coroutineScope.launch {
                                 try {
-                                    listState.scrollToItem(LiveMessageManager.messages.size - 1)
-                                } catch (e2: Exception) {
-                                    // 忽略所有错误
+                                    // 先用不带动画的方式快速滚动
+                                    listState.scrollToItem(
+                                        index = LiveMessageManager.messages.size - 1,
+                                        scrollOffset = 0
+                                    )
+                                    // 等待一帧后再次确认位置
+                                    delay(50)
+                                    listState.animateScrollToItem(
+                                        index = LiveMessageManager.messages.size - 1,
+                                        scrollOffset = 0
+                                    )
+                                } catch (e: Exception) {
+                                    // 降级到普通滚动
+                                    try {
+                                        listState.scrollToItem(LiveMessageManager.messages.size - 1)
+                                    } catch (e2: Exception) {
+                                        // 忽略所有错误
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            )
+                )
+            }
         }
     }
 }
@@ -437,7 +448,8 @@ private fun SwitchItem(
 @Composable
 private fun WebViewControlSection(
     url: String,
-    isVisible: Boolean
+    isVisible: Boolean,
+    onVisibilityChange: (Boolean) -> Unit = {}
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -488,6 +500,19 @@ private fun WebViewControlSection(
                         fontSize = 12.sp,
                         color = MaterialTheme.colorScheme.primary
                     )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Switch(
+                        checked = isVisible,
+                        onCheckedChange = onVisibilityChange,
+                        modifier = Modifier.height(24.dp),
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.primary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                            uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
+                    )
                 }
                 
                 HorizontalDivider(
@@ -523,9 +548,23 @@ private fun LiveMessageList(
     modifier: Modifier = Modifier,
     listState: LazyListState,
     isAtBottom: Boolean,
-    onScrollToBottom: () -> Unit
+    onScrollToBottom: () -> Unit,
+    showWebView: Boolean = false
 ) {
-    Column(modifier = modifier) {
+    val configuration = LocalConfiguration.current
+    
+    // 计算屏幕高度
+    val screenHeightDp = configuration.screenHeightDp.dp
+    
+    // 固定高度计算：屏幕高度 - TopAppBar(64dp) - SwitchControlSection(100dp) - 安全边距(40dp)
+    // 不再根据WebView状态调整，始终保持一屏高度
+    val listHeight = screenHeightDp - 204.dp
+    
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(listHeight)
+    ) {
         // 列表标题
         Card(
             modifier = Modifier
@@ -591,7 +630,7 @@ private fun LiveMessageList(
             state = listState,
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f),
+                .weight(1f), // 占用剩余高度
             contentPadding = PaddingValues(
                 start = 16.dp,
                 end = 16.dp,
