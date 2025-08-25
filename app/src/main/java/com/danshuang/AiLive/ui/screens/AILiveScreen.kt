@@ -24,6 +24,9 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.viewinterop.AndroidView
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.navigation.NavigationState
 import kotlinx.coroutines.delay
@@ -92,6 +95,8 @@ fun AILiveScreen(
 ) {
     var liveMonitorEnabled by remember { mutableStateOf(false) }
     var aiLiveEnabled by remember { mutableStateOf(false) }
+    var showWebView by remember { mutableStateOf(false) } // 控制WebView显示状态
+    val liveUrl = "https://v.douyin.com/fnaycbpwpAQ/" // 直播主页地址
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope() // 使用Compose的协程作用域
     var autoScrollEnabled by remember { mutableStateOf(true) } // 控制自动滚动
@@ -187,7 +192,8 @@ fun AILiveScreen(
     Scaffold(
         topBar = {
             AILiveTopBar(
-                onNavigateBack = { navController?.navigateUp() }
+                onNavigateBack = { navController?.navigateUp() },
+                onWebDebugClick = { showWebView = !showWebView } // 切换WebView显示状态
             )
         }
     ) { paddingValues ->
@@ -203,6 +209,12 @@ fun AILiveScreen(
                 onLiveMonitorChanged = { liveMonitorEnabled = it },
                 aiLiveEnabled = aiLiveEnabled,
                 onAiLiveChanged = { aiLiveEnabled = it }
+            )
+            
+            // WebView控制区域
+            WebViewControlSection(
+                url = liveUrl,
+                isVisible = showWebView
             )
             
             // 下部：实时刷新的直播间动态信息列表
@@ -248,7 +260,8 @@ fun AILiveScreen(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun AILiveTopBar(
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onWebDebugClick: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
     
@@ -297,7 +310,7 @@ private fun AILiveTopBar(
                         },
                         onClick = {
                             showMenu = false
-                            // TODO: 添加网页调试功能
+                            onWebDebugClick() // 调用WebView显示切换
                         },
                         leadingIcon = {
                             Icon(
@@ -418,6 +431,90 @@ private fun SwitchItem(
             else 
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) // unchecked时文字也更淡
         )
+    }
+}
+
+@Composable
+private fun WebViewControlSection(
+    url: String,
+    isVisible: Boolean
+) {
+    AnimatedVisibility(
+        visible = isVisible,
+        enter = slideInVertically(
+            initialOffsetY = { -it },
+            animationSpec = tween(durationMillis = 300)
+        ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+        exit = slideOutVertically(
+            targetOffsetY = { -it },
+            animationSpec = tween(durationMillis = 300)
+        ) + fadeOut(animationSpec = tween(durationMillis = 300))
+    ) {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(480.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            elevation = CardDefaults.cardElevation(4.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surface
+            )
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // WebView标题栏
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Language,
+                        contentDescription = "网页",
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "直播主页",
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    Spacer(modifier = Modifier.weight(1f))
+                    Text(
+                        text = "调试模式",
+                        fontSize = 12.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+                
+                HorizontalDivider(
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                    thickness = 1.dp
+                )
+                
+                // WebView内容
+                AndroidView(
+                    factory = { context ->
+                        WebView(context).apply {
+                            webViewClient = WebViewClient()
+                            settings.javaScriptEnabled = true
+                            settings.loadWithOverviewMode = true
+                            settings.useWideViewPort = true
+                            settings.builtInZoomControls = true
+                            settings.displayZoomControls = false
+                            loadUrl(url)
+                        }
+                    },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f)
+                        .padding(8.dp)
+                )
+            }
+        }
     }
 }
 
