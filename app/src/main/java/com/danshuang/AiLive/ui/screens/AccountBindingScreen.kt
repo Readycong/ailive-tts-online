@@ -773,17 +773,38 @@ private fun WebViewControlSection(
                                     }
                                 }
                             }
+
+//                            WebView.setWebContentsDebuggingEnabled(true)
+//                            liveView.settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+////        liveView.settings.useWideViewPort = true
+//                            liveView.settings.loadWithOverviewMode = true
+////        liveView.settings.builtInZoomControls = true
+//                            liveView.settings.setSupportZoom(true)
+//
+//                            liveView.settings.allowContentAccess = true
+//                            liveView.settings.javaScriptCanOpenWindowsAutomatically = true
+//                            liveView.settings.domStorageEnabled = true
+//                            liveView.settings.javaScriptEnabled = true
+//                            liveView.settings.databaseEnabled = true
+//                            liveView.settings.setDatabaseEnabled(true)
+//                            liveView.settings.setGeolocationEnabled(true)
+////        liveView.settings.setGeolocationDatabasePath(cacheDir.absolutePath)
+                            WebView.setWebContentsDebuggingEnabled(true)
                             settings.apply {
                                 javaScriptEnabled = true
                                 loadWithOverviewMode = true
-                                useWideViewPort = true
-                                builtInZoomControls = true
                                 displayZoomControls = false
                                 setSupportZoom(true)
+                                allowContentAccess = true
+                                javaScriptCanOpenWindowsAutomatically = true
+                                domStorageEnabled = true
+                                databaseEnabled = true
+                                setDatabaseEnabled(true)
+                                setGeolocationEnabled(true)
                                 // 设置为PC浏览器模式
                                 userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                             }
-                            loadUrl(url.ifEmpty { "https://www.douyin.com" })
+                            loadUrl(url.ifEmpty { "about:blank" })
                         }
                     },
                     modifier = Modifier
@@ -834,7 +855,6 @@ private fun HelpSection() {
                             }
                         }
                     }
-                    settings.javaScriptEnabled = true
                     loadUrl("https://vip.hc2099.com/android/help/v2/dy-user-home.htm")
                 }
             },
