@@ -81,30 +81,38 @@ fun MainAppNavigation(
     )
 
     // 处理系统返回键
-    BackHandler(enabled = true) {
-        // 当在内容编辑页面或话术页面时，返回ModelScreen
+    BackHandler(enabled = navigationState.currentScreen !is Screen.Home) {
         when (navigationState.currentScreen) {
-            is Screen.ContentEdit, is Screen.LiveScript -> {
+            is Screen.ContentEdit, is Screen.LiveScript, 
+            is Screen.GreetingSettings, is Screen.NicknameRestrictions,
+            is Screen.CommentRestrictions, is Screen.VoiceSettings,
+            is Screen.VoiceCloning, is Screen.ChangePassword,
+            is Screen.Help, is Screen.AccountBinding -> {
+                // 这些页面有明确的返回页面，使用navigateUp
                 navigationState.navigateUp()
             }
+            is Screen.AILive, is Screen.Knowledge, is Screen.Model, is Screen.Profile -> {
+                // 其他主要页面返回到主页
+                navigationState.navigateTo(Screen.Home)
+            }
             else -> {
-                // 在其他页面，使用默认的返回行为
-                // 这里可以添加其他页面的返回处理
-                // 默认行为是退出应用
+                // 其他情况返回到主页
+                navigationState.navigateTo(Screen.Home)
             }
         }
     }
 
     Scaffold(
         bottomBar = {
-            // 在内容编辑页面、话术页面、招呼设置页面、限制设置页面和声音克隆页面隐藏底部导航
+            // 在内容编辑页面、话术页面、招呼设置页面、限制设置页面、声音克隆页面和AI直播页面隐藏底部导航
             if (navigationState.currentScreen !is Screen.ContentEdit && 
                 navigationState.currentScreen !is Screen.LiveScript &&
                 navigationState.currentScreen !is Screen.GreetingSettings &&
                 navigationState.currentScreen !is Screen.NicknameRestrictions &&
                 navigationState.currentScreen !is Screen.CommentRestrictions &&
                 navigationState.currentScreen !is Screen.VoiceSettings &&
-                navigationState.currentScreen !is Screen.VoiceCloning) {
+                navigationState.currentScreen !is Screen.VoiceCloning &&
+                navigationState.currentScreen !is Screen.AILive) {
                 NavigationBar(
                     containerColor = backgroundLight,
                 ) {

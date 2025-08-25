@@ -1,240 +1,673 @@
 package com.danshuang.AiLive.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.danshuang.AiLive.ui.components.QuickActionVectorData
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.*
 
-// 快捷功能数据已迁移到通用组件
-// 保留密封类用于类型安全，但转换为通用数据类使用
-sealed class QuickActionItem(
-    val title: String,
-    val icon: ImageVector,
-    val backgroundColor: Color
-) {
-    data object StartLive : QuickActionItem(
-        "开始直播",
-        Icons.Default.PlayArrow,
-        Color(0xFF4CAF50)
-    )
+// 直播间动态信息数据类
+data class LiveMessage(
+    val id: Long,
+    val timestamp: String,
+    val type: MessageType,
+    val content: String,
+    val userName: String? = null
+)
 
-    data object ScheduleLive : QuickActionItem(
-        "预约直播",
-        Icons.Default.DateRange,
-        Color(0xFF2196F3)
-    )
+// 消息类型枚举
+enum class MessageType {
+    COMMENT,        // 观众评论
+    GIFT,           // 礼物
+    FOLLOW,         // 关注
+    ENTER,          // 进入直播间
+    SYSTEM,         // 系统消息
+    AI_RESPONSE     // AI回复
+}
 
-    data object LiveHistory : QuickActionItem(
-        "直播记录",
-        Icons.AutoMirrored.Filled.List,
-        Color(0xFF9C27B0)
-    )
-
-    data object LiveSettings : QuickActionItem(
-        "直播设置",
-        Icons.Default.Settings,
-        Color(0xFFFF9800)
-    )
-
-    data object VoiceSettings : QuickActionItem(
-        "语音设置",
-        Icons.Default.Call,
-        Color(0xFFE91E63)
-    )
-
-    data object ContentTemplate : QuickActionItem(
-        "内容模板",
-        Icons.Default.Edit,
-        Color(0xFF00BCD4)
-    )
-
-    data object AudienceAnalytics : QuickActionItem(
-        "观众分析",
-        Icons.Default.Info,
-        Color(0xFF795548)
-    )
-
-    data object InteractMode : QuickActionItem(
-        "互动模式",
-        Icons.Default.Email,
-        Color(0xFF607D8B)
-    )
-
-    data object AIHost : QuickActionItem(
-        "AI主播",
-        Icons.Default.Person,
-        Color(0xFF3F51B5)
-    )
+// 全局的消息插入接口
+object LiveMessageManager {
+    private val _messages = mutableStateListOf<LiveMessage>()
+    val messages: List<LiveMessage> get() = _messages
+    
+    private var messageIdCounter = 0L
+    
+    // 插入新消息的接口
+    fun insertMessage(
+        type: MessageType,
+        content: String,
+        userName: String? = null
+    ) {
+        val timestamp = SimpleDateFormat("HH:mm:ss", Locale.getDefault()).format(Date())
+        val newMessage = LiveMessage(
+            id = ++messageIdCounter,
+            timestamp = timestamp,
+            type = type,
+            content = content,
+            userName = userName
+        )
+        _messages.add(newMessage)
+        
+        // 保持最多100条消息
+        if (_messages.size > 100) {
+            _messages.removeAt(0)
+        }
+    }
+    
+    // 清空消息
+    fun clearMessages() {
+        _messages.clear()
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AILiveScreen() {
-    Scaffold(
-        topBar = {
-            CenterAlignedTopAppBar(
-                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer,
-                    titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-                ),
-                title = {
-                    Text("AI直播中心")
+    var liveMonitorEnabled by remember { mutableStateOf(false) }
+    var aiLiveEnabled by remember { mutableStateOf(false) }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope() // 使用Compose的协程作用域
+    var autoScrollEnabled by remember { mutableStateOf(true) } // 控制自动滚动
+    var userScrolling by remember { mutableStateOf(false) } // 检测用户手动滚动
+    var lastScrollTime by remember { mutableStateOf(0L) } // 防抖动时间戳
+    var forceScrollToBottom by remember { mutableStateOf(false) } // 强制滚动到底部标记
+    
+    // 检测是否在列表底部 - 优化精确度
+    val isAtBottom by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val totalItems = LiveMessageManager.messages.size
+            
+            if (visibleItems.isEmpty() || totalItems == 0) {
+                true
+            } else {
+                val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: 0
+                val lastItemInfo = visibleItems.lastOrNull()
+                
+                // 检查是否显示最后一项，且最后一项完全可见
+                if (lastVisibleIndex >= totalItems - 1) {
+                    lastItemInfo?.let { item ->
+                        val itemBottom = item.offset + item.size
+                        val listBottom = layoutInfo.viewportEndOffset
+                        // 确保最后一项的底部在可视区域内
+                        itemBottom <= listBottom + 10 // 10dp容错
+                    } ?: false
+                } else {
+                    false
                 }
-            )
+            }
         }
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // 头部欢迎区域
-            WelcomeSection()
+    }
+    
+    // 监听用户滚动行为 - 优化立即停止逻辑
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (listState.isScrollInProgress && !forceScrollToBottom) {
+            // 用户开始手动滚动时，立即停止所有自动行为
+            userScrolling = true
+            autoScrollEnabled = false // 立即停止自动滚动
+            lastScrollTime = System.currentTimeMillis()
+        } else if (!listState.isScrollInProgress) {
+            // 滚动停止后等待一段时间确保稳定
+            delay(500)
+            userScrolling = false
+            forceScrollToBottom = false // 重置强制滚动标记
             
-            // 快捷操作组标题
-            Text(
-                text = "快捷操作",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-            )
-            
-            // 快捷操作网格
-            QuickActionsGrid()
+            // 只有在用户滚动到底部时才重新开启自动滚动
+            if (isAtBottom) {
+                autoScrollEnabled = true
+            }
         }
+    }
+    
+    // 模拟自动生成消息 - 优化用户体验
+    LaunchedEffect(liveMonitorEnabled, aiLiveEnabled) {
+        if (liveMonitorEnabled || aiLiveEnabled) {
+            while (true) {
+                delay(3000) // 每3秒生成一条消息
+                
+                // 检查是否允许自动滚动：只有在未手动滚动且允许自动滚动时才执行
+                if (!userScrolling && autoScrollEnabled && !listState.isScrollInProgress) {
+                    generateMockMessage()
+                    
+                    // 再次检查用户是否开始滚动
+                    if (!userScrolling && autoScrollEnabled && LiveMessageManager.messages.isNotEmpty()) {
+                        // 添加短暂延迟让UI更新完成
+                        delay(150)
+                        
+                        // 第三次检查，确保用户没有在此期间开始滚动
+                        if (!userScrolling && autoScrollEnabled && !listState.isScrollInProgress) {
+                            try {
+                                // 使用更精确的滚动方式
+                                listState.animateScrollToItem(
+                                    index = LiveMessageManager.messages.size - 1,
+                                    scrollOffset = 0
+                                )
+                            } catch (e: Exception) {
+                                // 忽略滚动过程中的异常
+                            }
+                        }
+                    }
+                } else {
+                    // 即使不能滚动，也要生成消息，保持直播实时性
+                    generateMockMessage()
+                }
+            }
+        }
+    }
+    
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // 上部：左右布局的两个Switch按钮
+        SwitchControlSection(
+            liveMonitorEnabled = liveMonitorEnabled,
+            onLiveMonitorChanged = { liveMonitorEnabled = it },
+            aiLiveEnabled = aiLiveEnabled,
+            onAiLiveChanged = { aiLiveEnabled = it }
+        )
+        
+        // 下部：实时刷新的直播间动态信息列表
+        LiveMessageList(
+            modifier = Modifier.weight(1f),
+            listState = listState,
+            isAtBottom = isAtBottom,
+            onScrollToBottom = {
+                forceScrollToBottom = true // 设置强制滚动标记
+                autoScrollEnabled = true
+                userScrolling = false
+                // 立即滚动到底部 - 使用更可靠的滚动方式
+                if (LiveMessageManager.messages.isNotEmpty()) {
+                    coroutineScope.launch {
+                        try {
+                            // 先用不带动画的方式快速滚动
+                            listState.scrollToItem(
+                                index = LiveMessageManager.messages.size - 1,
+                                scrollOffset = 0
+                            )
+                            // 等待一帧后再次确认位置
+                            delay(50)
+                            listState.animateScrollToItem(
+                                index = LiveMessageManager.messages.size - 1,
+                                scrollOffset = 0
+                            )
+                        } catch (e: Exception) {
+                            // 降级到普通滚动
+                            try {
+                                listState.scrollToItem(LiveMessageManager.messages.size - 1)
+                            } catch (e2: Exception) {
+                                // 忽略所有错误
+                            }
+                        }
+                    }
+                }
+            }
+        )
     }
 }
 
 @Composable
-private fun WelcomeSection() {
+private fun SwitchControlSection(
+    liveMonitorEnabled: Boolean,
+    onLiveMonitorChanged: (Boolean) -> Unit,
+    aiLiveEnabled: Boolean,
+    onAiLiveChanged: (Boolean) -> Unit
+) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-        )
-    ) {
-        Column(
-            modifier = Modifier.padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                imageVector = Icons.Default.Person,
-                contentDescription = "AI主播",
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "智能AI主播",
-                style = MaterialTheme.typography.headlineMedium,
-                color = MaterialTheme.colorScheme.onTertiaryContainer
-            )
-            Text(
-                text = "为你带来24小时不间断的精彩直播内容",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onTertiaryContainer.copy(alpha = 0.8f),
-                textAlign = TextAlign.Center
-            )
-        }
-    }
-}
-
-@Composable
-private fun QuickActionsGrid() {
-    val quickActions = listOf(
-        QuickActionItem.StartLive,
-        QuickActionItem.ScheduleLive,
-        QuickActionItem.LiveHistory,
-        QuickActionItem.LiveSettings,
-        QuickActionItem.VoiceSettings,
-        QuickActionItem.ContentTemplate,
-        QuickActionItem.AudienceAnalytics,
-        QuickActionItem.InteractMode
-    )
-    
-    LazyVerticalGrid(
-        columns = GridCells.Fixed(2),
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(quickActions) { action ->
-            QuickActionCard(action)
-        }
-    }
-}
-
-@Composable
-private fun QuickActionCard(action: QuickActionItem) {
-    val actionData = QuickActionVectorData(
-        title = action.title,
-        icon = action.icon,
-        backgroundColor = action.backgroundColor,
-        onClick = { /* TODO: 实现点击逻辑 */ }
-    )
-    
-    Card(
-        onClick = actionData.onClick,
-        modifier = Modifier
-            .fillMaxWidth()
-            .aspectRatio(1f),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        ),
         elevation = CardDefaults.cardElevation(4.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .fillMaxSize()
+                .fillMaxWidth()
                 .padding(16.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(
-                        color = actionData.backgroundColor,
-                        shape = RoundedCornerShape(12.dp)
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = actionData.icon,
-                    contentDescription = actionData.title,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
-            }
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = actionData.title,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = MaterialTheme.colorScheme.onSurface
+            // 直播间监控状态
+            SwitchItem(
+                title = "直播间监控状态",
+                checked = liveMonitorEnabled,
+                onCheckedChange = onLiveMonitorChanged,
+                icon = Icons.Default.Videocam,
+                modifier = Modifier.weight(1f)
+            )
+            
+            Spacer(modifier = Modifier.width(16.dp))
+            
+            // AI直播状态
+            SwitchItem(
+                title = "AI直播状态",
+                checked = aiLiveEnabled,
+                onCheckedChange = onAiLiveChanged,
+                icon = Icons.Default.SmartToy,
+                modifier = Modifier.weight(1f)
             )
         }
     }
+}
+
+@Composable
+private fun SwitchItem(
+    title: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = title,
+            modifier = Modifier.size(32.dp),
+            tint = if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        Text(
+            text = title,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurface
+        )
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        Switch(
+            checked = checked,
+            onCheckedChange = onCheckedChange
+        )
+    }
+}
+
+@Composable
+private fun LiveMessageList(
+    modifier: Modifier = Modifier,
+    listState: LazyListState,
+    isAtBottom: Boolean,
+    onScrollToBottom: () -> Unit
+) {
+    Column(modifier = modifier) {
+        // 列表标题
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(72.dp) // 固定高度，避免IconButton显示隐藏时的抖动
+                .padding(horizontal = 16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize() // 填满Card的固定高度
+                    .padding(16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Forum,
+                    contentDescription = "直播间动态",
+                    tint = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "直播间实时动态",
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = "共 ${LiveMessageManager.messages.size} 条消息",
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                )
+                
+                // 滚动到底部按钮区域 - 固定宽度避免布局变化
+                Box(
+                    modifier = Modifier.width(40.dp), // 固定宽度
+                    contentAlignment = Alignment.Center
+                ) {
+                    // 滚动到底部按钮（仅在不在底部时显示）
+                    if (!isAtBottom && LiveMessageManager.messages.isNotEmpty()) {
+                        IconButton(
+                            onClick = onScrollToBottom,
+                            modifier = Modifier.size(32.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.VerticalAlignBottom,
+                                contentDescription = "滚动到底部",
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        Spacer(modifier = Modifier.height(8.dp))
+        
+        // 消息列表
+        LazyColumn(
+            state = listState,
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = 24.dp // 增加底部间距，确保最后一条消息完全可见
+            ),
+            verticalArrangement = Arrangement.spacedBy(8.dp), // 增加消息间距
+            // 添加平滑的滚动行为，禁用过度滚动
+            userScrollEnabled = true,
+            // 优化滚动性能
+            reverseLayout = false
+        ) {
+            items(
+                items = LiveMessageManager.messages,
+                key = { it.id }
+            ) { message ->
+                // 添加动画效果
+                AnimatedMessageItem(message = message)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AnimatedMessageItem(message: LiveMessage) {
+    // 动画状态
+    var visible by remember { mutableStateOf(false) }
+    
+    // 组件出现时触发动画
+    LaunchedEffect(message.id) {
+        visible = true
+    }
+    
+    // 添加进入动画
+    AnimatedVisibility(
+        visible = visible,
+        enter = slideInVertically(
+            initialOffsetY = { it / 3 }, // 从下方1/3处滑入
+            animationSpec = tween(
+                durationMillis = 300,
+                easing = FastOutSlowInEasing
+            )
+        ) + fadeIn(
+            animationSpec = tween(
+                durationMillis = 300,
+                easing = FastOutSlowInEasing
+            )
+        ),
+        exit = slideOutVertically(
+            targetOffsetY = { -it / 3 },
+            animationSpec = tween(durationMillis = 200)
+        ) + fadeOut(
+            animationSpec = tween(durationMillis = 200)
+        )
+    ) {
+        MessageItem(message = message)
+    }
+}
+
+@Composable
+private fun MessageItem(message: LiveMessage) {
+    val isAIMessage = message.type == MessageType.AI_RESPONSE
+    
+    // 不同消息类型的颜色和样式
+    val backgroundColor = when (message.type) {
+        MessageType.AI_RESPONSE -> MaterialTheme.colorScheme.primary // AI主播使用主色
+        MessageType.COMMENT -> MaterialTheme.colorScheme.surface
+        MessageType.GIFT -> Color(0xFFFFE0B2)
+        MessageType.FOLLOW -> Color(0xFFE8F5E8)
+        MessageType.ENTER -> Color(0xFFE3F2FD)
+        MessageType.SYSTEM -> Color(0xFFFFF3E0)
+    }
+    
+    val textColor = when (message.type) {
+        MessageType.AI_RESPONSE -> MaterialTheme.colorScheme.onPrimary // AI消息使用白色文字
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    
+    val iconColor = when (message.type) {
+        MessageType.AI_RESPONSE -> MaterialTheme.colorScheme.onPrimary
+        MessageType.COMMENT -> MaterialTheme.colorScheme.primary
+        MessageType.GIFT -> Color(0xFFFF9800)
+        MessageType.FOLLOW -> Color(0xFF4CAF50)
+        MessageType.ENTER -> Color(0xFF2196F3)
+        MessageType.SYSTEM -> Color(0xFFFF5722)
+    }
+    
+    val icon = when (message.type) {
+        MessageType.COMMENT -> Icons.Default.ChatBubble
+        MessageType.GIFT -> Icons.Default.CardGiftcard
+        MessageType.FOLLOW -> Icons.Default.Favorite
+        MessageType.ENTER -> Icons.Default.Login
+        MessageType.SYSTEM -> Icons.Default.Info
+        MessageType.AI_RESPONSE -> Icons.Default.SmartToy
+    }
+    
+    // 整体容器，AI消息右对齐，其他消息左对齐
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = if (isAIMessage) Arrangement.End else Arrangement.Start
+    ) {
+        // AI消息在右侧，需要在左侧添加空白
+        if (isAIMessage) {
+            Spacer(modifier = Modifier.weight(0.2f)) // 左侧留白20%宽度
+        }
+        
+        Card(
+            modifier = Modifier
+                .wrapContentWidth()
+                .widthIn(max = 340.dp), // 限制最大宽度
+            colors = CardDefaults.cardColors(
+                containerColor = backgroundColor
+            ),
+            elevation = CardDefaults.cardElevation(2.dp),
+            shape = RoundedCornerShape(
+                topStart = if (isAIMessage) 16.dp else 4.dp,
+                topEnd = if (isAIMessage) 4.dp else 16.dp,
+                bottomStart = 16.dp,
+                bottomEnd = 16.dp
+            )
+        ) {
+            if (isAIMessage) {
+                // AI消息布局（右对齐）
+                AIMessageContent(
+                    message = message,
+                    textColor = textColor,
+                    icon = icon,
+                    iconColor = iconColor
+                )
+            } else {
+                // 普通消息布局（左对齐）
+                RegularMessageContent(
+                    message = message,
+                    textColor = textColor,
+                    icon = icon,
+                    iconColor = iconColor
+                )
+            }
+        }
+        
+        // 非AI消息在左侧，需要在右侧添加空白
+        if (!isAIMessage) {
+            Spacer(modifier = Modifier.weight(0.2f)) // 右侧留白20%宽度
+        }
+    }
+}
+
+@Composable
+private fun AIMessageContent(
+    message: LiveMessage,
+    textColor: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color
+) {
+    Column(
+        modifier = Modifier.padding(12.dp),
+        horizontalAlignment = Alignment.End // 右对齐
+    ) {
+        // 用户名和时间
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.End
+        ) {
+            Text(
+                text = message.timestamp,
+                fontSize = 10.sp,
+                color = textColor.copy(alpha = 0.8f)
+            )
+            Spacer(modifier = Modifier.width(6.dp))
+            message.userName?.let { userName ->
+                Text(
+                    text = userName,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = textColor
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+            }
+            Icon(
+                imageVector = icon,
+                contentDescription = message.type.name,
+                tint = iconColor,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+        
+        Spacer(modifier = Modifier.height(4.dp))
+        
+        // 消息内容
+        Text(
+            text = message.content,
+            fontSize = 14.sp,
+            color = textColor,
+            lineHeight = 18.sp,
+//            textAlign = TextAlign.End // 右对齐文本
+        )
+    }
+}
+
+@Composable
+private fun RegularMessageContent(
+    message: LiveMessage,
+    textColor: Color,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    iconColor: Color
+) {
+    Row(
+        modifier = Modifier.padding(12.dp),
+        verticalAlignment = Alignment.Top
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = message.type.name,
+            tint = iconColor,
+            modifier = Modifier.size(16.dp)
+        )
+        
+        Spacer(modifier = Modifier.width(8.dp))
+        
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                message.userName?.let { userName ->
+                    Text(
+                        text = userName,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = iconColor
+                    )
+                    Spacer(modifier = Modifier.width(6.dp))
+                }
+                Text(
+                    text = message.timestamp,
+                    fontSize = 10.sp,
+                    color = textColor.copy(alpha = 0.7f)
+                )
+            }
+            
+            Text(
+                text = message.content,
+                fontSize = 14.sp,
+                color = textColor,
+                lineHeight = 18.sp
+            )
+        }
+    }
+}
+
+// 模拟生成消息的函数
+private fun generateMockMessage() {
+    val mockMessages = listOf(
+        // 观众消息
+        Triple(MessageType.COMMENT, "好棒的直播内容！", "用户001"),
+        Triple(MessageType.COMMENT, "主播讲得真好", "小粉丝"),
+        Triple(MessageType.COMMENT, "学到了很多东西", "学习达人"),
+        Triple(MessageType.GIFT, "送出了一个火箭", "大学生小李"),
+        Triple(MessageType.GIFT, "送出了鲜花", "路人甲"),
+        Triple(MessageType.FOLLOW, "关注了主播", "新粉丝小王"),
+        Triple(MessageType.ENTER, "进入了直播间", "观众小张"),
+        Triple(MessageType.SYSTEM, "直播间在线人数达到了100人", null),
+        
+        // AI主播回复消息（增加频率和多样性）
+        Triple(MessageType.AI_RESPONSE, "谢谢大家的支持！接下来为大家带来更精彩的内容", "AI主播"),
+        Triple(MessageType.AI_RESPONSE, "感谢送礼物的朋友们，你们的支持是我最大的动力", "AI主播"),
+        Triple(MessageType.AI_RESPONSE, "欢迎新朋友们的加入，希望大家在直播间玩得开心", "AI主播"),
+        Triple(MessageType.AI_RESPONSE, "今天的内容大家还满意吗？有什么想了解的可以告诉我", "AI主播"),
+        Triple(MessageType.AI_RESPONSE, "看到这么多朋友关注，真的很感动，我会继续努力的", "AI主播"),
+        Triple(MessageType.AI_RESPONSE, "大家有什么问题都可以在评论区提出来哦", "AI主播"),
+        Triple(MessageType.AI_RESPONSE, "感谢大家的陪伴，让我们一起度过愉快的时光", "AI主播")
+    )
+    
+    val randomMessage = mockMessages.random()
+    LiveMessageManager.insertMessage(
+        type = randomMessage.first,
+        content = randomMessage.second,
+        userName = randomMessage.third
+    )
 }
 
 @Preview(showBackground = true)
@@ -242,5 +675,180 @@ private fun QuickActionCard(action: QuickActionItem) {
 fun AILiveScreenPreview() {
     AiLiveTheme {
         AILiveScreen()
+    }
+}
+
+// 用户消息预览
+@Preview(showBackground = true, name = "用户消息预览")
+@Composable
+fun UserMessagePreview() {
+    AiLiveTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "用户消息样式预览",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            // 观众评论消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 1,
+                    timestamp = "14:30:25",
+                    type = MessageType.COMMENT,
+                    content = "主播讲得真好，学到了很多！",
+                    userName = "学习达人小明"
+                )
+            )
+            
+            // 礼物消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 2,
+                    timestamp = "14:31:10",
+                    type = MessageType.GIFT,
+                    content = "送出了一个火箭",
+                    userName = "土豪用户"
+                )
+            )
+            
+            // 关注消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 3,
+                    timestamp = "14:31:45",
+                    type = MessageType.FOLLOW,
+                    content = "关注了主播",
+                    userName = "新粉丝小王"
+                )
+            )
+            
+            // 进入直播间消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 4,
+                    timestamp = "14:32:00",
+                    type = MessageType.ENTER,
+                    content = "进入了直播间",
+                    userName = "观众小张"
+                )
+            )
+            
+            // 系统消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 5,
+                    timestamp = "14:32:30",
+                    type = MessageType.SYSTEM,
+                    content = "直播间在线人数突破500人！感谢大家的支持！",
+                    userName = null
+                )
+            )
+        }
+    }
+}
+
+// AI主播消息预览
+@Preview(showBackground = true, name = "AI主播消息预览")
+@Composable
+fun AIHostMessagePreview() {
+    AiLiveTheme {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = "AI主播消息样式预览",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+            
+            // AI主播短消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 6,
+                    timestamp = "14:33:00",
+                    type = MessageType.AI_RESPONSE,
+                    content = "谢谢大家的支持！",
+                    userName = "AI主播"
+                )
+            )
+            
+            // AI主播中等长度消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 7,
+                    timestamp = "14:33:30",
+                    type = MessageType.AI_RESPONSE,
+                    content = "感谢刚才送礼物的朋友们，你们的支持是我继续直播的动力！",
+                    userName = "AI主播"
+                )
+            )
+            
+            // AI主播长消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 8,
+                    timestamp = "14:34:15",
+                    type = MessageType.AI_RESPONSE,
+                    content = "欢迎所有新朋友的加入！今天我们要聊的话题非常有趣，希望大家在直播间能够学到有用的知识，同时也欢迎大家在评论区积极互动，分享自己的想法和经验。",
+                    userName = "AI主播"
+                )
+            )
+            
+            // AI主播回复消息
+            MessageItem(
+                message = LiveMessage(
+                    id = 9,
+                    timestamp = "14:35:00",
+                    type = MessageType.AI_RESPONSE,
+                    content = "刚才有朋友问到关于学习方法的问题，这确实是一个很好的话题，我来为大家详细解答一下。",
+                    userName = "AI主播"
+                )
+            )
+        }
+    }
+}
+
+// 混合消息流预览
+@Preview(showBackground = true, name = "混合消息流预览")
+@Composable
+fun MixedMessageFlowPreview() {
+    AiLiveTheme {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            item {
+                Text(
+                    text = "混合消息流效果预览",
+                    style = MaterialTheme.typography.headlineSmall,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+            }
+            
+            // 模拟真实的消息流
+            items(10) { index ->
+                val messages = listOf(
+                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5)}", MessageType.COMMENT, "这个内容真的很棒！", "用户${index + 1}"),
+                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 1)}", MessageType.AI_RESPONSE, "谢谢大家的支持，接下来为大家带来更精彩的内容！", "AI主播"),
+                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 2)}", MessageType.GIFT, "送出了鲜花", "粉丝${index + 1}"),
+                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 3)}", MessageType.AI_RESPONSE, "感谢送礼物的朋友！", "AI主播"),
+                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 4)}", MessageType.ENTER, "进入了直播间", "新观众${index + 1}")
+                )
+                
+                AnimatedMessageItem(message = messages[index % messages.size])
+            }
+        }
     }
 }

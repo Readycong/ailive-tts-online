@@ -85,9 +85,11 @@ fun AccountBindingScreen(
                     onValueChange = { accountUrl = it },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(16.dp),
+                        .padding(16.dp)
+                        .defaultMinSize(minHeight = 72.dp), // 默认3行高度
                     textStyle = MaterialTheme.typography.bodyLarge,
-                    maxLines = 3,
+                    minLines = 3, // 默认显示3行
+                    maxLines = 5, // 最大行数5行
                     decorationBox = { innerTextField ->
                         if (accountUrl.text.isEmpty()) {
                             Text(
@@ -144,19 +146,39 @@ fun AccountBindingScreen(
             )
 
             Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f),
+                modifier = Modifier.fillMaxWidth(),
                 elevation = CardDefaults.cardElevation(4.dp)
             ) {
+                var webViewHeight by remember { mutableStateOf(300.dp) }
+                
                 AndroidView(
                     factory = { context ->
                         WebView(context).apply {
-                            webViewClient = WebViewClient()
-                            loadUrl("https://www.example.com/help") // 替换为实际的帮助页面URL
+                            webViewClient = object : WebViewClient() {
+                                override fun onPageFinished(view: WebView?, url: String?) {
+                                    super.onPageFinished(view, url)
+                                    // 执行JavaScript获取网页内容高度
+                                    view?.evaluateJavascript(
+                                        "(function(){return document.body.scrollHeight;})();"
+                                    ) { result ->
+                                        try {
+                                            val height = result.toFloat()
+                                            val density = context.resources.displayMetrics.density
+                                            webViewHeight = (height / density).dp
+                                        } catch (e: Exception) {
+                                            // 如果获取高度失败，使用默认高度
+                                            webViewHeight = 300.dp
+                                        }
+                                    }
+                                }
+                            }
+                            settings.javaScriptEnabled = true
+                            loadUrl("https://www.hc2099.com/help/binding.html")
                         }
                     },
-                    modifier = Modifier.fillMaxSize()
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(webViewHeight)
                 )
             }
         }
