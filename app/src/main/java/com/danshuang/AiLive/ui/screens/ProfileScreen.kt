@@ -59,7 +59,8 @@ data class MenuItem(
 fun ProfileScreen(
     onLogout: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
-    onNavigateToHelp: () -> Unit = {}
+    onNavigateToHelp: () -> Unit = {},
+    onNavigateToCardActivation: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val loginRepository = remember { LoginRepository(context) }
@@ -215,20 +216,20 @@ fun ProfileScreen(
                             Column(
                                 horizontalAlignment = Alignment.End
                             ) {
-                                Button(
-                                    onClick = { /* 立即续费逻辑 */ },
-                                    modifier = Modifier.padding(bottom = 8.dp),
-                                    colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.primary
-                                    )
-                                ) {
-                                    Text("立即续费")
-                                }
+                                // Button(
+                                //     onClick = { /* 立即续费逻辑 */ },
+                                //     modifier = Modifier.padding(bottom = 8.dp),
+                                //     colors = ButtonDefaults.buttonColors(
+                                //         containerColor = MaterialTheme.colorScheme.primary
+                                //     )
+                                // ) {
+                                //     Text("立即续费")
+                                // }
                                 
                                 Button(
-                                    onClick = { /* 卡密激活逻辑 */ },
+                                    onClick = { onNavigateToCardActivation() },
                                     colors = ButtonDefaults.buttonColors(
-                                        containerColor = MaterialTheme.colorScheme.secondary
+                                        containerColor = MaterialTheme.colorScheme.primary
                                     )
                                 ) {
                                     Text("卡密激活")

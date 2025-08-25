@@ -15,6 +15,7 @@ import com.danshuang.AiLive.ui.screens.ModelScreen
 import com.danshuang.AiLive.ui.screens.ProfileScreen
 import com.danshuang.AiLive.ui.screens.ChangePasswordScreen
 import com.danshuang.AiLive.ui.screens.HelpScreen
+import com.danshuang.AiLive.ui.screens.CardActivationScreen
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -47,6 +48,9 @@ sealed class Screen(val route: String) {
     }
     data object VoiceCloning : Screen("voice_cloning") {
         fun createRoute() = "voice_cloning"
+    }
+    data object CardActivation : Screen("card_activation") {
+        fun createRoute() = "card_activation"
     }
 }
 
@@ -101,6 +105,10 @@ class NavigationState {
         currentScreen = Screen.AccountBinding
     }
 
+    fun navigateToCardActivation() {
+        currentScreen = Screen.CardActivation
+    }
+
     fun navigateUp() {
         when (currentScreen) {
             is Screen.ContentEdit -> {
@@ -135,6 +143,9 @@ class NavigationState {
             is Screen.AccountBinding -> {
                 currentScreen = Screen.Home
             }
+            is Screen.CardActivation -> {
+                currentScreen = Screen.Profile
+            }
             else -> {
                 currentScreen = Screen.Home
             }
@@ -160,7 +171,8 @@ fun AppNavigation(
         is Screen.Profile -> ProfileScreen(
             onLogout = onLogout,
             onNavigateToChangePassword = { navigationState.navigateToChangePassword() },
-            onNavigateToHelp = { navigationState.navigateToHelp() }
+            onNavigateToHelp = { navigationState.navigateToHelp() },
+            onNavigateToCardActivation = { navigationState.navigateToCardActivation() }
         )
         is Screen.ChangePassword -> ChangePasswordScreen(
             onBack = { navigationState.navigateUp() }
@@ -214,6 +226,11 @@ fun AppNavigation(
             is Screen.AccountBinding -> {
                 com.danshuang.AiLive.ui.screens.AccountBindingScreen(
                     navController = navigationState
+                )
+            }
+            is Screen.CardActivation -> {
+                CardActivationScreen(
+                    onNavigateBack = { navigationState.navigateUp() }
                 )
             }
     }

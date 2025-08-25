@@ -87,7 +87,7 @@ fun MainAppNavigation(
             is Screen.GreetingSettings, is Screen.NicknameRestrictions,
             is Screen.CommentRestrictions, is Screen.VoiceSettings,
             is Screen.VoiceCloning, is Screen.ChangePassword,
-            is Screen.Help, is Screen.AccountBinding -> {
+            is Screen.Help, is Screen.AccountBinding, is Screen.CardActivation -> {
                 // 这些页面有明确的返回页面，使用navigateUp
                 navigationState.navigateUp()
             }
@@ -104,7 +104,7 @@ fun MainAppNavigation(
 
     Scaffold(
         bottomBar = {
-            // 在内容编辑页面、话术页面、招呼设置页面、限制设置页面、声音克隆页面和AI直播页面隐藏底部导航
+            // 在内容编辑页面、话术页面、招呼设置页面、限制设置页面、声音克隆页面、AI直播页面和卡密激活页面隐藏底部导航
             if (navigationState.currentScreen !is Screen.ContentEdit && 
                 navigationState.currentScreen !is Screen.LiveScript &&
                 navigationState.currentScreen !is Screen.GreetingSettings &&
@@ -112,7 +112,8 @@ fun MainAppNavigation(
                 navigationState.currentScreen !is Screen.CommentRestrictions &&
                 navigationState.currentScreen !is Screen.VoiceSettings &&
                 navigationState.currentScreen !is Screen.VoiceCloning &&
-                navigationState.currentScreen !is Screen.AILive) {
+                navigationState.currentScreen !is Screen.AILive &&
+                navigationState.currentScreen !is Screen.CardActivation) {
                 NavigationBar(
                     containerColor = backgroundLight,
                 ) {
