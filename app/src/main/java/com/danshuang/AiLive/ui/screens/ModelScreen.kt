@@ -147,32 +147,32 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         )
         val quickLiveScriptActions = listOf(
             QuickActionData(
-                title = "问候",
-                icon = R.drawable.ic_number_1,
+                title = "问候 >",
+                icon = R.drawable.counter_1_24px,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
                     navigationState.navigateToLiveScript("greeting")
                 }
             ),
             QuickActionData(
-                title = "品宣",
-                icon = R.drawable.ic_number_2,
+                title = "品宣 >",
+                icon = R.drawable.counter_2_24px,
                 backgroundColor = Color(0xFF4CAF50),
                 onClick = {
                     navigationState.navigateToLiveScript("promotion")
                 }
             ),
             QuickActionData(
-                title = "留咨",
-                icon = R.drawable.ic_number_3,
+                title = "留咨 >",
+                icon = R.drawable.counter_3_24px,
                 backgroundColor = Color(0xFFFF9800),
                 onClick = {
                     navigationState.navigateToLiveScript("consultation")
                 }
             ),
             QuickActionData(
-                title = "促成",
-                icon = R.drawable.ic_number_4,
+                title = "促成 >",
+                icon = R.drawable.counter_4_24px,
                 backgroundColor = Color(0xFF9C27B0),
                 onClick = {
                     navigationState.navigateToLiveScript("conversion")
@@ -197,12 +197,20 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 QuickActionCard(
                     action = QuickActionData(
                             title = "感谢",
-                            icon = R.drawable.ic_number_5,
+                            icon = R.drawable.counter_5_24px,
                             backgroundColor = Color(0xFF2196F3),
                             onClick = {
                                 navigationState.navigateToLiveScript("thanks")
                             }
                         )
+                )
+            }
+            item {
+                Text(
+                    text = "AI主播会按照顺序循环这些话术，\n同项中有多条将随机播报一条",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 12.dp)
                 )
             }
         }
