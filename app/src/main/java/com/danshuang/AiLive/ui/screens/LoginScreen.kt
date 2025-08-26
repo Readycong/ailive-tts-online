@@ -1,16 +1,25 @@
 package com.danshuang.AiLive.ui.screens
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import com.danshuang.AiLive.R
 import com.danshuang.AiLive.viewmodel.LoginViewModel
 import com.danshuang.AiLive.viewmodel.LoginState
 
@@ -30,6 +39,25 @@ fun LoginScreen(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center
     ) {
+        // APP圆形LOGO
+        AsyncImage(
+            model = ImageRequest.Builder(LocalContext.current)
+                .data(stringResource(id = R.string.app_logo))
+                .crossfade(true)
+                .build(),
+            contentDescription = "APP Logo",
+            contentScale = ContentScale.Crop,
+            modifier = Modifier
+                .size(120.dp)
+                .background(
+                    color = Color(0xFFE3F2FD), // 浅蓝色背景
+                    shape = CircleShape
+                )
+                .clip(CircleShape)
+        )
+        
+        Spacer(modifier = Modifier.height(24.dp))
+        
         Text(
             text = "登录",
             style = MaterialTheme.typography.headlineMedium,
