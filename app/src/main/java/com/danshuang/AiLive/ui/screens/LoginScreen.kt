@@ -112,7 +112,11 @@ fun LoginScreen(
         }
 
         if (loginState is LoginState.Success) {
-            LaunchedEffect(Unit) {
+            LaunchedEffect(loginState) {
+                // 可以在这里访问完整的用户信息
+                val successState = loginState as LoginState.Success
+                // val user = successState.user
+                // Log.d("LoginScreen", "User logged in: ${user.userProfile.nickname}")
                 onLoginSuccess()
             }
         }

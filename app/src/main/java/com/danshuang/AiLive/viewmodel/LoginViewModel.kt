@@ -4,6 +4,10 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.data.model.LoginResult
+import com.danshuang.AiLive.data.model.LoggedInUser
+import com.danshuang.AiLive.api.ServerApiUtilsV2
+import com.danshuang.AiLive.data.manager.TokenManager
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -12,12 +16,16 @@ import kotlinx.coroutines.launch
 sealed class LoginState {
     object Idle : LoginState()
     object Loading : LoginState()
-    data class Success(val token: String, val phone: String) : LoginState()
+    data class Success(val user: LoggedInUser) : LoginState()
     data class Error(val message: String) : LoginState()
 }
 
 class LoginViewModel(application: Application) : AndroidViewModel(application) {
     private val loginRepository = LoginRepository(application)
+    private val tokenManager = TokenManager(loginRepository)
+    
+    // 从strings.xml中读取API基础URL并创建 API 工具类
+    private val apiUtils = ServerApiUtilsV2.createFromContext(application, tokenManager, loginRepository)
     
     private val _loginState = MutableStateFlow<LoginState>(LoginState.Idle)
     val loginState: StateFlow<LoginState> = _loginState.asStateFlow()
@@ -49,17 +57,19 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
             _loginState.value = LoginState.Loading
             
             try {
-                // 模拟网络请求
-                kotlinx.coroutines.delay(1500)
-                
-                // 模拟登录验证
-                val (success, token, message) = performLogin(phone, pass)
-                
-                if (success && token != null) {
-                    loginRepository.saveLoginInfo(token, phone)
-                    _loginState.value = LoginState.Success(token, phone)
-                } else {
-                    _loginState.value = LoginState.Error(message ?: "登录失败")
+                // 使用真实的API调用
+                when (val result = apiUtils.login(phone, pass)) {
+                    is LoginResult.Success -> {
+                        _loginState.value = LoginState.Success(result.user)
+                    }
+                    is LoginResult.Error -> {
+                        _loginState.value = LoginState.Error(
+                            result.exception.message ?: "登录失败"
+                        )
+                    }
+                    is LoginResult.Loading -> {
+                        // 保持Loading状态
+                    }
                 }
             } catch (e: Exception) {
                 _loginState.value = LoginState.Error("网络错误: ${e.message}")
@@ -74,13 +84,34 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
                password.length >= 6
     }
     
-    private suspend fun performLogin(phone: String, password: String): Triple<Boolean, String?, String?> {
-        // 模拟API调用
-        return when {
-            phone == "13800138000" && password == "123456" -> Triple(true, "mock_token_12345", null)
-            phone.length != 11 -> Triple(false, null, "手机号格式不正确")
-            password.length < 6 -> Triple(false, null, "密码长度不能少于6位")
-            else -> Triple(false, null, "手机号或密码错误")
+    /**
+     * 检查用户是否已登录
+     */
+    suspend fun isLoggedIn(): Boolean {
+        return apiUtils.isLoggedIn()
+    }
+    
+    /**
+     * 获取当前登录用户信息
+     */
+    suspend fun getCurrentUser(): LoggedInUser? {
+        return apiUtils.getCurrentUser()
+    }
+    
+    /**
+     * 注销登录
+     */
+    fun logout() {
+        viewModelScope.launch {
+            try {
+                apiUtils.logout()
+                _loginState.value = LoginState.Idle
+                _phoneNumber.value = ""
+                _password.value = ""
+            } catch (e: Exception) {
+                // 即使服务器注销失败，也清除本地状态
+                _loginState.value = LoginState.Idle
+            }
         }
     }
     
@@ -92,5 +123,10 @@ class LoginViewModel(application: Application) : AndroidViewModel(application) {
         if (_loginState.value is LoginState.Error) {
             _loginState.value = LoginState.Idle
         }
+    }
+    
+    override fun onCleared() {
+        super.onCleared()
+        // 清理资源
     }
 }
