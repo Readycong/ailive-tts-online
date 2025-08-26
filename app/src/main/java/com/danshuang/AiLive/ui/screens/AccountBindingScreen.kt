@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
@@ -23,10 +24,24 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
 import com.danshuang.AiLive.R
 import com.danshuang.AiLive.navigation.NavigationState
+import android.content.Context
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.*
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
+import java.io.IOException
+
+// DataStore实例
+private val Context.dataStore by preferencesDataStore(name = "account_binding_prefs")
 
 // 绑定步骤枚举
 enum class BindingStep {
@@ -34,11 +49,26 @@ enum class BindingStep {
     ACCOUNT_PREVIEW // 步骤二：账户预览
 }
 
+// 信息提取状态枚举
+enum class ExtractionStatus {
+    IDLE,           // 空闲状态
+    LOADING,        // 加载中
+    SUCCESS,        // 提取成功
+    ERROR           // 提取失败
+}
+
 // 模拟用户账户信息
 data class UserAccountInfo(
     val avatar: String = "https://via.placeholder.com/80",
     val nickname: String = "示例用户",
-    val isLive: Boolean = false
+    val isLive: Boolean = false,
+    val userId: String = "" // 添加用户ID字段
+)
+
+// 绑定结果数据类
+data class BindingResult(
+    val success: Boolean,
+    val message: String
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -46,58 +76,121 @@ data class UserAccountInfo(
 fun AccountBindingScreen(
     navController: NavigationState
 ) {
-    var accountUrl by remember { mutableStateOf(TextFieldValue("") )}
+    val context = LocalContext.current
+    var accountUrl by remember { mutableStateOf(TextFieldValue("0- 长按复制此条消息，打开抖音搜索，查看TA的更多作品。 https://v.douyin.com/UaEl5UrklVg/ 4@1.com :8pm")) }
     var isLoading by remember { mutableStateOf(false) }
-    var bindingResult by remember { mutableStateOf<String?>(null) }
+    var bindingResult by remember { mutableStateOf<BindingResult?>(null) }
     var bindingTrigger by remember { mutableStateOf(false) }
     var currentStep by remember { mutableStateOf(BindingStep.URL_INPUT) }
     var accountInfo by remember { mutableStateOf<UserAccountInfo?>(null) }
     var showWebView by remember { mutableStateOf(false) }
     var showDropdownMenu by remember { mutableStateOf(false) }
     var userHomeUrl by remember { mutableStateOf("") }
+    var extractionStatus by remember { mutableStateOf(ExtractionStatus.IDLE) }
+    var canBindAccount by remember { mutableStateOf(false) }
     
     // 提取URL的函数
     fun extractUrlFromText(text: String): String? {
         val urlPattern = Regex("https?://[^\\s]+")
         return urlPattern.find(text)?.value
     }
-
-    LaunchedEffect(bindingTrigger) {
-        if (bindingTrigger) {
-            // 实际应用中这里应该是网络请求
-            // 延迟2秒模拟请求
-            kotlinx.coroutines.delay(2000)
-            isLoading = false
-            bindingResult = "绑定成功"
-            bindingTrigger = false
+    
+    // 保存账户信息到本地存储
+    suspend fun saveAccountToLocal(accountInfo: UserAccountInfo, url: String) {
+        try {
+            context.dataStore.edit { preferences ->
+                preferences[stringPreferencesKey("account_avatar")] = accountInfo.avatar
+                preferences[stringPreferencesKey("account_nickname")] = accountInfo.nickname
+                preferences[stringPreferencesKey("account_user_id")] = accountInfo.userId
+                preferences[stringPreferencesKey("account_url")] = url
+                preferences[stringPreferencesKey("account_is_live")] = accountInfo.isLive.toString()
+            }
+        } catch (e: Exception) {
+            // 处理保存异常
         }
     }
     
-    // 模拟获取账户信息
-    LaunchedEffect(currentStep, userHomeUrl) {
-        if (currentStep == BindingStep.ACCOUNT_PREVIEW && accountInfo == null) {
+    // 提交绑定信息到服务器
+    suspend fun submitBindingToServer(accountInfo: UserAccountInfo, url: String): BindingResult {
+        return withContext(Dispatchers.IO) {
+            try {
+                val client = OkHttpClient()
+                val json = JSONObject().apply {
+                    put("avatar", accountInfo.avatar)
+                    put("nickname", accountInfo.nickname)
+                    put("userId", accountInfo.userId)
+                    put("homeUrl", url)
+                    put("isLive", accountInfo.isLive)
+                }
+                
+                val requestBody = json.toString().toRequestBody("application/json".toMediaType())
+                val request = Request.Builder()
+                    .url("https://api.example.com/account/bind") // 替换为实际的API地址
+                    .post(requestBody)
+                    .build()
+                
+                val response = client.newCall(request).execute()
+                if (response.isSuccessful) {
+                    BindingResult(true, "绑定成功")
+                } else {
+                    BindingResult(false, "服务器错误: ${response.code}")
+                }
+            } catch (e: IOException) {
+                BindingResult(false, "网络错误: ${e.message}")
+            } catch (e: Exception) {
+                BindingResult(false, "绑定失败: ${e.message}")
+            }
+        }
+    }
+
+    LaunchedEffect(bindingTrigger) {
+        if (bindingTrigger && accountInfo != null) {
             isLoading = true
+            try {
+                // 提交到服务器
+                val serverResult = submitBindingToServer(accountInfo!!, userHomeUrl)
+                
+                if (serverResult.success) {
+                    // 服务器保存成功，同时保存到本地
+                    saveAccountToLocal(accountInfo!!, userHomeUrl)
+                    bindingResult = BindingResult(true, "绑定成功")
+                } else {
+                    // 服务器保存失败
+                    bindingResult = BindingResult(false, serverResult.message)
+                }
+            } catch (e: Exception) {
+                bindingResult = BindingResult(false, "绑定过程中发生错误: ${e.message}")
+            } finally {
+                isLoading = false
+                bindingTrigger = false
+            }
+        }
+    }
+    
+    // 处理账户信息提取状态
+    LaunchedEffect(currentStep, userHomeUrl) {
+        if (currentStep == BindingStep.ACCOUNT_PREVIEW && extractionStatus == ExtractionStatus.IDLE) {
+            extractionStatus = ExtractionStatus.LOADING
+            isLoading = true
+            canBindAccount = false
+            
             // 如果有真实的抖音URL，等待WebView加载并提取信息
             if (userHomeUrl.contains("douyin.com") || userHomeUrl.contains("v.douyin.com")) {
-                // 等待WebView加载并提取信息，不再模拟
-                // 设置一个超时，防止无限等待
+                // 等待WebView加载并提取信息，设置超时
                 kotlinx.coroutines.delay(10000) // 10秒超时
-                if (accountInfo == null) {
-                    // 超时后使用默认信息
-                    accountInfo = UserAccountInfo(
-                        nickname = "抖音用户",
-                        isLive = false
-                    )
+                if (extractionStatus == ExtractionStatus.LOADING) {
+                    // 超时后标记为提取失败
+                    extractionStatus = ExtractionStatus.ERROR
+                    accountInfo = null
                     isLoading = false
+                    canBindAccount = false
                 }
             } else {
-                // 非抖音链接，使用模拟数据
-                kotlinx.coroutines.delay(1500) // 模拟加载时间
-                accountInfo = UserAccountInfo(
-                    nickname = "示例用户${(Math.random() * 10000).toInt()}",
-                    isLive = Math.random() > 0.5
-                )
+                // 非抖音链接，直接标记为提取失败
+                extractionStatus = ExtractionStatus.ERROR
+                accountInfo = null
                 isLoading = false
+                canBindAccount = false
             }
         }
     }
@@ -151,13 +244,24 @@ fun AccountBindingScreen(
                     url = userHomeUrl.ifEmpty { "about:blank" },
                     isVisible = showWebView,
                     onVisibilityChange = { showWebView = it },
-                    onAccountInfoExtracted = { avatar, nickname, isLive ->
-                        // 当从网页提取到账户信息时更新状态
-                        accountInfo = UserAccountInfo(
-                            avatar = avatar,
-                            nickname = nickname,
-                            isLive = isLive
-                        )
+                    onAccountInfoExtracted = { avatar, nickname, isLive, userId, loadStatus ->
+                        // 根据load状态判断提取结果
+                        if (loadStatus == "FOUND") {
+                            // 提取成功
+                            extractionStatus = ExtractionStatus.SUCCESS
+                            accountInfo = UserAccountInfo(
+                                avatar = avatar,
+                                nickname = nickname,
+                                isLive = isLive,
+                                userId = userId
+                            )
+                            canBindAccount = true
+                        } else {
+                            // 提取失败 (load值为ERROR)
+                            extractionStatus = ExtractionStatus.ERROR
+                            accountInfo = null
+                            canBindAccount = false
+                        }
                         isLoading = false
                     }
                 )
@@ -183,11 +287,18 @@ fun AccountBindingScreen(
                                     // 提取URL并保存
                                     val extractedUrl = extractUrlFromText(accountUrl.text)
                                     if (extractedUrl != null) {
+                                        // 清除之前的状态
+                                        bindingResult = null
+                                        accountInfo = null
+                                        extractionStatus = ExtractionStatus.IDLE
+                                        canBindAccount = false
+                                        // 设置新的URL，WebView将在后台加载
                                         userHomeUrl = extractedUrl
+                                        // 切换到账户预览步骤
                                         currentStep = BindingStep.ACCOUNT_PREVIEW
                                     } else {
                                         // 如果没有找到有效的URL，显示错误提示
-                                        bindingResult = "未找到有效的网址，请检查输入内容"
+                                        bindingResult = BindingResult(false, "未找到有效的网址，请检查输入内容")
                                     }
                                 }
                             },
@@ -201,12 +312,19 @@ fun AccountBindingScreen(
                             onBack = {
                                 currentStep = BindingStep.URL_INPUT
                                 accountInfo = null
+                                bindingResult = null
+                                extractionStatus = ExtractionStatus.IDLE
+                                canBindAccount = false
+                                // 返回时隐藏WebView调试界面
+                                showWebView = false
                             },
                             onBind = {
                                 isLoading = true
                                 bindingTrigger = true
                             },
-                            bindingResult = bindingResult
+                            bindingResult = bindingResult,
+                            extractionStatus = extractionStatus,
+                            canBindAccount = canBindAccount
                         )
                     }
                 }
@@ -264,7 +382,7 @@ private fun UrlInputStep(
                 decorationBox = { innerTextField ->
                     if (accountUrl.text.isEmpty()) {
                         Text(
-                            text = "例如：#在抖音，记录美好生活#【拼音账号名称】正在直播，来和我一起支持Ta吧。复制下方链接，打开【抖音】，直接观看直播！ https://v.douyin.com/xxxxxx/ 5@7.com :0am",
+                            text = "例如：0- 长按复制此条消息，打开抖音搜索，查看TA的更多作品。 https://v.douyin.com/Uxkosllosfsdfso/ 7$2.xxx :wam",
                             color = MaterialTheme.colorScheme.outline,
                             fontSize = 16.sp
                         )
@@ -390,7 +508,9 @@ private fun AccountPreviewStep(
     isLoading: Boolean,
     onBack: () -> Unit,
     onBind: () -> Unit,
-    bindingResult: String?
+    bindingResult: BindingResult?,
+    extractionStatus: ExtractionStatus,
+    canBindAccount: Boolean
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -487,51 +607,117 @@ private fun AccountPreviewStep(
                                     color = if (info.isLive) Color.Green else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
-                            
-                            Text(
-                                text = "抖音认证账户",
-                                fontSize = 12.sp,
-                                color = MaterialTheme.colorScheme.primary
-                            )
                         }
+                    }
+                } ?: run {
+                    // 获取账户信息失败时的提示
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Filled.Warning,
+                            contentDescription = "警告",
+                            modifier = Modifier.size(48.dp),
+                            tint = MaterialTheme.colorScheme.outline
+                        )
+                        Text(
+                            text = "无法获取账户信息",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "可能是网络问题或网址不正确，您仍然可以手动绑定该账户",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center
+                        )
                     }
                 }
             }
         }
         
-        // 绑定结果提示
-        bindingResult?.let {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = if (it.contains("成功")) 
-                        MaterialTheme.colorScheme.primaryContainer
-                    else 
-                        MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
+        // 信息提取状态提示
+        when (extractionStatus) {
+            ExtractionStatus.ERROR -> {
+                Card(
+                    colors = CardDefaults.cardColors(
+                        containerColor = MaterialTheme.colorScheme.errorContainer
+                    )
                 ) {
-                    Icon(
-                        imageVector = if (it.contains("成功")) Icons.Filled.CheckCircle else Icons.Filled.Error,
-                        contentDescription = null,
-                        tint = if (it.contains("成功")) 
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else 
-                            MaterialTheme.colorScheme.onErrorContainer
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = it,
-                        fontSize = 16.sp,
-                        color = if (it.contains("成功")) 
-                            MaterialTheme.colorScheme.onPrimaryContainer
-                        else 
-                            MaterialTheme.colorScheme.onErrorContainer
-                    )
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Error,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "提取信息失败",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                        Text(
+                            text = "请返回上一步确认用户主页链接是否复制正确",
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            textAlign = TextAlign.Center
+                        )
+                    }
+                }
+            }
+            else -> {
+                // 绑定结果提示
+                bindingResult?.let { result ->
+                    Card(
+                        colors = CardDefaults.cardColors(
+                            containerColor = if (result.success) 
+                                MaterialTheme.colorScheme.primaryContainer
+                            else 
+                                MaterialTheme.colorScheme.errorContainer
+                        )
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = if (result.success) Icons.Filled.CheckCircle else Icons.Filled.Error,
+                                contentDescription = null,
+                                tint = if (result.success) 
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else 
+                                    MaterialTheme.colorScheme.onErrorContainer
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = result.message,
+                                fontSize = 16.sp,
+                                color = if (result.success) 
+                                    MaterialTheme.colorScheme.onPrimaryContainer
+                                else 
+                                    MaterialTheme.colorScheme.onErrorContainer
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -571,7 +757,7 @@ private fun AccountPreviewStep(
                 modifier = Modifier
                     .weight(1f)
                     .height(56.dp),
-                enabled = !isLoading && accountInfo != null && bindingResult == null
+                enabled = !isLoading && bindingResult == null && canBindAccount
             ) {
                 if (isLoading) {
                     CircularProgressIndicator(
@@ -606,212 +792,305 @@ private fun WebViewControlSection(
     url: String,
     isVisible: Boolean,
     onVisibilityChange: (Boolean) -> Unit = {},
-    onAccountInfoExtracted: (String, String, Boolean) -> Unit = { _, _, _ -> }
+    onAccountInfoExtracted: (String, String, Boolean, String, String) -> Unit = { _, _, _, _, _ -> }
 ) {
-    AnimatedVisibility(
-        visible = isVisible,
-        enter = slideInVertically(
-            initialOffsetY = { -it },
-            animationSpec = tween(durationMillis = 300)
-        ) + fadeIn(animationSpec = tween(durationMillis = 300)),
-        exit = slideOutVertically(
-            targetOffsetY = { -it },
-            animationSpec = tween(durationMillis = 300)
-        ) + fadeOut(animationSpec = tween(durationMillis = 300))
-    ) {
-        Card(
-            modifier = Modifier
-                .fillMaxWidth(),
-            elevation = CardDefaults.cardElevation(4.dp),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.surface
-            )
-        ) {
-            Column(
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                // WebView标题栏
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Language,
-                        contentDescription = "网页",
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        text = "抖音主页预览",
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                    Spacer(modifier = Modifier.weight(1f))
-                    Text(
-                        text = "调试模式",
-                        fontSize = 12.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Switch(
-                        checked = isVisible,
-                        onCheckedChange = onVisibilityChange,
-                        modifier = Modifier.height(24.dp),
-                        colors = SwitchDefaults.colors(
-                            checkedThumbColor = MaterialTheme.colorScheme.primary,
-                            checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                            uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                            uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                            uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                        )
-                    )
-                }
-                
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                    thickness = 1.dp
-                )
-                
-                // WebView内容 - 使用PC浏览器模式
-                var webViewHeight by remember { mutableStateOf(400.dp) }
-                
-                AndroidView(
-                    factory = { context ->
-                        WebView(context).apply {
-                            webViewClient = object : WebViewClient() {
-                                override fun onPageFinished(view: WebView?, url: String?) {
-                                    super.onPageFinished(view, url)
-                                    // 执行JavaScript获取网页内容高度
+    var webViewHeight by remember { mutableStateOf(400.dp) }
+    
+    Column {
+        // 后台WebView - 始终存在但隐藏，用于数据提取
+        AndroidView(
+            factory = { context ->
+                WebView(context).apply {
+                    webViewClient = object : WebViewClient() {
+                        override fun onPageFinished(view: WebView?, url: String?) {
+                            super.onPageFinished(view, url)
+
+                            // 执行JavaScript获取网页内容高度
+                            view?.evaluateJavascript(
+                                "(function(){return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 400);})();"
+                            ) { result ->
+                                try {
+                                    val height = result.toFloatOrNull() ?: 400f
+                                    val density = context.resources.displayMetrics.density
+                                    // 限制最大高度为600dp，最小高度为400dp
+                                    val newHeight = ((height / density).coerceIn(400f, 600f)).dp
+                                    webViewHeight = newHeight
+                                } catch (e: Exception) {
+                                    webViewHeight = 400.dp
+                                }
+                            }
+                            
+                            // 延迟1秒后开始提取账户信息，确保DOM完全渲染
+                            android.os.Handler(android.os.Looper.getMainLooper()).postDelayed({
+                                // 打印HTML内容到控制台
+//                                view?.evaluateJavascript(
+//                                    "(function(){return document.documentElement.outerHTML;})();"
+//                                ) { result ->
+//                                    try {
+//                                        // 移除JavaScript返回值的引号包装
+//                                        val htmlContent = result.removeSurrounding("\"")
+//                                            .replace("\\\"", "\"")  // 处理转义的引号
+//                                            .replace("\\n", "\n")     // 处理转义的换行符
+//                                            .replace("\\t", "\t")     // 处理转义的制表符
+//
+//                                        println("=== WebView HTML Content Start ===")
+//                                        println("URL: $url")
+//                                        println("HTML Length: ${htmlContent.length} characters")
+//                                        println("--- HTML Content ---")
+//                                        println(htmlContent)
+//                                        println("=== WebView HTML Content End ===")
+//                                    } catch (e: Exception) {
+//                                        println("Error printing HTML content: ${e.message}")
+//                                    }
+//                                }
+                                
+                                // 提取账户信息 - 仅当URL包含抖音链接时执行
+                                if (url?.contains("https://www.douyin.com/user/") == true) {
+                                    println("延迟1秒后开始提取账户信息: $url")
                                     view?.evaluateJavascript(
-                                        "(function(){return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 400);})();"
+                                        """
+                                        (function() {
+    try {
+        console.log('开始提取抖音账户信息...');
+        var infoObj = document.querySelector("#user_detail_element")
+        if (!infoObj) {
+            console.log('未找到 #user_detail_element 元素');
+            return {
+                js: "user_detail_element", 
+                load: "ERROR", 
+                status: 'NO', 
+                id: '',
+                nickname: '',
+                avatar: ''
+            }
+        }
+        console.log('找到用户信息元素，开始解析...');
+        var liveStatusElement = infoObj.querySelector("div > div:nth-child(2) > div");
+        var liveStatus = liveStatusElement ? liveStatusElement.innerText == '直播中' : false;
+        var nicknameElement = infoObj.querySelector("div:nth-child(2) > div:nth-child(2) > div");
+        var userIdElement = infoObj.querySelector("div:nth-child(2) > div:nth-child(2) > p > span");
+        var avatarElement = document.querySelector("#user_detail_element img");
+        
+        var result = {
+            js: "user_detail_element", 
+            load: "FOUND", 
+            status: liveStatus ? 'PLAYING' : 'NO', 
+            id: userIdElement ? userIdElement.innerText.trim().replace('抖音号：', '') : '',
+            nickname: nicknameElement ? nicknameElement.innerText : '未知用户',
+            avatar: avatarElement ? avatarElement.src : ''
+        };
+        console.log('账户信息提取完成:', result);
+        return result;
+    } catch (e) {
+        console.error('提取账户信息时发生错误:', e);
+        return {
+            js: "user_detail_element", 
+            load: "ERROR", 
+            status: 'NO', 
+            id: '',
+            nickname: '',
+            avatar: ''
+        }
+    }
+})()
+                                        """.trimIndent()
                                     ) { result ->
+                                        println("=== WebView JSON Content Start ===")
+                                        println("URL: $url")
+                                        println(result)
+                                        println("=== WebView JSON Content END ===")
                                         try {
-                                            val height = result.toFloatOrNull() ?: 400f
-                                            val density = context.resources.displayMetrics.density
-                                            // 限制最大高度为600dp，最小高度为400dp
-                                            val newHeight = ((height / density).coerceIn(400f, 600f)).dp
-                                            webViewHeight = newHeight
-                                        } catch (e: Exception) {
-                                            webViewHeight = 400.dp
-                                        }
-                                    }
-                                    
-                                    // 提取账户信息 - 仅当URL包含抖音链接时执行
-                                    if (url?.contains("douyin.com") == true || url?.contains("v.douyin.com") == true) {
-                                        view?.evaluateJavascript(
-                                            """
-                                            (function(){
-                                                try {
-                                                    // 提取头像
-                                                    var avatar = '';
-                                                    var avatarImg = document.querySelector('[data-e2e="user-avatar"] img, .avatar img, img[alt*="头像"], img[src*="avatar"]');
-                                                    if (avatarImg) {
-                                                        avatar = avatarImg.src || avatarImg.getAttribute('data-src') || '';
-                                                    }
-                                                    
-                                                    // 提取昵称
-                                                    var nickname = '';
-                                                    var nicknameEl = document.querySelector('[data-e2e="user-title"], .user-info .nickname, .user-name, h1, .account-info .name');
-                                                    if (nicknameEl) {
-                                                        nickname = nicknameEl.textContent || nicknameEl.innerText || '';
-                                                    }
-                                                    
-                                                    // 提取直播状态 - 查找直播相关的元素
-                                                    var isLive = false;
-                                                    var liveElements = document.querySelectorAll('*');
-                                                    for (var i = 0; i < liveElements.length; i++) {
-                                                        var text = liveElements[i].textContent || liveElements[i].innerText || '';
-                                                        if (text.includes('正在直播') || text.includes('直播中') || text.includes('LIVE') || 
-                                                            liveElements[i].className.includes('live') || 
-                                                            liveElements[i].getAttribute('data-e2e') === 'live-status') {
-                                                            isLive = true;
-                                                            break;
-                                                        }
-                                                    }
-                                                    
-                                                    return JSON.stringify({
-                                                        avatar: avatar.trim(),
-                                                        nickname: nickname.trim(),
-                                                        isLive: isLive
-                                                    });
-                                                } catch (e) {
-                                                    return JSON.stringify({
-                                                        avatar: '',
-                                                        nickname: '解析失败',
-                                                        isLive: false
-                                                    });
-                                                }
-                                            })();
-                                            """.trimIndent()
-                                        ) { result ->
-                                            try {
-                                                // 解析JSON结果
-                                                val jsonResult = result.removeSurrounding("\"")
-                                                    .replace("\\\"", "\"")  // 处理转义的引号
-                                                
-                                                // 简单的JSON解析（因为结构固定）
+                                            // 解析JSON结果
+                                            val jsonResult = result.removeSurrounding("\"")
+                                                .replace("\\\"", "\"")  // 处理转义的引号
+                                            val loadMatch = Regex("\"load\":\"([^\"]*)\"").find(jsonResult)
+                                            val loadStatus = loadMatch?.groupValues?.get(1) ?: "ERROR"
+                                            
+                                            if (loadStatus == "FOUND") {
+                                                // 提取成功，解析其他信息
                                                 val avatarMatch = Regex("\"avatar\":\"([^\"]*)\"").find(jsonResult)
                                                 val nicknameMatch = Regex("\"nickname\":\"([^\"]*)\"").find(jsonResult)
-                                                val isLiveMatch = Regex("\"isLive\":(true|false)").find(jsonResult)
+                                                val userIdMatch = Regex("\"id\":\"([^\"]*)\"").find(jsonResult)
+                                                val isLiveMatch = Regex("\"status\":\"(PLAYING|NO)\"").find(jsonResult)
                                                 
                                                 val avatar = avatarMatch?.groupValues?.get(1) ?: ""
                                                 val nickname = nicknameMatch?.groupValues?.get(1) ?: "未知用户"
-                                                val isLive = isLiveMatch?.groupValues?.get(1) == "true"
+                                                val userId = userIdMatch?.groupValues?.get(1) ?: ""
+                                                val isLive = isLiveMatch?.groupValues?.get(1) == "PLAYING"
                                                 
-                                                // 回调提取到的信息
-                                                if (nickname.isNotEmpty() && nickname != "解析失败") {
-                                                    onAccountInfoExtracted(avatar, nickname, isLive)
-                                                }
+                                                println("提取成功 - 昵称: $nickname, 用户ID: $userId, 直播状态: $isLive")
+                                                onAccountInfoExtracted(avatar, nickname, isLive, userId, loadStatus)
+                                            } else {
+                                                // 提取失败
+                                                println("账户信息提取失败: $loadStatus")
+                                                onAccountInfoExtracted("", "", false, "", loadStatus)
+                                            }
+                                        } catch (e: Exception) {
+                                            // 解析失败
+                                            println("解析账户信息时发生异常: ${e.message}")
+                                            onAccountInfoExtracted("", "", false, "", "ERROR")
+                                        }
+                                    }
+                                }
+                            }, 1000) // 延迟1000毫秒（1秒）
+                        }
+                    }
+                    WebView.setWebContentsDebuggingEnabled(true)
+                    settings.apply {
+                        javaScriptEnabled = true
+                        loadWithOverviewMode = true
+                        displayZoomControls = false
+                        setSupportZoom(true)
+                        allowContentAccess = true
+                        javaScriptCanOpenWindowsAutomatically = true
+                        domStorageEnabled = true
+                        databaseEnabled = true
+                        setDatabaseEnabled(true)
+                        setGeolocationEnabled(true)
+                        // 设置为PC浏览器模式
+                        userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    }
+                    loadUrl(url.ifEmpty { "about:blank" })
+                }
+            },
+            update = { webView ->
+                // 当URL状态改变时，重新加载WebView
+                if (url.isNotEmpty()) {
+                    webView.loadUrl(url)
+                }
+            },
+            modifier = Modifier.size(0.dp) // 隐藏后台WebView
+        )
+        
+        // 调试界面 - 仅在需要时显示
+        AnimatedVisibility(
+            visible = isVisible,
+            enter = slideInVertically(
+                initialOffsetY = { -it },
+                animationSpec = tween(durationMillis = 300)
+            ) + fadeIn(animationSpec = tween(durationMillis = 300)),
+            exit = slideOutVertically(
+                targetOffsetY = { -it },
+                animationSpec = tween(durationMillis = 300)
+            ) + fadeOut(animationSpec = tween(durationMillis = 300))
+        ) {
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                elevation = CardDefaults.cardElevation(4.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    // WebView标题栏
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Language,
+                            contentDescription = "网页",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "抖音主页预览",
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Spacer(modifier = Modifier.weight(1f))
+                        Text(
+                            text = "调试模式",
+                            fontSize = 12.sp,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Switch(
+                            checked = isVisible,
+                            onCheckedChange = onVisibilityChange,
+                            modifier = Modifier.height(24.dp),
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = MaterialTheme.colorScheme.primary,
+                                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                                uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                            )
+                        )
+                    }
+                    
+                    HorizontalDivider(
+                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                        thickness = 1.dp
+                    )
+                    
+                    // 显示WebView内容 - 显示版本WebView
+                    AndroidView(
+                        factory = { context ->
+                            WebView(context).apply {
+                                webViewClient = object : WebViewClient() {
+                                    override fun onPageFinished(view: WebView?, url: String?) {
+                                        super.onPageFinished(view, url)
+                                        
+                                        // 打印HTML内容到控制台(调试WebView)
+                                        view?.evaluateJavascript(
+                                            "(function(){return document.documentElement.outerHTML;})();"
+                                        ) { result ->
+                                            try {
+                                                // 移除JavaScript返回值的引号包装
+                                                val htmlContent = result.removeSurrounding("\"")
+                                                    .replace("\\\"", "\"")  // 处理转义的引号
+                                                    .replace("\\n", "\n")     // 处理转义的换行符
+                                                    .replace("\\t", "\t")     // 处理转义的制表符
+                                                
+                                                println("=== Debug WebView HTML Content Start ===")
+                                                println("URL: $url")
+                                                println("HTML Length: ${htmlContent.length} characters")
+                                                println("--- Debug HTML Content ---")
+                                                println(htmlContent)
+                                                println("=== Debug WebView HTML Content End ===")
                                             } catch (e: Exception) {
-                                                // 解析失败时使用默认信息
-                                                onAccountInfoExtracted("", "抖音用户", false)
+                                                println("Error printing debug HTML content: ${e.message}")
                                             }
                                         }
                                     }
                                 }
+                                WebView.setWebContentsDebuggingEnabled(true)
+                                settings.apply {
+                                    javaScriptEnabled = true
+                                    loadWithOverviewMode = true
+                                    displayZoomControls = false
+                                    setSupportZoom(true)
+                                    allowContentAccess = true
+                                    javaScriptCanOpenWindowsAutomatically = true
+                                    domStorageEnabled = true
+                                    databaseEnabled = true
+                                    setDatabaseEnabled(true)
+                                    setGeolocationEnabled(true)
+                                    // 设置为PC浏览器模式
+                                    userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                                }
+                                loadUrl(url.ifEmpty { "about:blank" })
                             }
-
-//                            WebView.setWebContentsDebuggingEnabled(true)
-//                            liveView.settings.userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
-////        liveView.settings.useWideViewPort = true
-//                            liveView.settings.loadWithOverviewMode = true
-////        liveView.settings.builtInZoomControls = true
-//                            liveView.settings.setSupportZoom(true)
-//
-//                            liveView.settings.allowContentAccess = true
-//                            liveView.settings.javaScriptCanOpenWindowsAutomatically = true
-//                            liveView.settings.domStorageEnabled = true
-//                            liveView.settings.javaScriptEnabled = true
-//                            liveView.settings.databaseEnabled = true
-//                            liveView.settings.setDatabaseEnabled(true)
-//                            liveView.settings.setGeolocationEnabled(true)
-////        liveView.settings.setGeolocationDatabasePath(cacheDir.absolutePath)
-                            WebView.setWebContentsDebuggingEnabled(true)
-                            settings.apply {
-                                javaScriptEnabled = true
-                                loadWithOverviewMode = true
-                                displayZoomControls = false
-                                setSupportZoom(true)
-                                allowContentAccess = true
-                                javaScriptCanOpenWindowsAutomatically = true
-                                domStorageEnabled = true
-                                databaseEnabled = true
-                                setDatabaseEnabled(true)
-                                setGeolocationEnabled(true)
-                                // 设置为PC浏览器模式
-                                userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                        },
+                        update = { webView ->
+                            // 当URL状态改变时，重新加载调试WebView
+                            if (url.isNotEmpty()) {
+                                webView.loadUrl(url)
                             }
-                            loadUrl(url.ifEmpty { "about:blank" })
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(webViewHeight)
-                        .padding(8.dp)
-                )
+                        },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(webViewHeight)
+                            .padding(8.dp)
+                    )
+                }
             }
         }
     }
@@ -839,6 +1118,29 @@ private fun HelpSection() {
                     webViewClient = object : WebViewClient() {
                         override fun onPageFinished(view: WebView?, url: String?) {
                             super.onPageFinished(view, url)
+                            
+                            // 打印HTML内容到控制台(帮助信息WebView)
+                            view?.evaluateJavascript(
+                                "(function(){return document.documentElement.outerHTML;})();"
+                            ) { result ->
+                                try {
+                                    // 移除JavaScript返回值的引号包装
+                                    val htmlContent = result.removeSurrounding("\"")
+                                        .replace("\\\"", "\"")  // 处理转义的引号
+                                        .replace("\\n", "\n")     // 处理转义的换行符
+                                        .replace("\\t", "\t")     // 处理转义的制表符
+                                    
+                                    println("=== Help WebView HTML Content Start ===")
+                                    println("URL: $url")
+                                    println("HTML Length: ${htmlContent.length} characters")
+                                    println("--- Help HTML Content ---")
+                                    println(htmlContent)
+                                    println("=== Help WebView HTML Content End ===")
+                                } catch (e: Exception) {
+                                    println("Error printing help HTML content: ${e.message}")
+                                }
+                            }
+                            
                             // 执行JavaScript获取网页内容高度
                             view?.evaluateJavascript(
                                 "(function(){return Math.max(document.body.scrollHeight, document.documentElement.scrollHeight, 500);})();"
