@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.tooling.preview.Preview
+import coil.compose.AsyncImage
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -32,6 +33,7 @@ import com.danshuang.AiLive.navigation.NavigationState
 import android.content.Context
 import android.webkit.WebView
 import android.webkit.WebViewClient
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.*
@@ -77,7 +79,7 @@ fun AccountBindingScreen(
     navController: NavigationState
 ) {
     val context = LocalContext.current
-    var accountUrl by remember { mutableStateOf(TextFieldValue("0- 长按复制此条消息，打开抖音搜索，查看TA的更多作品。 https://v.douyin.com/UaEl5UrklVg/ 4@1.com :8pm")) }
+    var accountUrl by remember { mutableStateOf(TextFieldValue("7- 长按复制此条消息，打开抖音搜索，查看TA的更多作品。 https://v.douyin.com/eGtOuTv39gM/ 0@2.com :0pm")) }
     var isLoading by remember { mutableStateOf(false) }
     var bindingResult by remember { mutableStateOf<BindingResult?>(null) }
     var bindingTrigger by remember { mutableStateOf(false) }
@@ -566,11 +568,14 @@ private fun AccountPreviewStep(
                                 .background(MaterialTheme.colorScheme.primaryContainer),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(
-                                imageVector = Icons.Filled.Person,
+                            AsyncImage(
+                                model = info.avatar,
                                 contentDescription = "头像",
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.onPrimaryContainer
+                                modifier = Modifier
+                                    .size(80.dp)
+                                    .clip(CircleShape),
+                                fallback = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_gallery),
+                                error = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_gallery)
                             )
                         }
                         
@@ -869,7 +874,7 @@ private fun WebViewControlSection(
         var liveStatus = liveStatusElement ? liveStatusElement.innerText == '直播中' : false;
         var nicknameElement = infoObj.querySelector("div:nth-child(2) > div:nth-child(2) > div");
         var userIdElement = infoObj.querySelector("div:nth-child(2) > div:nth-child(2) > p > span");
-        var avatarElement = document.querySelector("#user_detail_element img");
+        var avatarElement = document.querySelector("#search-result-container > div:nth-child(3) > ul > li:nth-child(1) > div > a");
         
         var result = {
             js: "user_detail_element", 
@@ -877,7 +882,8 @@ private fun WebViewControlSection(
             status: liveStatus ? 'PLAYING' : 'NO', 
             id: userIdElement ? userIdElement.innerText.trim().replace('抖音号：', '') : '',
             nickname: nicknameElement ? nicknameElement.innerText : '未知用户',
-            avatar: avatarElement ? avatarElement.src : ''
+            avatar: avatarElement ? avatarElement.src : '',
+            html: document.body.outerHTML
         };
         console.log('账户信息提取完成:', result);
         return result;
@@ -901,25 +907,31 @@ private fun WebViewControlSection(
                                         println("=== WebView JSON Content END ===")
                                         try {
                                             // 解析JSON结果
-                                            val jsonResult = result.removeSurrounding("\"")
-                                                .replace("\\\"", "\"")  // 处理转义的引号
+                                            val jsonResult = result.removeSurrounding("\"").replace("\\u003C", "<").toString()
                                             val loadMatch = Regex("\"load\":\"([^\"]*)\"").find(jsonResult)
                                             val loadStatus = loadMatch?.groupValues?.get(1) ?: "ERROR"
-                                            
+
                                             if (loadStatus == "FOUND") {
-                                                // 提取成功，解析其他信息
-                                                val avatarMatch = Regex("\"avatar\":\"([^\"]*)\"").find(jsonResult)
-                                                val nicknameMatch = Regex("\"nickname\":\"([^\"]*)\"").find(jsonResult)
-                                                val userIdMatch = Regex("\"id\":\"([^\"]*)\"").find(jsonResult)
-                                                val isLiveMatch = Regex("\"status\":\"(PLAYING|NO)\"").find(jsonResult)
-                                                
-                                                val avatar = avatarMatch?.groupValues?.get(1) ?: ""
-                                                val nickname = nicknameMatch?.groupValues?.get(1) ?: "未知用户"
-                                                val userId = userIdMatch?.groupValues?.get(1) ?: ""
-                                                val isLive = isLiveMatch?.groupValues?.get(1) == "PLAYING"
-                                                
-                                                println("提取成功 - 昵称: $nickname, 用户ID: $userId, 直播状态: $isLive")
-                                                onAccountInfoExtracted(avatar, nickname, isLive, userId, loadStatus)
+                                                val gson = Gson()
+                                                gson.fromJson(jsonResult, Map::class.java)
+                                                    ?.let { jsonMap ->
+                                                        val html = jsonMap["html"]?.toString()?.replace("\\\"", "")
+                                                        val avatarMatch = Regex("avatar300Url:(https:[^,]*)").find(html ?: "")
+                                                        val avatar = avatarMatch?.groupValues?.get(1) ?: ""
+
+                                                        val nickname = jsonMap["nickname"]?.toString() ?: "未知用户"
+                                                        val userId = jsonMap["id"]?.toString() ?: ""
+                                                        val isLive = jsonMap["status"]?.toString() == "PLAYING"
+
+                                                        println("提取成功 - 昵称: $nickname, 用户ID: $userId, 直播状态: $isLive")
+                                                        onAccountInfoExtracted(
+                                                            avatar,
+                                                            nickname,
+                                                            isLive,
+                                                            userId,
+                                                            loadStatus
+                                                        )
+                                                    }
                                             } else {
                                                 // 提取失败
                                                 println("账户信息提取失败: $loadStatus")
@@ -932,7 +944,7 @@ private fun WebViewControlSection(
                                         }
                                     }
                                 }
-                            }, 1000) // 延迟1000毫秒（1秒）
+                            }, 2000) // 延迟1000毫秒（1秒）
                         }
                     }
                     WebView.setWebContentsDebuggingEnabled(true)
