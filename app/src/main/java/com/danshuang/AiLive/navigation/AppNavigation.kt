@@ -25,7 +25,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.activity.compose.BackHandler
-import com.danshuang.AiLive.data.LoginRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import com.danshuang.AiLive.service.BaseScreenManager
+import com.danshuang.AiLive.service.rememberBaseScreenManager
+import com.danshuang.AiLive.ui.components.BaseScreen
 import com.danshuang.AiLive.ui.screens.LoginScreen
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.ui.theme.backgroundLight
@@ -44,25 +49,19 @@ sealed class BottomNavItem(
 
 @Composable
 fun AppNavigation() {
-    val context = LocalContext.current
-    val loginRepository = remember { LoginRepository(context) }
+    val baseScreenManager = rememberBaseScreenManager()
+    val isLoggedIn by baseScreenManager.getLoginStatusFlow().collectAsState(initial = false)
     
-    var isLoggedIn by remember { mutableStateOf(false) }
-    
-    // 检查是否已登录
-    LaunchedEffect(Unit) {
-        loginRepository.isLoggedInFlow().collect { loggedIn ->
-            isLoggedIn = loggedIn
+    BaseScreen(
+        requireLogin = true,
+        onLoginSuccess = {
+            // 登录成功后的回调可以在这里处理额外逻辑
         }
-    }
-    
-    if (!isLoggedIn) {
-        LoginScreen(
-            onLoginSuccess = { isLoggedIn = true }
-        )
-    } else {
+    ) {
         MainAppNavigation(
-            onLogout = { isLoggedIn = false }
+            onLogout = {
+                // 注销时清空登录状态，BaseScreen会自动跳转到登录页
+            }
         )
     }
 }
@@ -72,6 +71,7 @@ fun MainAppNavigation(
     onLogout: () -> Unit = {}
 ) {
     val navigationState = rememberNavigationState()
+    val baseScreenManager = rememberBaseScreenManager()
     val items = listOf(
         BottomNavItem.Home,
         BottomNavItem.Model,
@@ -151,7 +151,13 @@ fun MainAppNavigation(
         ) {
             AppNavigation(
                 navigationState = navigationState,
-                onLogout = onLogout
+                onLogout = {
+                    // 使用BaseScreenManager处理注销
+                    kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.Main).launch {
+                        baseScreenManager.logout()
+                    }
+                    onLogout()
+                }
             )
         }
     }

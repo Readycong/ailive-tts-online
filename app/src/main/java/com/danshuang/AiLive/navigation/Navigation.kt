@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.danshuang.AiLive.ui.components.WithLoginProtection
 import com.danshuang.AiLive.ui.screens.ContentEditScreen
 import com.danshuang.AiLive.ui.screens.HomeScreen
 import com.danshuang.AiLive.ui.screens.AILiveScreen
@@ -164,74 +165,140 @@ fun AppNavigation(
     onLogout: () -> Unit = {}
 ) {
     when (navigationState.currentScreen) {
-        is Screen.Home -> HomeScreen(navController = navigationState)
-        is Screen.Model -> ModelScreen(navigationState)
-        is Screen.AILive -> AILiveScreen(navController = navigationState)
-        is Screen.Knowledge -> KnowledgeScreen(navController = navigationState)
-        is Screen.Profile -> ProfileScreen(
-            onLogout = onLogout,
-            onNavigateToChangePassword = { navigationState.navigateToChangePassword() },
-            onNavigateToHelp = { navigationState.navigateToHelp() },
-            onNavigateToCardActivation = { navigationState.navigateToCardActivation() }
-        )
-        is Screen.ChangePassword -> ChangePasswordScreen(
-            onBack = { navigationState.navigateUp() }
-        )
-        is Screen.Help -> HelpScreen(
-            onBack = { navigationState.navigateUp() }
-        )
+        is Screen.Home -> WithLoginProtection(
+            screenName = "Home",
+            onLogout = onLogout
+        ) {
+            HomeScreen(navController = navigationState)
+        }
+        is Screen.Model -> WithLoginProtection(
+            screenName = "Model",
+            onLogout = onLogout
+        ) {
+            ModelScreen(navigationState)
+        }
+        is Screen.AILive -> WithLoginProtection(
+            screenName = "AILive",
+            onLogout = onLogout
+        ) {
+            AILiveScreen(navController = navigationState)
+        }
+        is Screen.Knowledge -> WithLoginProtection(
+            screenName = "Knowledge",
+            onLogout = onLogout
+        ) {
+            KnowledgeScreen(navController = navigationState)
+        }
+        is Screen.Profile -> WithLoginProtection(
+            screenName = "Profile",
+            onLogout = onLogout
+        ) {
+            ProfileScreen(
+                onLogout = onLogout,
+                onNavigateToChangePassword = { navigationState.navigateToChangePassword() },
+                onNavigateToHelp = { navigationState.navigateToHelp() },
+                onNavigateToCardActivation = { navigationState.navigateToCardActivation() }
+            )
+        }
+        is Screen.ChangePassword -> WithLoginProtection(
+            screenName = "ChangePassword",
+            onLogout = onLogout
+        ) {
+            ChangePasswordScreen(
+                onBack = { navigationState.navigateUp() }
+            )
+        }
+        is Screen.Help -> WithLoginProtection(
+            screenName = "Help",
+            onLogout = onLogout
+        ) {
+            HelpScreen(
+                onBack = { navigationState.navigateUp() }
+            )
+        }
         is Screen.ContentEdit -> {
             navigationState.contentEditKey?.let { key ->
-                ContentEditScreen(
-                    navController = navigationState,
-                    contentKey = key
-                )
+                WithLoginProtection(
+                    screenName = "ContentEdit",
+                    onLogout = onLogout
+                ) {
+                    ContentEditScreen(
+                        navController = navigationState,
+                        contentKey = key
+                    )
+                }
             }
         }
         is Screen.LiveScript -> {
             navigationState.liveScriptKey?.let { key ->
-                LiveScriptScreen(
-                    navController = navigationState,
-                    scriptKey = key
-                )
+                WithLoginProtection(
+                    screenName = "LiveScript",
+                    onLogout = onLogout
+                ) {
+                    LiveScriptScreen(
+                        navController = navigationState,
+                        scriptKey = key
+                    )
+                }
             }
         }
-        is Screen.GreetingSettings -> {
-                GreetingSettingsScreen(
-                    navController = navigationState
-                )
-            }
-            is Screen.NicknameRestrictions -> {
-                com.danshuang.AiLive.ui.screens.RestrictionSettingsScreen(
-                    navController = navigationState,
-                    restrictionType = "nickname"
-                )
-            }
-            is Screen.CommentRestrictions -> {
-                com.danshuang.AiLive.ui.screens.RestrictionSettingsScreen(
-                    navController = navigationState,
-                    restrictionType = "comment"
-                )
-            }
-            is Screen.VoiceSettings -> {
-                com.danshuang.AiLive.ui.screens.VoiceSettingsScreen(
-                    navController = navigationState
-                )
-            }
-            is Screen.VoiceCloning -> {
-                com.danshuang.AiLive.ui.screens.VoiceCloningScreen(
-                    navController = navigationState
-                )
-            }
-            is Screen.AccountBinding -> {
-                com.danshuang.AiLive.ui.screens.AccountBindingScreen(
-                    navController = navigationState
-                )
-            }
-            is Screen.CardActivation -> {
-                CardActivationScreen(
-                    onNavigateBack = { navigationState.navigateUp() }
-                )
-            }
+        is Screen.GreetingSettings -> WithLoginProtection(
+            screenName = "GreetingSettings",
+            onLogout = onLogout
+        ) {
+            GreetingSettingsScreen(
+                navController = navigationState
+            )
+        }
+        is Screen.NicknameRestrictions -> WithLoginProtection(
+            screenName = "NicknameRestrictions",
+            onLogout = onLogout
+        ) {
+            com.danshuang.AiLive.ui.screens.RestrictionSettingsScreen(
+                navController = navigationState,
+                restrictionType = "nickname"
+            )
+        }
+        is Screen.CommentRestrictions -> WithLoginProtection(
+            screenName = "CommentRestrictions",
+            onLogout = onLogout
+        ) {
+            com.danshuang.AiLive.ui.screens.RestrictionSettingsScreen(
+                navController = navigationState,
+                restrictionType = "comment"
+            )
+        }
+        is Screen.VoiceSettings -> WithLoginProtection(
+            screenName = "VoiceSettings",
+            onLogout = onLogout
+        ) {
+            com.danshuang.AiLive.ui.screens.VoiceSettingsScreen(
+                navController = navigationState
+            )
+        }
+        is Screen.VoiceCloning -> WithLoginProtection(
+            screenName = "VoiceCloning",
+            onLogout = onLogout
+        ) {
+            com.danshuang.AiLive.ui.screens.VoiceCloningScreen(
+                navController = navigationState
+            )
+        }
+        is Screen.AccountBinding -> WithLoginProtection(
+            screenName = "AccountBinding",
+            onLogout = onLogout
+        ) {
+            com.danshuang.AiLive.ui.screens.AccountBindingScreen(
+                navController = navigationState
+            )
+        }
+        is Screen.CardActivation -> WithLoginProtection(
+            screenName = "CardActivation",
+            onLogout = onLogout
+        ) {
+            CardActivationScreen(
+                onNavigateBack = { navigationState.navigateUp() }
+            )
+        }
     }
 }
