@@ -24,12 +24,12 @@ class KnowledgeApiService(
      */
     suspend fun fetchKbItems(
         token: String,
-        douyinId: String
+        typeId: String
     ): ServerResponse<List<KnowledgeItem>> = withContext(Dispatchers.IO) {
         val apiName = "FetchKbItems"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/fetch-kb-items"
-            val postData = mapOf("douyin_id" to douyinId)
+            val postData = mapOf("type_id" to typeId)
             
             responseHandler.logApiCall(apiName, url, "POST", postData)
             
@@ -80,7 +80,7 @@ class KnowledgeApiService(
      */
     suspend fun updateKbItem(
         token: String,
-        douyinId: String,
+        scriptKey: String,
         typeId: String,
         id: String,
         question: String,
