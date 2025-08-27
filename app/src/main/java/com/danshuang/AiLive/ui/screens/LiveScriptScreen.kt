@@ -35,36 +35,41 @@ fun LiveScriptScreen(
     var currentSwipeId by remember { mutableStateOf<Int?>(null) }
     
     val title = when (scriptKey) {
-        "greeting" -> "问候话术"
-        "promotion" -> "品宣话术"
-        "consultation" -> "留咨话术"
-        "conversion" -> "促成话术"
-        "thanks" -> "感谢话术"
-        else -> "直播话术"
+        "WELCOME" -> "问候话术"
+        "ROOM" -> "品牌话术"
+        "PRODUCT" -> "带货话术"
+        "KEEP" -> "留咨话术"
+        "ORDER" -> "促成话术"
+        "THANKS" -> "感谢话术"
+        else -> "eRRRRRor"
     }
 
     // 话术数据
     var scriptList by remember {
         mutableStateOf(
             when (scriptKey) {
-                "greeting" -> listOf(
+                "WELCOME" -> listOf(
                     LiveScriptItem(1, "问候", "欢迎新进来的家人们，今天是我们直播间开业庆典，全场福利送不停！"),
                     LiveScriptItem(2, "问候", "哈喽各位宝宝们，我是你们的主播小美，今天带来超多美业好物，不要错过哦！"),
                     LiveScriptItem(3, "问候", "欢迎欢迎，今天直播间有专业美容师在线答疑，有任何肌肤问题都可以问！")
                 )
-                "promotion" -> listOf(
-                    LiveScriptItem(1, "品宣", "我们店是本地5年老店，服务过5000+客户，口碑保证，品质看得见！"),
-                    LiveScriptItem(2, "品宣", "专业团队持证上岗，所有产品都是正规渠道，安全有保障，用得放心！")
+                "ROOM" -> listOf(
+                    LiveScriptItem(1, "品牌", "我们店是本地5年老店，服务过5000+客户，口碑保证，品质看得见！"),
+                    LiveScriptItem(2, "品牌", "专业团队持证上岗，所有产品都是正规渠道，安全有保障，用得放心！")
                 )
-                "consultation" -> listOf(
+                "PRODUCT" -> listOf(
+                    LiveScriptItem(1, "带货", "我们店是本地5年老店，服务过5000+客户，口碑保证，品质看得见！"),
+                    LiveScriptItem(2, "带货", "专业团队持证上岗，所有产品都是正规渠道，安全有保障，用得放心！")
+                )
+                "KEEP" -> listOf(
                     LiveScriptItem(1, "留咨", "想了解适合自己肤质的护肤品吗？在评论区打个1，我来帮你分析！"),
                     LiveScriptItem(2, "留咨", "有肌肤问题困扰的宝宝们，可以私信留下联系方式，专业顾问一对一服务！")
                 )
-                "conversion" -> listOf(
+                "ORDER" -> listOf(
                     LiveScriptItem(1, "促成", "前10名下单的宝宝享受5折优惠，还送精美礼品，数量有限，先到先得！"),
                     LiveScriptItem(2, "促成", "今天直播间专属福利，原价299的体验套餐，现在只要99元！")
                 )
-                "thanks" -> listOf(
+                "THANKS" -> listOf(
                     LiveScriptItem(1, "感谢", "感谢今天所有支持我们的宝宝们，你们的信任是我们前进的动力！"),
                     LiveScriptItem(2, "感谢", "谢谢大家的陪伴，有任何问题随时联系客服，我们会第一时间为您解决！")
                 )

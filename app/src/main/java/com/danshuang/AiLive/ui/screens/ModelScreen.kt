@@ -159,45 +159,53 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = R.drawable.counter_1_24px,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
-                    navigationState.navigateToLiveScript("greeting")
+                    navigationState.navigateToLiveScript("WELCOME")
                 }
             ),
             QuickActionData(
-                title = "品宣 >",
+                title = "品牌 >",
                 icon = R.drawable.counter_2_24px,
                 backgroundColor = Color(0xFF4CAF50),
                 onClick = {
-                    navigationState.navigateToLiveScript("promotion")
+                    navigationState.navigateToLiveScript("ROOM")
+                }
+            ),
+            QuickActionData(
+                title = "带货 >",
+                icon = R.drawable.counter_3_24px,
+                backgroundColor = Color(0xFFFF9800),
+                onClick = {
+                    navigationState.navigateToLiveScript("PRODUCT")
                 }
             ),
             QuickActionData(
                 title = "留咨 >",
-                icon = R.drawable.counter_3_24px,
-                backgroundColor = Color(0xFFFF9800),
+                icon = R.drawable.counter_4_24px,
+                backgroundColor = Color(0xFF9C27B0),
                 onClick = {
-                    navigationState.navigateToLiveScript("consultation")
+                    navigationState.navigateToLiveScript("KEEP")
                 }
             ),
             QuickActionData(
                 title = "促成 >",
-                icon = R.drawable.counter_4_24px,
-                backgroundColor = Color(0xFF9C27B0),
+                icon = R.drawable.counter_5_24px,
+                backgroundColor = Color(0xFF2196F3),
                 onClick = {
-                    navigationState.navigateToLiveScript("conversion")
+                    navigationState.navigateToLiveScript("ORDER")
                 }
             ),
             QuickActionData(
                 title = "感谢",
-                icon = R.drawable.counter_5_24px,
-                backgroundColor = Color(0xFF2196F3),
+                icon = R.drawable.counter_6_24px,
+                backgroundColor = Color(0xFF4CAF50),
                 onClick = {
-                    navigationState.navigateToLiveScript("thanks")
+                    navigationState.navigateToLiveScript("THANKS")
                 }
             )
         )
 
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             items(quickLiveScriptActions) { action ->
                 QuickActionCard(
@@ -207,7 +215,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         }
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "AI主播会按照1->5顺序播放话术库，\n同项中有多条内容将随机播报其中的一条",
+            text = "AI主播会按照1->6顺序播放话术库，\n同项中有多条内容将随机播报其中的一条",
             fontSize = 12.sp,
             fontWeight = FontWeight.SemiBold,
             modifier = Modifier.padding(start = 24.dp, top = 12.dp)

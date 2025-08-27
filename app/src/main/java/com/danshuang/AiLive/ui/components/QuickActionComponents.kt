@@ -54,12 +54,12 @@ data class QuickActionVectorData(
 fun QuickActionCard(
     action: QuickActionData,
     modifier: Modifier = Modifier,
-    iconSize: Dp = 21.6.dp,
-    cardSize: Dp = 54.dp
+    iconSize: Dp = 19.4.dp,
+    cardSize: Dp = 48.dp
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.width(72.dp)
+        modifier = modifier.width(64.dp)
     ) {
         Card(
             onClick = action.onClick,
