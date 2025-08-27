@@ -1,5 +1,6 @@
 package com.danshuang.AiLive.api.service
 
+import android.content.Context
 import com.danshuang.AiLive.api.client.BaseApiClient
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.model.ServerResponse
@@ -15,8 +16,9 @@ import kotlinx.coroutines.withContext
  */
 class DouyinApiService(
     tokenManager: TokenManager,
-    private val baseUrl: String
-) : BaseApiClient(tokenManager) {
+    private val baseUrl: String,
+    context: Context
+) : BaseApiClient(tokenManager, context) {
     
     /**
      * 绑定抖音直播账号
@@ -26,7 +28,8 @@ class DouyinApiService(
         douyinId: String,
         nickname: String,
         avatar: String,
-        roomId: String
+        roomId: String,
+        userHomeUrl: String
     ): ServerResponse<Any> = withContext(Dispatchers.IO) {
         val apiName = "BindDouyinLive"
         return@withContext try {
@@ -35,7 +38,8 @@ class DouyinApiService(
                 "douyin_id" to douyinId,
                 "nickname" to nickname,
                 "avatar" to avatar,
-                "room_id" to roomId
+                "room_id" to roomId,
+                "user_home_url" to userHomeUrl
             )
             
             responseHandler.logApiCall(apiName, url, "POST", postData)

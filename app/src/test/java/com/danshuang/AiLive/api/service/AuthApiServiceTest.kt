@@ -1,5 +1,7 @@
 package com.danshuang.AiLive.api.service
 
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.model.LoginResult
 import com.danshuang.AiLive.data.model.ServerResponse
@@ -20,6 +22,7 @@ class AuthApiServiceTest {
     private lateinit var mockTokenManager: TokenManager
     private lateinit var authApiService: AuthApiService
     private lateinit var baseUrl: String
+    private lateinit var context: Context
 
     @Before
     fun setup() {
@@ -27,8 +30,9 @@ class AuthApiServiceTest {
         mockWebServer.start()
         baseUrl = mockWebServer.url("/").toString().removeSuffix("/")
         
+        context = ApplicationProvider.getApplicationContext<Context>()
         mockTokenManager = mock(TokenManager::class.java)
-        authApiService = AuthApiService(mockTokenManager, baseUrl)
+        authApiService = AuthApiService(mockTokenManager, baseUrl, context)
     }
 
     @After

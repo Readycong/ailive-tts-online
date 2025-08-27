@@ -41,13 +41,28 @@ data class UserProfile(
     val nickname: String = "",
     val headimg: String = "",
     val balance: String = "",
-    val point: String = ""
+    val point: String = "",
+    val boundAccount: BoundAccountInfo? = null  // 添加绑定账户信息
 ) {
     val displayBalance: String
         get() = if (balance.isNotEmpty() && point.isNotEmpty()) {
             "￥$balance / $point"
         } else ""
 }
+
+/**
+ * 绑定的账户信息
+ */
+@Keep
+data class BoundAccountInfo(
+    val platform: String = "douyin",  // 平台标识（抖音、快手等）
+    val avatar: String = "",          // 账户头像
+    val nickname: String = "",        // 账户昵称
+    val userId: String = "",          // 用户ID
+    val homeUrl: String = "",         // 用户主页URL
+    val isLive: Boolean = false,      // 是否在直播
+    val bindTime: Long = System.currentTimeMillis()  // 绑定时间
+)
 
 /**
  * 登录请求结果的封装类

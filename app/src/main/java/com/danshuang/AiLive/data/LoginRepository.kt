@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
 import com.danshuang.AiLive.data.model.LoggedInUser
 import com.danshuang.AiLive.data.model.UserProfile
+import com.danshuang.AiLive.data.model.BoundAccountInfo
 import com.google.gson.Gson
 
 private val Context.dataStore by preferencesDataStore(name = "login_prefs")
@@ -27,6 +28,15 @@ class LoginRepository(private val context: Context) {
     private val USER_HEADIMG_KEY = stringPreferencesKey("user_headimg")
     private val USER_BALANCE_KEY = stringPreferencesKey("user_balance")
     private val USER_POINT_KEY = stringPreferencesKey("user_point")
+    
+    // 绑定账户信息
+    private val BOUND_ACCOUNT_PLATFORM_KEY = stringPreferencesKey("bound_account_platform")
+    private val BOUND_ACCOUNT_AVATAR_KEY = stringPreferencesKey("bound_account_avatar")
+    private val BOUND_ACCOUNT_NICKNAME_KEY = stringPreferencesKey("bound_account_nickname")
+    private val BOUND_ACCOUNT_USER_ID_KEY = stringPreferencesKey("bound_account_user_id")
+    private val BOUND_ACCOUNT_HOME_URL_KEY = stringPreferencesKey("bound_account_home_url")
+    private val BOUND_ACCOUNT_IS_LIVE_KEY = stringPreferencesKey("bound_account_is_live")
+    private val BOUND_ACCOUNT_BIND_TIME_KEY = longPreferencesKey("bound_account_bind_time")
 
     val authToken: Flow<String?> = context.dataStore.data
         .map { preferences ->
@@ -45,11 +55,26 @@ class LoginRepository(private val context: Context) {
     
     val userProfile: Flow<UserProfile> = context.dataStore.data
         .map { preferences ->
+            val boundAccount = if (preferences[BOUND_ACCOUNT_PLATFORM_KEY] != null) {
+                BoundAccountInfo(
+                    platform = preferences[BOUND_ACCOUNT_PLATFORM_KEY] ?: "douyin",
+                    avatar = preferences[BOUND_ACCOUNT_AVATAR_KEY] ?: "",
+                    nickname = preferences[BOUND_ACCOUNT_NICKNAME_KEY] ?: "",
+                    userId = preferences[BOUND_ACCOUNT_USER_ID_KEY] ?: "",
+                    homeUrl = preferences[BOUND_ACCOUNT_HOME_URL_KEY] ?: "",
+                    isLive = preferences[BOUND_ACCOUNT_IS_LIVE_KEY]?.toBoolean() ?: false,
+                    bindTime = preferences[BOUND_ACCOUNT_BIND_TIME_KEY] ?: System.currentTimeMillis()
+                )
+            } else {
+                null
+            }
+            
             UserProfile(
                 nickname = preferences[USER_NICKNAME_KEY] ?: "",
                 headimg = preferences[USER_HEADIMG_KEY] ?: "",
                 balance = preferences[USER_BALANCE_KEY] ?: "",
-                point = preferences[USER_POINT_KEY] ?: ""
+                point = preferences[USER_POINT_KEY] ?: "",
+                boundAccount = boundAccount
             )
         }
     
@@ -92,6 +117,17 @@ class LoginRepository(private val context: Context) {
             preferences[USER_HEADIMG_KEY] = user.userProfile.headimg
             preferences[USER_BALANCE_KEY] = user.userProfile.balance
             preferences[USER_POINT_KEY] = user.userProfile.point
+            
+            // 保存绑定账户信息
+            user.userProfile.boundAccount?.let { boundAccount ->
+                preferences[BOUND_ACCOUNT_PLATFORM_KEY] = boundAccount.platform
+                preferences[BOUND_ACCOUNT_AVATAR_KEY] = boundAccount.avatar
+                preferences[BOUND_ACCOUNT_NICKNAME_KEY] = boundAccount.nickname
+                preferences[BOUND_ACCOUNT_USER_ID_KEY] = boundAccount.userId
+                preferences[BOUND_ACCOUNT_HOME_URL_KEY] = boundAccount.homeUrl
+                preferences[BOUND_ACCOUNT_IS_LIVE_KEY] = boundAccount.isLive.toString()
+                preferences[BOUND_ACCOUNT_BIND_TIME_KEY] = boundAccount.bindTime
+            }
         }
     }
     
@@ -101,6 +137,26 @@ class LoginRepository(private val context: Context) {
             preferences[USER_HEADIMG_KEY] = profile.headimg
             preferences[USER_BALANCE_KEY] = profile.balance
             preferences[USER_POINT_KEY] = profile.point
+            
+            // 更新绑定账户信息
+            profile.boundAccount?.let { boundAccount ->
+                preferences[BOUND_ACCOUNT_PLATFORM_KEY] = boundAccount.platform
+                preferences[BOUND_ACCOUNT_AVATAR_KEY] = boundAccount.avatar
+                preferences[BOUND_ACCOUNT_NICKNAME_KEY] = boundAccount.nickname
+                preferences[BOUND_ACCOUNT_USER_ID_KEY] = boundAccount.userId
+                preferences[BOUND_ACCOUNT_HOME_URL_KEY] = boundAccount.homeUrl
+                preferences[BOUND_ACCOUNT_IS_LIVE_KEY] = boundAccount.isLive.toString()
+                preferences[BOUND_ACCOUNT_BIND_TIME_KEY] = boundAccount.bindTime
+            } ?: run {
+                // 如果绑定账户信息为null，则清除相关字段
+                preferences.remove(BOUND_ACCOUNT_PLATFORM_KEY)
+                preferences.remove(BOUND_ACCOUNT_AVATAR_KEY)
+                preferences.remove(BOUND_ACCOUNT_NICKNAME_KEY)
+                preferences.remove(BOUND_ACCOUNT_USER_ID_KEY)
+                preferences.remove(BOUND_ACCOUNT_HOME_URL_KEY)
+                preferences.remove(BOUND_ACCOUNT_IS_LIVE_KEY)
+                preferences.remove(BOUND_ACCOUNT_BIND_TIME_KEY)
+            }
         }
     }
 
@@ -113,6 +169,38 @@ class LoginRepository(private val context: Context) {
             preferences.remove(USER_HEADIMG_KEY)
             preferences.remove(USER_BALANCE_KEY)
             preferences.remove(USER_POINT_KEY)
+            // 同时清除绑定账户信息
+            preferences.remove(BOUND_ACCOUNT_PLATFORM_KEY)
+            preferences.remove(BOUND_ACCOUNT_AVATAR_KEY)
+            preferences.remove(BOUND_ACCOUNT_NICKNAME_KEY)
+            preferences.remove(BOUND_ACCOUNT_USER_ID_KEY)
+            preferences.remove(BOUND_ACCOUNT_HOME_URL_KEY)
+            preferences.remove(BOUND_ACCOUNT_IS_LIVE_KEY)
+            preferences.remove(BOUND_ACCOUNT_BIND_TIME_KEY)
+        }
+    }
+    
+    suspend fun saveBoundAccountInfo(boundAccount: BoundAccountInfo) {
+        context.dataStore.edit { preferences ->
+            preferences[BOUND_ACCOUNT_PLATFORM_KEY] = boundAccount.platform
+            preferences[BOUND_ACCOUNT_AVATAR_KEY] = boundAccount.avatar
+            preferences[BOUND_ACCOUNT_NICKNAME_KEY] = boundAccount.nickname
+            preferences[BOUND_ACCOUNT_USER_ID_KEY] = boundAccount.userId
+            preferences[BOUND_ACCOUNT_HOME_URL_KEY] = boundAccount.homeUrl
+            preferences[BOUND_ACCOUNT_IS_LIVE_KEY] = boundAccount.isLive.toString()
+            preferences[BOUND_ACCOUNT_BIND_TIME_KEY] = boundAccount.bindTime
+        }
+    }
+    
+    suspend fun clearBoundAccountInfo() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(BOUND_ACCOUNT_PLATFORM_KEY)
+            preferences.remove(BOUND_ACCOUNT_AVATAR_KEY)
+            preferences.remove(BOUND_ACCOUNT_NICKNAME_KEY)
+            preferences.remove(BOUND_ACCOUNT_USER_ID_KEY)
+            preferences.remove(BOUND_ACCOUNT_HOME_URL_KEY)
+            preferences.remove(BOUND_ACCOUNT_IS_LIVE_KEY)
+            preferences.remove(BOUND_ACCOUNT_BIND_TIME_KEY)
         }
     }
 

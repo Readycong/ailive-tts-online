@@ -30,12 +30,18 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.danshuang.AiLive.R
 import com.danshuang.AiLive.navigation.NavigationState
+import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.data.manager.TokenManager
+import com.danshuang.AiLive.api.ServerApiUtilsV2
+import com.danshuang.AiLive.config.AppConfig
+import com.danshuang.AiLive.data.model.BoundAccountInfo
 import android.content.Context
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.first
 import okhttp3.*
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -79,6 +85,12 @@ fun AccountBindingScreen(
     navController: NavigationState
 ) {
     val context = LocalContext.current
+    
+    // 初始化依赖项
+    val loginRepository = remember { LoginRepository(context) }
+    val tokenManager = remember { TokenManager(loginRepository) }
+    val apiUtils = remember { ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository) }
+    
     var accountUrl by remember { mutableStateOf(TextFieldValue("7- 长按复制此条消息，打开抖音搜索，查看TA的更多作品。 https://v.douyin.com/eGtOuTv39gM/ 0@2.com :0pm")) }
     var isLoading by remember { mutableStateOf(false) }
     var bindingResult by remember { mutableStateOf<BindingResult?>(null) }
@@ -88,8 +100,11 @@ fun AccountBindingScreen(
     var showWebView by remember { mutableStateOf(false) }
     var showDropdownMenu by remember { mutableStateOf(false) }
     var userHomeUrl by remember { mutableStateOf("") }
+    var userRealHomeUrl by remember { mutableStateOf("") }
     var extractionStatus by remember { mutableStateOf(ExtractionStatus.IDLE) }
     var canBindAccount by remember { mutableStateOf(false) }
+    var countdownSeconds by remember { mutableStateOf(0) }
+    var isCountingDown by remember { mutableStateOf(false) }
     
     // 提取URL的函数
     fun extractUrlFromText(text: String): String? {
@@ -116,29 +131,30 @@ fun AccountBindingScreen(
     suspend fun submitBindingToServer(accountInfo: UserAccountInfo, url: String): BindingResult {
         return withContext(Dispatchers.IO) {
             try {
-                val client = OkHttpClient()
-                val json = JSONObject().apply {
-                    put("avatar", accountInfo.avatar)
-                    put("nickname", accountInfo.nickname)
-                    put("userId", accountInfo.userId)
-                    put("homeUrl", url)
-                    put("isLive", accountInfo.isLive)
+                // 获取当前登录的token
+                val token = tokenManager.currentToken.first()
+                if (token.isNullOrBlank()) {
+                    return@withContext BindingResult(false, "用户未登录，请先登录后再绑定账户")
                 }
                 
-                val requestBody = json.toString().toRequestBody("application/json".toMediaType())
-                val request = Request.Builder()
-                    .url("https://api.example.com/account/bind") // 替换为实际的API地址
-                    .post(requestBody)
-                    .build()
+                // 从URL中提取房间ID（简单实现，实际可能需要更复杂的解析）
+                val roomId = accountInfo.userId.ifEmpty { "default_room_${System.currentTimeMillis()}" }
                 
-                val response = client.newCall(request).execute()
-                if (response.isSuccessful) {
-                    BindingResult(true, "绑定成功")
+                // 调用DouyinApiService的bindDouyinLive方法
+                val serverResponse = apiUtils.bindDouyinLive(
+                    token = token,
+                    douyinId = accountInfo.userId,
+                    nickname = accountInfo.nickname,
+                    avatar = accountInfo.avatar,
+                    roomId = roomId,
+                    userHomeUrl = userRealHomeUrl
+                )
+                
+                if (serverResponse.isSuccess) {
+                    BindingResult(true, serverResponse.msg)
                 } else {
-                    BindingResult(false, "服务器错误: ${response.code}")
+                    BindingResult(false, serverResponse.msg)
                 }
-            } catch (e: IOException) {
-                BindingResult(false, "网络错误: ${e.message}")
             } catch (e: Exception) {
                 BindingResult(false, "绑定失败: ${e.message}")
             }
@@ -148,6 +164,17 @@ fun AccountBindingScreen(
     LaunchedEffect(bindingTrigger) {
         if (bindingTrigger && accountInfo != null) {
             isLoading = true
+            isCountingDown = true
+            countdownSeconds = AppConfig.Api.getTimeout(context).toInt()
+            
+            // 开始倒计时
+            while (countdownSeconds > 0 && isCountingDown) {
+                kotlinx.coroutines.delay(1000)
+                if (isCountingDown) {
+                    countdownSeconds--
+                }
+            }
+            
             try {
                 // 提交到服务器
                 val serverResult = submitBindingToServer(accountInfo!!, userHomeUrl)
@@ -155,6 +182,19 @@ fun AccountBindingScreen(
                 if (serverResult.success) {
                     // 服务器保存成功，同时保存到本地
                     saveAccountToLocal(accountInfo!!, userHomeUrl)
+                    
+                    // 保存绑定信息到用户登录信息中
+                    val boundAccount = BoundAccountInfo(
+                        platform = "douyin",
+                        avatar = accountInfo!!.avatar,
+                        nickname = accountInfo!!.nickname,
+                        userId = accountInfo!!.userId,
+                        homeUrl = userRealHomeUrl,
+                        isLive = accountInfo!!.isLive,
+                        bindTime = System.currentTimeMillis()
+                    )
+                    loginRepository.saveBoundAccountInfo(boundAccount)
+                    
                     bindingResult = BindingResult(true, "绑定成功")
                 } else {
                     // 服务器保存失败
@@ -164,13 +204,26 @@ fun AccountBindingScreen(
                 bindingResult = BindingResult(false, "绑定过程中发生错误: ${e.message}")
             } finally {
                 isLoading = false
+                isCountingDown = false
+                countdownSeconds = 0
                 bindingTrigger = false
             }
         }
     }
     
+    // 监听绑定成功状态，自动返回上一页
+    LaunchedEffect(bindingResult) {
+        bindingResult?.let { result ->
+            if (result.success) {
+                // 绑定成功后延迟1.5秒再返回上一页，让用户看到成功提示
+                kotlinx.coroutines.delay(1500)
+                navController.navigateUp()
+            }
+        }
+    }
+    
     // 处理账户信息提取状态
-    LaunchedEffect(currentStep, userHomeUrl) {
+    LaunchedEffect(currentStep) {
         if (currentStep == BindingStep.ACCOUNT_PREVIEW && extractionStatus == ExtractionStatus.IDLE) {
             extractionStatus = ExtractionStatus.LOADING
             isLoading = true
@@ -245,11 +298,13 @@ fun AccountBindingScreen(
                 WebViewControlSection(
                     url = userHomeUrl.ifEmpty { "about:blank" },
                     isVisible = showWebView,
+                    canBindAccount = canBindAccount,
                     onVisibilityChange = { showWebView = it },
-                    onAccountInfoExtracted = { avatar, nickname, isLive, userId, loadStatus ->
+                    onAccountInfoExtracted = { avatar, nickname, isLive, userId, loadStatus, actualUrl ->
                         // 根据load状态判断提取结果
                         if (loadStatus == "FOUND") {
-                            // 提取成功
+                            // 提取成功，更新userHomeUrl为实际的URL
+                            userRealHomeUrl = actualUrl ?: userHomeUrl
                             extractionStatus = ExtractionStatus.SUCCESS
                             accountInfo = UserAccountInfo(
                                 avatar = avatar,
@@ -258,11 +313,17 @@ fun AccountBindingScreen(
                                 userId = userId
                             )
                             canBindAccount = true
+                            // 重置WebView URL以防止重复加载
+                            userHomeUrl = "about:blank"
                         } else {
-                            // 提取失败 (load值为ERROR)
-                            extractionStatus = ExtractionStatus.ERROR
-                            accountInfo = null
-                            canBindAccount = false
+                            if (!canBindAccount && userHomeUrl != "about:blank") {
+                                // 提取失败 (load值为ERROR)
+                                extractionStatus = ExtractionStatus.ERROR
+                                accountInfo = null
+                                canBindAccount = false
+                            }
+                            // 重置WebView URL
+                            userHomeUrl = "about:blank"
                         }
                         isLoading = false
                     }
@@ -317,6 +378,8 @@ fun AccountBindingScreen(
                                 bindingResult = null
                                 extractionStatus = ExtractionStatus.IDLE
                                 canBindAccount = false
+                                isCountingDown = false
+                                countdownSeconds = 0
                                 // 返回时隐藏WebView调试界面
                                 showWebView = false
                             },
@@ -326,7 +389,9 @@ fun AccountBindingScreen(
                             },
                             bindingResult = bindingResult,
                             extractionStatus = extractionStatus,
-                            canBindAccount = canBindAccount
+                            canBindAccount = canBindAccount,
+                            countdownSeconds = countdownSeconds,
+                            isCountingDown = isCountingDown
                         )
                     }
                 }
@@ -512,7 +577,9 @@ private fun AccountPreviewStep(
     onBind: () -> Unit,
     bindingResult: BindingResult?,
     extractionStatus: ExtractionStatus,
-    canBindAccount: Boolean
+    canBindAccount: Boolean,
+    countdownSeconds: Int,
+    isCountingDown: Boolean
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -602,14 +669,14 @@ private fun AccountPreviewStep(
                                         .size(8.dp)
                                         .clip(CircleShape)
                                         .background(
-                                            if (info.isLive) Color.Green else Color.Gray
+                                            if (info.isLive) Color.Red else Color.Gray
                                         )
                                 )
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text(
                                     text = if (info.isLive) "正在直播" else "未开播",
                                     fontSize = 14.sp,
-                                    color = if (info.isLive) Color.Green else MaterialTheme.colorScheme.onSurfaceVariant
+                                    color = if (info.isLive) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
@@ -637,7 +704,7 @@ private fun AccountPreviewStep(
                             textAlign = TextAlign.Center
                         )
                         Text(
-                            text = "可能是网络问题或网址不正确，您仍然可以手动绑定该账户",
+                            text = "可能是网络问题或网址不正确，您可以返回重试或重新复制网址",
                             fontSize = 14.sp,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             textAlign = TextAlign.Center
@@ -765,11 +832,39 @@ private fun AccountPreviewStep(
                 enabled = !isLoading && bindingResult == null && canBindAccount
             ) {
                 if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = Color.White,
-                        strokeWidth = 2.dp
-                    )
+                    if (isCountingDown && countdownSeconds > 0) {
+                        // 显示倒计时
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "绑定中 ${countdownSeconds}s",
+                                fontSize = 16.sp
+                            )
+                        }
+                    } else {
+                        // 正在处理中
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(20.dp),
+                                color = Color.White,
+                                strokeWidth = 2.dp
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "处理中...",
+                                fontSize = 16.sp
+                            )
+                        }
+                    }
                 } else {
                     Row(
                         verticalAlignment = Alignment.CenterVertically
@@ -796,8 +891,9 @@ private fun AccountPreviewStep(
 private fun WebViewControlSection(
     url: String,
     isVisible: Boolean,
+    canBindAccount: Boolean,
     onVisibilityChange: (Boolean) -> Unit = {},
-    onAccountInfoExtracted: (String, String, Boolean, String, String) -> Unit = { _, _, _, _, _ -> }
+    onAccountInfoExtracted: (String, String, Boolean, String, String, String?) -> Unit = { _, _, _, _, _, _ -> }
 ) {
     var webViewHeight by remember { mutableStateOf(400.dp) }
     
@@ -850,7 +946,7 @@ private fun WebViewControlSection(
 //                                }
                                 
                                 // 提取账户信息 - 仅当URL包含抖音链接时执行
-                                if (url?.contains("https://www.douyin.com/user/") == true) {
+                                if (!canBindAccount && url?.contains("https://www.douyin.com/user/") == true) {
                                     println("延迟1秒后开始提取账户信息: $url")
                                     view?.evaluateJavascript(
                                         """
@@ -919,7 +1015,7 @@ private fun WebViewControlSection(
                                                         val avatarMatch = Regex("avatar300Url:(https:[^,]*)").find(html ?: "")
                                                         val avatar = avatarMatch?.groupValues?.get(1) ?: ""
 
-                                                        val nickname = jsonMap["nickname"]?.toString() ?: "未知用户"
+                                                        val nickname = jsonMap["nickname"]?.toString()?.split("\n")?.firstOrNull() ?: "未知用户"
                                                         val userId = jsonMap["id"]?.toString() ?: ""
                                                         val isLive = jsonMap["status"]?.toString() == "PLAYING"
 
@@ -929,18 +1025,19 @@ private fun WebViewControlSection(
                                                             nickname,
                                                             isLive,
                                                             userId,
-                                                            loadStatus
+                                                            loadStatus,
+                                                            url // 传递实际的URL
                                                         )
                                                     }
                                             } else {
                                                 // 提取失败
                                                 println("账户信息提取失败: $loadStatus")
-                                                onAccountInfoExtracted("", "", false, "", loadStatus)
+                                                onAccountInfoExtracted("", "", false, "", loadStatus, url)
                                             }
                                         } catch (e: Exception) {
                                             // 解析失败
                                             println("解析账户信息时发生异常: ${e.message}")
-                                            onAccountInfoExtracted("", "", false, "", "ERROR")
+                                            onAccountInfoExtracted("", "", false, "", "ERROR", url)
                                         }
                                     }
                                 }

@@ -98,13 +98,14 @@ class ServerApiUtilsV2(
      * 绑定抖音直播账号
      */
     suspend fun bindDouyinLive(
+        token: String,
         douyinId: String,
         nickname: String,
         avatar: String,
-        roomId: String
+        roomId: String,
+        userHomeUrl: String
     ): ServerResponse<Any> {
-        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
-        return douyinApiService.bindDouyinLive(token, douyinId, nickname, avatar, roomId)
+        return douyinApiService.bindDouyinLive(token, douyinId, nickname, avatar, roomId, userHomeUrl)
     }
     
     /**
@@ -278,12 +279,13 @@ class ServerApiUtilsV2(
         fun create(
             baseUrl: String,
             tokenManager: TokenManager,
-            loginRepository: LoginRepository
+            loginRepository: LoginRepository,
+            context: android.content.Context
         ): ServerApiUtilsV2 {
-            val authApiService = AuthApiService(tokenManager, baseUrl)
-            val douyinApiService = DouyinApiService(tokenManager, baseUrl)
-            val knowledgeApiService = KnowledgeApiService(tokenManager, baseUrl)
-            val configApiService = ConfigApiService(tokenManager, baseUrl)
+            val authApiService = AuthApiService(tokenManager, baseUrl, context)
+            val douyinApiService = DouyinApiService(tokenManager, baseUrl, context)
+            val knowledgeApiService = KnowledgeApiService(tokenManager, baseUrl, context)
+            val configApiService = ConfigApiService(tokenManager, baseUrl, context)
             
             return ServerApiUtilsV2(
                 authApiService = authApiService,
@@ -305,7 +307,7 @@ class ServerApiUtilsV2(
             loginRepository: LoginRepository
         ): ServerApiUtilsV2 {
             val baseUrl = context.getString(com.danshuang.AiLive.R.string.api_base_url)
-            return create(baseUrl, tokenManager, loginRepository)
+            return create(baseUrl, tokenManager, loginRepository, context)
         }
     }
 }

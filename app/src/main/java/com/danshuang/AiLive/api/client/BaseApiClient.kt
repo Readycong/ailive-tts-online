@@ -1,11 +1,13 @@
 package com.danshuang.AiLive.api.client
 
+import android.content.Context
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import com.danshuang.AiLive.api.handler.ApiResponseHandler
 import com.danshuang.AiLive.data.manager.TokenManager
+import com.danshuang.AiLive.config.AppConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -15,14 +17,16 @@ import java.util.concurrent.TimeUnit
  * 提供HTTP请求的基础功能和通用配置
  */
 open class BaseApiClient(
-    private val tokenManager: TokenManager
+    private val tokenManager: TokenManager,
+    private val context: Context
 ) {
     
-    protected val client = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS)
-        .writeTimeout(10, TimeUnit.SECONDS)
-        .readTimeout(10, TimeUnit.SECONDS)
-        .build()
+    protected val client = OkHttpClient.Builder().apply {
+        val timeoutSeconds = AppConfig.Api.getTimeout(context)
+        connectTimeout(timeoutSeconds, TimeUnit.SECONDS)
+        writeTimeout(timeoutSeconds, TimeUnit.SECONDS)
+        readTimeout(timeoutSeconds, TimeUnit.SECONDS)
+    }.build()
     
     protected val responseHandler = ApiResponseHandler.getInstance()
     

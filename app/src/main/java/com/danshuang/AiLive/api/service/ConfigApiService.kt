@@ -1,5 +1,6 @@
 package com.danshuang.AiLive.api.service
 
+import android.content.Context
 import com.danshuang.AiLive.api.client.BaseApiClient
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.model.ServerResponse
@@ -19,8 +20,9 @@ import java.io.File
  */
 class ConfigApiService(
     tokenManager: TokenManager,
-    private val baseUrl: String
-) : BaseApiClient(tokenManager) {
+    private val baseUrl: String,
+    context: Context
+) : BaseApiClient(tokenManager, context) {
     
     /**
      * 获取配置项

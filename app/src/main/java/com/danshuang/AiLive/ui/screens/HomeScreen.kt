@@ -22,20 +22,26 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import coil.compose.rememberAsyncImagePainter
+import coil.compose.AsyncImage
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.danshuang.AiLive.R
 import com.danshuang.AiLive.navigation.NavigationState
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
+import com.danshuang.AiLive.data.LoginRepository
 import kotlinx.coroutines.delay
 import com.danshuang.AiLive.ui.theme.backgroundLight
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun HomeScreen(navController: NavigationState) {
+    val context = LocalContext.current
+    val loginRepository = remember { LoginRepository(context) }
+    val userProfile by loginRepository.userProfile.collectAsState(initial = com.danshuang.AiLive.data.model.UserProfile())
     val pagerState = rememberPagerState(pageCount = { 3 })
     
     // 自动轮播
@@ -74,7 +80,7 @@ fun HomeScreen(navController: NavigationState) {
 
             // 快捷功能入口
         item {
-            QuickActionsSection(navController = navController)
+            QuickActionsSection(navController = navController, userProfile = userProfile)
         }
 
             // 核心功能标题
@@ -196,7 +202,7 @@ private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerSta
 }
 
 @Composable
-private fun QuickActionsSection(navController: NavigationState) {
+private fun QuickActionsSection(navController: NavigationState, userProfile: com.danshuang.AiLive.data.model.UserProfile) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
@@ -207,12 +213,14 @@ private fun QuickActionsSection(navController: NavigationState) {
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        LiveAccountItem(navController = navController)
+        LiveAccountItem(navController = navController, userProfile = userProfile)
     }
 }
 
 @Composable
-private fun LiveAccountItem(navController: NavigationState) {
+private fun LiveAccountItem(navController: NavigationState, userProfile: com.danshuang.AiLive.data.model.UserProfile) {
+    val boundAccount = userProfile.boundAccount
+    
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -220,22 +228,43 @@ private fun LiveAccountItem(navController: NavigationState) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         // 头像
-        Image(
-            painter = painterResource(id = R.drawable.ic_douyin_logo),
-            contentDescription = "用户头像",
-            modifier = Modifier
-                .size(80.dp)
-                .clip(CircleShape)
-                .background(Color.Gray),
-            contentScale = ContentScale.Crop
-        )
+        if (boundAccount != null && boundAccount.avatar.isNotEmpty()) {
+            // 显示绑定账户的头像
+            AsyncImage(
+                model = boundAccount.avatar,
+                contentDescription = "用户头像",
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape),
+                contentScale = ContentScale.Crop,
+                fallback = painterResource(id = R.drawable.ic_douyin_logo),
+                error = painterResource(id = R.drawable.ic_douyin_logo)
+            )
+        } else {
+            // 显示默认头像
+            Image(
+                painter = painterResource(id = R.drawable.ic_douyin_logo),
+                contentDescription = "默认头像",
+                modifier = Modifier
+                    .size(80.dp)
+                    .clip(CircleShape)
+                    .background(Color.Gray),
+                contentScale = ContentScale.Crop
+            )
+        }
+        
         Spacer(modifier = Modifier.width(12.dp))
+        
         // 用户信息
         Column(
             modifier = Modifier.weight(1f)
         ) {
             Text(
-                text = "抖音账号名称",
+                text = if (boundAccount != null && boundAccount.nickname.isNotEmpty()) {
+                    boundAccount.nickname
+                } else {
+                    "未绑定账户"
+                },
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp
             )
@@ -245,23 +274,29 @@ private fun LiveAccountItem(navController: NavigationState) {
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF4CAF50))
+                        .background(
+                            if (boundAccount?.isLive == true) Color(0xFF4CAF50) else Color.Gray
+                        )
                 )
                 Spacer(modifier = Modifier.width(4.dp))
                 Text(
-                    text = "在线",
+                    text = if (boundAccount?.isLive == true) "在线" else if (boundAccount != null) "离线" else "未绑定",
                     fontSize = 12.sp,
-                    color = Color(0xFF4CAF50)
+                    color = if (boundAccount?.isLive == true) Color(0xFF4CAF50) else Color.Gray
                 )
             }
         }
+        
         // 修改按钮
         Button(
             onClick = { navController.navigateToAccountBinding() },
             shape = RoundedCornerShape(8.dp),
             modifier = Modifier.height(36.dp)
         ) {
-            Text(text = "更换账户", fontSize = 14.sp)
+            Text(
+                text = if (boundAccount != null) "更换账户" else "绑定账户",
+                fontSize = 14.sp
+            )
         }
     }
 }

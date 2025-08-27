@@ -45,6 +45,17 @@ class AppConfig private constructor(private val context: Context) {
         fun getImageBaseUrl(context: Context): String {
             return context.getString(R.string.image_base_url)
         }
+        
+        /**
+         * 获取API超时时间（秒）
+         */
+        fun getTimeout(context: Context): Long {
+            return try {
+                context.getString(R.string.api_timeout).toLong()
+            } catch (e: NumberFormatException) {
+                20L // 默认20秒
+            }
+        }
     }
     
     /**
