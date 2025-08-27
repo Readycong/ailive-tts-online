@@ -81,10 +81,11 @@ fun VoiceSettingsScreen(
                             navController.navigateUp()
                         }
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "保存"
-                        )
+                        Text(text = "保存", fontWeight = FontWeight.Bold)
+//                        Icon(
+//                            imageVector = Icons.Default.Check,
+//                            contentDescription = "保存"
+//                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

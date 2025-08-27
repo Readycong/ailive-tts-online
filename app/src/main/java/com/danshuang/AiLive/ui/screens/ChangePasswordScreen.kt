@@ -13,42 +13,12 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import kotlinx.coroutines.launch
-import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.Body
-import retrofit2.http.POST
-
-
-// 定义密码修改请求数据类
-data class ChangePasswordRequest(
-    val oldPassword: String,
-    val newPassword: String
-)
-
-// 定义密码修改响应数据类
-data class ChangePasswordResponse(
-    val success: Boolean,
-    val message: String
-)
-
-// 定义API接口
-interface ApiService {
-    @POST("/api/user/change-password")
-    suspend fun changePassword(@Body request: ChangePasswordRequest): ChangePasswordResponse
-}
-
-// 创建Retrofit实例
-fun createApiService(): ApiService {
-    val retrofit = Retrofit.Builder()
-        .baseUrl("https://api.example.com") // 替换为实际API基础URL
-        .addConverterFactory(GsonConverterFactory.create())
-        .build()
-    return retrofit.create(ApiService::class.java)
-}
+import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.data.manager.TokenManager
+import com.danshuang.AiLive.api.ServerApiUtilsV2
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -57,7 +27,14 @@ fun ChangePasswordScreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val apiService = remember { createApiService() }
+    
+    // 初始化依赖项
+    val loginRepository = remember { LoginRepository(context) }
+    val tokenManager = remember { TokenManager(loginRepository) }
+    val apiUtils = remember { ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository) }
+    
+    // Snackbar状态
+    val snackbarHostState = remember { SnackbarHostState() }
 
     // 表单状态
     var oldPassword by remember { mutableStateOf("") }
@@ -93,18 +70,30 @@ fun ChangePasswordScreen(
 
         scope.launch {
             try {
-                val response = apiService.changePassword(
-                    ChangePasswordRequest(oldPassword, newPassword)
-                )
-
-                if (response.success) {
-                    Toast.makeText(context, "密码修改成功", Toast.LENGTH_SHORT).show()
+                val response = apiUtils.changePassword(oldPassword, newPassword)
+                
+                if (response.isSuccess) {
+                    // 显示成功提示
+                    snackbarHostState.showSnackbar(
+                        message = "密码修改成功",
+                        duration = SnackbarDuration.Short
+                    )
+                    // 延迟一下再返回，让用户看到成功提示
+                    kotlinx.coroutines.delay(1500)
                     onBack()
                 } else {
-                    errorMessage = response.message
+                    // 显示失败提示
+                    snackbarHostState.showSnackbar(
+                        message = response.msg ?: "密码修改失败",
+                        duration = SnackbarDuration.Short
+                    )
                 }
             } catch (e: Exception) {
-                errorMessage = "网络请求失败，请稍后重试"
+                // 显示异常提示
+                snackbarHostState.showSnackbar(
+                    message = "网络请求失败，请稍后重试",
+                    duration = SnackbarDuration.Short
+                )
             } finally {
                 isLoading = false
             }
@@ -128,6 +117,9 @@ fun ChangePasswordScreen(
                     }
                 }
             )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
         }
     ) {
         innerPadding ->

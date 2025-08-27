@@ -149,7 +149,7 @@ fun MainAppNavigation(
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            AppNavigation(
+            ScreenNavigation(
                 navigationState = navigationState,
                 onLogout = {
                     // 使用BaseScreenManager处理注销

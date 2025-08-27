@@ -92,6 +92,13 @@ class ServerApiUtilsV2(
         }
     }
     
+    /**
+     * 修改密码
+     */
+    suspend fun changePassword(oldPassword: String, newPassword: String): ServerResponse<Any> {
+        return authApiService.changePassword(oldPassword, newPassword)
+    }
+    
     // ============== 抖音相关 ==============
     
     /**
