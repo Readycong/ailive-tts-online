@@ -60,7 +60,7 @@ class AccountBindingScreenTest {
     @Test
     fun testBindDouyinLiveWithValidToken() = testScope.runTest {
         // 首先保存一个有效的token
-        val futureExpiresTime = (System.currentTimeMillis() / 1000 + 3600).toULong()
+        val futureExpiresTime = (System.currentTimeMillis() / 1000 + 3600).toUInt()
         loginRepository.saveLoginInfo("valid_token_123", "13800138000", futureExpiresTime)
         
         // 测试有token时的绑定调用（这里只是验证参数传递，实际网络请求可能会失败）

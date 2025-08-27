@@ -71,7 +71,8 @@ class LoginRepositoryTest {
             nickname = "测试用户",
             headimg = "http://example.com/avatar.jpg",
             balance = "100.00",
-            point = "200"
+            point = "200",
+            ailiveExpireTime = 1735632000L // 2024-12-31 的时间戳
         )
         
         val loggedInUser = LoggedInUser(
@@ -112,7 +113,8 @@ class LoginRepositoryTest {
             nickname = "更新后的用户名",
             headimg = "http://example.com/new_avatar.jpg",
             balance = "200.00",
-            point = "300"
+            point = "300",
+            ailiveExpireTime = 1735632000L
         )
         loginRepository.updateUserProfile(updatedProfile)
 
@@ -127,7 +129,7 @@ class LoginRepositoryTest {
     @Test
     fun testClearLoginInfo() = testScope.runTest {
         // 先保存一些数据
-        val userProfile = UserProfile("测试用户", "avatar.jpg", "100", "200")
+        val userProfile = UserProfile("测试用户", "avatar.jpg", "100", "200", 1735632000L)
         val loggedInUser = LoggedInUser("token", "13800138000", 1234567890uL, userProfile)
         loginRepository.saveLoggedInUser(loggedInUser)
 

@@ -28,6 +28,7 @@ class LoginRepository(private val context: Context) {
     private val USER_HEADIMG_KEY = stringPreferencesKey("user_headimg")
     private val USER_BALANCE_KEY = stringPreferencesKey("user_balance")
     private val USER_POINT_KEY = stringPreferencesKey("user_point")
+    private val USER_AILIVE_EXPIRE_TIME_KEY = longPreferencesKey("user_ailive_expire_time")
     
     // 绑定账户信息
     private val BOUND_ACCOUNT_PLATFORM_KEY = stringPreferencesKey("bound_account_platform")
@@ -74,6 +75,7 @@ class LoginRepository(private val context: Context) {
                 headimg = preferences[USER_HEADIMG_KEY] ?: "",
                 balance = preferences[USER_BALANCE_KEY] ?: "",
                 point = preferences[USER_POINT_KEY] ?: "",
+                ailiveExpireTime = preferences[USER_AILIVE_EXPIRE_TIME_KEY] ?: 0L,
                 boundAccount = boundAccount
             )
         }
@@ -117,6 +119,7 @@ class LoginRepository(private val context: Context) {
             preferences[USER_HEADIMG_KEY] = user.userProfile.headimg
             preferences[USER_BALANCE_KEY] = user.userProfile.balance
             preferences[USER_POINT_KEY] = user.userProfile.point
+            preferences[USER_AILIVE_EXPIRE_TIME_KEY] = user.userProfile.ailiveExpireTime
             
             // 保存绑定账户信息
             user.userProfile.boundAccount?.let { boundAccount ->
@@ -137,6 +140,7 @@ class LoginRepository(private val context: Context) {
             preferences[USER_HEADIMG_KEY] = profile.headimg
             preferences[USER_BALANCE_KEY] = profile.balance
             preferences[USER_POINT_KEY] = profile.point
+            preferences[USER_AILIVE_EXPIRE_TIME_KEY] = profile.ailiveExpireTime
             
             // 更新绑定账户信息
             profile.boundAccount?.let { boundAccount ->
@@ -169,6 +173,7 @@ class LoginRepository(private val context: Context) {
             preferences.remove(USER_HEADIMG_KEY)
             preferences.remove(USER_BALANCE_KEY)
             preferences.remove(USER_POINT_KEY)
+            preferences.remove(USER_AILIVE_EXPIRE_TIME_KEY)
             // 同时清除绑定账户信息
             preferences.remove(BOUND_ACCOUNT_PLATFORM_KEY)
             preferences.remove(BOUND_ACCOUNT_AVATAR_KEY)

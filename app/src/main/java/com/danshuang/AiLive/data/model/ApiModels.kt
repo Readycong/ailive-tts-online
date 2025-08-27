@@ -42,12 +42,24 @@ data class UserProfile(
     val headimg: String = "",
     val balance: String = "",
     val point: String = "",
+    val ailiveExpireTime: Long = 0L,  // AI直播会员过期时间（unix时间戳，秒）
     val boundAccount: BoundAccountInfo? = null  // 添加绑定账户信息
 ) {
     val displayBalance: String
         get() = if (balance.isNotEmpty() && point.isNotEmpty()) {
             "￥$balance / $point"
         } else ""
+        
+    val isAiliveExpired: Boolean
+        get() = ailiveExpireTime > 0 && System.currentTimeMillis() / 1000 > ailiveExpireTime
+        
+    val ailiveExpireDate: String
+        get() = if (ailiveExpireTime > 0) {
+            val date = java.util.Date(ailiveExpireTime * 1000)
+            java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault()).format(date)
+        } else {
+            "未开通"
+        }
 }
 
 /**

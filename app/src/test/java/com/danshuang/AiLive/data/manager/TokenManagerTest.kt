@@ -160,8 +160,8 @@ class TokenManagerTest {
         val user = LoggedInUser(
             token = "test_token",
             mobile = "13800138000",
-            expiresTime = 1234567890uL,
-            userProfile = UserProfile("测试用户", "avatar.jpg", "100", "200")
+            expiresTime = 1234567890u,
+            userProfile = UserProfile("测试用户", "avatar.jpg", "100", "200", 1735632000L)
         )
         loginRepository.saveLoggedInUser(user)
 
@@ -195,7 +195,7 @@ class TokenManagerTest {
     @Test
     fun testSaveToken() = testScope.runTest {
         val token = "new_test_token"
-        val expiresTime = 9876543210uL
+        val expiresTime = 9876543210u
 
         // 保存token
         tokenManager.saveToken(token, expiresTime)

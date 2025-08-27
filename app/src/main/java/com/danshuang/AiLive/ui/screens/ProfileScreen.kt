@@ -33,19 +33,8 @@ import android.webkit.WebViewClient
 import android.widget.Toast
 import androidx.compose.material.icons.Icons
 import androidx.compose.ui.viewinterop.AndroidView
-
-// 用户数据类
-data class UserInfo(
-    var nickname: String = "用户昵称",
-    val phoneNumber: String = "13800138000",
-    val avatarUrl: String = "" // 实际应用中使用
-)
-
-// 模拟服务数据
-data class SubscriptionInfo(
-    val expireDate: String = "2023-12-31",
-    val isExpired: Boolean = false
-)
+import androidx.compose.runtime.collectAsState
+import coil.compose.AsyncImage
 
 // 菜单项数据类
 data class MenuItem(
@@ -70,11 +59,12 @@ fun ProfileScreen(
     var showCacheDialog by remember { mutableStateOf(false) }
     var cacheCleaned by remember { mutableStateOf(false) }
     
-    // 用户数据和状态
-    val userInfo = remember { UserInfo() }
-    val subscriptionInfo = remember { SubscriptionInfo() }
+    // 从登录仓库获取用户数据
+    val loggedInUser by loginRepository.loggedInUser.collectAsState(initial = null)
+    val userProfile = loggedInUser?.userProfile
+    
     var showNicknameDialog by remember { mutableStateOf(false) }
-    var newNickname by remember { mutableStateOf(userInfo.nickname) }
+    var newNickname by remember { mutableStateOf("") }
     
     // 菜单列表
     val menuItems = remember {
@@ -140,31 +130,42 @@ fun ProfileScreen(
                             .clickable { /* 更换头像逻辑 */ },
                         contentAlignment = Alignment.Center
                     ) {
-                        // 实际应用中使用Image加载网络图片
-                        Icon(
-                            imageVector = Icons.Filled.AccountCircle,
-                            contentDescription = "用户头像",
-                            modifier = Modifier.size(60.dp),
-                            tint = Color.White
-                        )
+                        if (userProfile?.headimg?.isNotEmpty() == true) {
+                            AsyncImage(
+                                model = userProfile.headimg,
+                                contentDescription = "用户头像",
+                                modifier = Modifier
+                                    .size(100.dp)
+                                    .clip(CircleShape),
+                                fallback = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_gallery),
+                                error = androidx.compose.ui.res.painterResource(android.R.drawable.ic_menu_gallery)
+                            )
+                        } else {
+                            Icon(
+                                imageVector = Icons.Filled.AccountCircle,
+                                contentDescription = "用户头像",
+                                modifier = Modifier.size(60.dp),
+                                tint = Color.White
+                            )
+                        }
                     }
                     
                     Spacer(modifier = Modifier.height(12.dp))
                     
                     // 昵称（可点击）
                     Text(
-                        text = userInfo.nickname,
+                        text = userProfile?.nickname?.takeIf { it.isNotEmpty() } ?: "未设置昵称",
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
-                        modifier = Modifier.clickable {
-                            newNickname = userInfo.nickname
-                            showNicknameDialog = true
-                        }
+//                        modifier = Modifier.clickable {
+//                            newNickname = userProfile?.nickname ?: ""
+//                            showNicknameDialog = true
+//                        }
                     )
                     
                     // 手机号码
                     Text(
-                        text = userInfo.phoneNumber,
+                        text = loggedInUser?.mobile?.takeIf { it.isNotEmpty() } ?: "未绑定手机",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -202,10 +203,10 @@ fun ProfileScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                                 Text(
-                                    text = subscriptionInfo.expireDate,
+                                    text = userProfile?.ailiveExpireDate ?: "未开通",
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (subscriptionInfo.isExpired) {
+                                    color = if (userProfile?.isAiliveExpired == true) {
                                         MaterialTheme.colorScheme.error
                                     } else {
                                         MaterialTheme.colorScheme.onSurface
@@ -372,9 +373,15 @@ fun ProfileScreen(
             },
             confirmButton = {
                 TextButton(onClick = {
-                    userInfo.nickname = newNickname
-                    showNicknameDialog = false
-                    Toast.makeText(context, "昵称修改成功", Toast.LENGTH_SHORT).show()
+                    scope.launch {
+                        // 更新用户资料
+                        userProfile?.let { currentProfile ->
+                            val updatedProfile = currentProfile.copy(nickname = newNickname)
+                            loginRepository.updateUserProfile(updatedProfile)
+                        }
+                        showNicknameDialog = false
+                        Toast.makeText(context, "昵称修改成功", Toast.LENGTH_SHORT).show()
+                    }
                 }) {
                     Text("确认")
                 }
