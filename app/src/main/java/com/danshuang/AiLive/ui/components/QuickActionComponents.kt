@@ -54,12 +54,12 @@ data class QuickActionVectorData(
 fun QuickActionCard(
     action: QuickActionData,
     modifier: Modifier = Modifier,
-    iconSize: Dp = 24.dp,
-    cardSize: Dp = 60.dp
+    iconSize: Dp = 21.6.dp,
+    cardSize: Dp = 54.dp
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.width(80.dp)
+        modifier = modifier.width(72.dp)
     ) {
         Card(
             onClick = action.onClick,
@@ -104,17 +104,17 @@ fun QuickActionCard(
 fun QuickActionVectorCard(
     data: QuickActionVectorData,
     modifier: Modifier = Modifier,
-    iconSize: Dp = 24.dp,
-    cardSize: Dp = 60.dp
+    iconSize: Dp = 21.6.dp,
+    cardSize: Dp = 54.dp
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.width(80.dp)
+        modifier = modifier.width(72.dp)
     ) {
         Card(
             onClick = data.onClick,
             modifier = Modifier.size(cardSize),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(10.8.dp),
             colors = CardDefaults.cardColors(
                 containerColor = data.backgroundColor
             )

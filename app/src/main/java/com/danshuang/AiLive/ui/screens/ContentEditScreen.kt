@@ -24,10 +24,11 @@ fun ContentEditScreen(
     var content by remember { mutableStateOf(initialContent) }
     
     val title = when (contentKey) {
-        "product_business" -> "产品业务"
-        "promotion_activity" -> "推广活动"
-        "customer_group" -> "客户群体"
-        "store_address" -> "门店地址"
+        "shop_name" -> "门店品牌"
+        "business_scope" -> "产品业务"
+        "shop_activity" -> "推广活动"
+        "customer_scope" -> "客户群体"
+        "common_knowledge" -> "门店地址"
         else -> "内容编辑"
     }
 

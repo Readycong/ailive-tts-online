@@ -94,41 +94,49 @@ private fun QuickActionsSection(navigationState: NavigationState) {
 
         val quickShopSettingActions = listOf(
             QuickActionVectorData(
-                title = "产品业务",
+                title = "门店品牌",
                 icon = Icons.Default.Person,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
-                    navigationState.navigateToContentEdit("product_business")
+                    navigationState.navigateToContentEdit("shop_name")
+                }
+            ),
+            QuickActionVectorData(
+                title = "产品业务",
+                icon = Icons.Default.Person,
+                backgroundColor = Color(0xFF4CAF50),
+                onClick = {
+                    navigationState.navigateToContentEdit("business_scope")
                 }
             ),
             QuickActionVectorData(
                 title = "推广活动",
                 icon = Icons.Default.MoreVert,
-                backgroundColor = Color(0xFF4CAF50),
+                backgroundColor = Color(0xFFFF9800),
                 onClick = {
-                    navigationState.navigateToContentEdit("promotion_activity")
+                    navigationState.navigateToContentEdit("shop_activity")
                 }
             ),
             QuickActionVectorData(
                 title = "客户群体",
                 icon = Icons.Default.PlayArrow,
-                backgroundColor = Color(0xFFFF9800),
+                backgroundColor = Color(0xFF9C27B0),
                 onClick = {
-                    navigationState.navigateToContentEdit("customer_group")
+                    navigationState.navigateToContentEdit("customer_scope")
                 }
             ),
             QuickActionVectorData(
                 title = "门店地址",
                 icon = Icons.Default.Home,
-                backgroundColor = Color(0xFF9C27B0),
+                backgroundColor = Color(0xFF2196F3),
                 onClick = {
-                    navigationState.navigateToContentEdit("store_address")
+                    navigationState.navigateToContentEdit("common_knowledge")
                 }
             )
         )
 
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(quickShopSettingActions) { action ->
                 QuickActionVectorCard(
@@ -177,11 +185,19 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 onClick = {
                     navigationState.navigateToLiveScript("conversion")
                 }
+            ),
+            QuickActionData(
+                title = "感谢",
+                icon = R.drawable.counter_5_24px,
+                backgroundColor = Color(0xFF2196F3),
+                onClick = {
+                    navigationState.navigateToLiveScript("thanks")
+                }
             )
         )
 
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             items(quickLiveScriptActions) { action ->
                 QuickActionCard(
@@ -190,30 +206,12 @@ private fun QuickActionsSection(navigationState: NavigationState) {
             }
         }
         Spacer(modifier = Modifier.height(8.dp))
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            item {
-                QuickActionCard(
-                    action = QuickActionData(
-                            title = "感谢",
-                            icon = R.drawable.counter_5_24px,
-                            backgroundColor = Color(0xFF2196F3),
-                            onClick = {
-                                navigationState.navigateToLiveScript("thanks")
-                            }
-                        )
-                )
-            }
-            item {
-                Text(
-                    text = "AI主播会按照1->5顺序播放话术库，\n同项中有多条内容将随机播报其中的一条",
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-            }
-        }
+        Text(
+            text = "AI主播会按照1->5顺序播放话术库，\n同项中有多条内容将随机播报其中的一条",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(start = 24.dp, top = 12.dp)
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
