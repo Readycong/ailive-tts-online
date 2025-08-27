@@ -33,7 +33,11 @@ import com.danshuang.AiLive.R
 import com.danshuang.AiLive.navigation.NavigationState
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.api.service.DouyinApiService
+import com.danshuang.AiLive.data.manager.TokenManager
+import com.danshuang.AiLive.config.AppConfig
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import com.danshuang.AiLive.ui.theme.backgroundLight
 
 @OptIn(ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
@@ -41,8 +45,27 @@ import com.danshuang.AiLive.ui.theme.backgroundLight
 fun HomeScreen(navController: NavigationState) {
     val context = LocalContext.current
     val loginRepository = remember { LoginRepository(context) }
+    val tokenManager = remember { TokenManager(loginRepository) }
+    val douyinApiService = remember { DouyinApiService(tokenManager, AppConfig.getApiBaseUrl(context), context) }
     val userProfile by loginRepository.userProfile.collectAsState(initial = com.danshuang.AiLive.data.model.UserProfile())
+    val authToken by loginRepository.authToken.collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
+    
     val pagerState = rememberPagerState(pageCount = { 3 })
+    
+    // 登录时获取绑定信息
+    LaunchedEffect(authToken) {
+        authToken?.let { token ->
+            try {
+                val response = douyinApiService.getBinding(token)
+                if (response.isSuccess && response.data != null) {
+                    loginRepository.updateBoundAccountFromBindingData(response.data)
+                }
+            } catch (e: Exception) {
+                // 静默失败，不影响正常使用
+            }
+        }
+    }
     
     // 自动轮播
     LaunchedEffect(pagerState) {

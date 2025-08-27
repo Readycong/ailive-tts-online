@@ -209,6 +209,44 @@ class LoginRepository(private val context: Context) {
         }
     }
 
+    
+    /**
+     * 从get-binding接口数据更新绑定账户信息
+     */
+    suspend fun updateBoundAccountFromBindingData(bindingData: Map<String, Any>) {
+        context.dataStore.edit { preferences ->
+            val douyinId = bindingData["douyin_id"] as? String ?: ""
+            val nickname = bindingData["nickname"] as? String ?: ""
+            val avatar = bindingData["avatar"] as? String ?: ""
+            val userHomeUrl = bindingData["user_home_url"] as? String ?: ""
+            
+            if (douyinId.isNotEmpty()) {
+                // 更新绑定账户信息
+                preferences[BOUND_ACCOUNT_PLATFORM_KEY] = "douyin"
+                preferences[BOUND_ACCOUNT_AVATAR_KEY] = avatar
+                preferences[BOUND_ACCOUNT_NICKNAME_KEY] = nickname
+                preferences[BOUND_ACCOUNT_USER_ID_KEY] = douyinId
+                preferences[BOUND_ACCOUNT_HOME_URL_KEY] = userHomeUrl
+                preferences[BOUND_ACCOUNT_IS_LIVE_KEY] = "false" // 默认设置为离线状态
+                preferences[BOUND_ACCOUNT_BIND_TIME_KEY] = System.currentTimeMillis()
+                
+                // 同时更新用户头像
+                if (avatar.isNotEmpty()) {
+                    preferences[USER_HEADIMG_KEY] = avatar
+                }
+            } else {
+                // 如果没有绑定信息，清除相关字段
+                preferences.remove(BOUND_ACCOUNT_PLATFORM_KEY)
+                preferences.remove(BOUND_ACCOUNT_AVATAR_KEY)
+                preferences.remove(BOUND_ACCOUNT_NICKNAME_KEY)
+                preferences.remove(BOUND_ACCOUNT_USER_ID_KEY)
+                preferences.remove(BOUND_ACCOUNT_HOME_URL_KEY)
+                preferences.remove(BOUND_ACCOUNT_IS_LIVE_KEY)
+                preferences.remove(BOUND_ACCOUNT_BIND_TIME_KEY)
+            }
+        }
+    }
+
     fun isLoggedInFlow(): Flow<Boolean> {
         return combine(authToken, expiresTime) { token, expires ->
             token != null && expires != null && System.currentTimeMillis() / 1000 < expires

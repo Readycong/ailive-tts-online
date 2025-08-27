@@ -59,6 +59,38 @@ class DouyinApiService(
     }
     
     /**
+     * 获取当前绑定的账户信息
+     */
+    suspend fun getBinding(token: String): ServerResponse<Map<String, Any>> = withContext(Dispatchers.IO) {
+        val apiName = "GetBinding"
+        return@withContext try {
+            val url = "${baseUrl}/dscrm/dylive-android/get-binding"
+            responseHandler.logApiCall(apiName, url, "GET")
+            
+            val request = createGetRequest(url)
+                .addTokenHeader(token)
+                .build()
+            
+            val response = executeRequest(request)
+            responseHandler.handleMapResponse(response, apiName)?.let { data ->
+                ServerResponse(
+                    code = 1,
+                    msg = "获取成功",
+                    data = data
+                )
+            } ?: ServerResponse(
+                code = 0,
+                msg = "获取绑定信息失败",
+                data = emptyMap<String, Any>()
+            )
+            
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "获取绑定信息失败: ${e.message}", data = emptyMap<String, Any>())
+        }
+    }
+    
+    /**
      * 获取绑定的账号列表
      */
     suspend fun listAccounts(token: String): ServerResponse<List<DouyinAccount>> = withContext(Dispatchers.IO) {
