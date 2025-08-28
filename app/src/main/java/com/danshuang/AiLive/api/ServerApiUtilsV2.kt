@@ -180,7 +180,15 @@ class ServerApiUtilsV2(
         val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = emptyList())
         return knowledgeApiService.fetchKbItems(token, douyinId)
     }
-    
+
+    /**
+     * 获取单条知识库条目
+     */
+    suspend fun fetchKbById(douyinId: String, kbId: String): ServerResponse<List<KnowledgeItem>> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = emptyList())
+        return knowledgeApiService.fetchKbItems(token, douyinId, kbId)
+    }
+
     /**
      * 更新知识库条目
      */

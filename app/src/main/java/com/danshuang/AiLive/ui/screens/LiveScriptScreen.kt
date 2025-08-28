@@ -68,12 +68,12 @@ fun LiveScriptScreen(
     
     // scriptKey到typeId的映射
     val typeId = when (scriptKey) {
-        "WELCOME" -> "welcome_scripts"
-        "ROOM" -> "room_scripts" 
-        "PRODUCT" -> "product_scripts"
-        "KEEP" -> "keep_scripts"
-        "ORDER" -> "order_scripts"
-        "THANKS" -> "thanks_scripts"
+        "WELCOME" -> "WELCOME"
+        "ROOM" -> "ROOM"
+        "PRODUCT" -> "PRODUCT"
+        "KEEP" -> "KEEP"
+        "ORDER" -> "ORDER"
+        "THANKS" -> "THANKS"
         else -> "unknown_scripts"
     }
     
@@ -513,20 +513,19 @@ fun KnowledgeScriptCard(
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                
+
                 // 时间戳格式化显示
-                val createTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.createTime * 1000))
-                val updateTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.updateTime * 1000))
-                
-                Text(
-                    text = "创建于: $createTimeFormatted",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-                
-                if (item.updateTime != item.createTime) {
+                if (item.updateTime > 0) {
+                    val updateTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.updateTime))
                     Text(
                         text = "更新于: $updateTimeFormatted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    )
+                } else {
+                    val createTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.createTime))
+                    Text(
+                        text = "创建于: $createTimeFormatted",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
                     )

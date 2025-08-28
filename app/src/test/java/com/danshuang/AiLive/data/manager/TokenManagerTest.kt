@@ -1,9 +1,11 @@
 package com.danshuang.AiLive.data.manager
 
 import android.content.Context
+import androidx.datastore.preferences.preferencesDataStoreFile
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.model.LoggedInUser
 import com.danshuang.AiLive.data.model.UserProfile
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -160,7 +162,7 @@ class TokenManagerTest {
         val user = LoggedInUser(
             token = "test_token",
             mobile = "13800138000",
-            expiresTime = 1234567890u,
+            expiresTime = 1234567890uL,
             userProfile = UserProfile("测试用户", "avatar.jpg", "100", "200", 1735632000L)
         )
         loginRepository.saveLoggedInUser(user)
@@ -195,14 +197,14 @@ class TokenManagerTest {
     @Test
     fun testSaveToken() = testScope.runTest {
         val token = "new_test_token"
-        val expiresTime = 9876543210u
+        val expiresTime = 9876543210uL
 
         // 保存token
         tokenManager.saveToken(token, expiresTime)
 
-        // 验证token已保存（注意：由于当前实现中手机号为空字符串，
-        // 这里只验证token是否正确保存）
+        // 验证token已保存
         assertEquals(token, tokenManager.currentToken.first())
+        assertEquals(expiresTime.toLong(), tokenManager.tokenExpiresTime.first())
     }
 
     private fun Context.preferencesDataStoreFile(name: String): File {

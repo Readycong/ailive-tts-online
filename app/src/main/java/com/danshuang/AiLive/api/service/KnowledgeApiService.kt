@@ -7,6 +7,8 @@ import com.danshuang.AiLive.data.model.ServerResponse
 import com.danshuang.AiLive.data.model.KnowledgeItem
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.text.SimpleDateFormat
+import java.util.*
 
 
 /**
@@ -24,12 +26,16 @@ class KnowledgeApiService(
      */
     suspend fun fetchKbItems(
         token: String,
-        typeId: String
+        typeId: String,
+        kbId: String? = null
     ): ServerResponse<List<KnowledgeItem>> = withContext(Dispatchers.IO) {
         val apiName = "FetchKbItems"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/fetch-kb-items"
-            val postData = mapOf("type_id" to typeId)
+            val postData = mapOf(
+                "type_id" to typeId,
+                "kb_id" to (kbId ?: "0")
+            )
             
             responseHandler.logApiCall(apiName, url, "POST", postData)
             
@@ -44,15 +50,41 @@ class KnowledgeApiService(
             if (serverResponse.isSuccess && serverResponse.data != null) {
                 val items = serverResponse.data.mapNotNull { itemMap ->
                     try {
+                        // 解析时间字符串为时间戳
+                        val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())
+                        
+                        val createTime = try {
+                            val createTimeStr = itemMap["create_time"] as? String
+                            if (createTimeStr != null) {
+                                dateFormat.parse(createTimeStr)?.time ?: System.currentTimeMillis()
+                            } else {
+                                System.currentTimeMillis()
+                            }
+                        } catch (e: Exception) {
+                            System.currentTimeMillis()
+                        }
+                        
+                        val updateTime = try {
+                            val updateTimeStr = itemMap["update_time"] as? String
+                            if (updateTimeStr != null && updateTimeStr != "null") {
+                                dateFormat.parse(updateTimeStr)?.time ?: createTime
+                            } else {
+                                createTime
+                            }
+                        } catch (e: Exception) {
+                            createTime
+                        }
+                        
                         KnowledgeItem(
-                            id = itemMap["id"] as? String ?: "",
-                            typeId = itemMap["type_id"] as? String ?: "",
+                            id = (itemMap["id"] as? Number)?.toString() ?: "",
+                            typeId = typeId, // 使用传入的 typeId 参数
                             question = itemMap["question"] as? String ?: "",
                             answer = itemMap["answer"] as? String ?: "",
-                            createTime = (itemMap["create_time"] as? Double)?.toLong() ?: System.currentTimeMillis(),
-                            updateTime = (itemMap["update_time"] as? Double)?.toLong() ?: System.currentTimeMillis()
+                            createTime = createTime,
+                            updateTime = updateTime
                         )
                     } catch (e: Exception) {
+                        responseHandler.logApiError("$apiName-ItemParsing", e)
                         null // 跳过解析失败的条目
                     }
                 }
