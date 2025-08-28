@@ -481,12 +481,12 @@ fun KnowledgeScriptCard(
                         .padding(horizontal = 8.dp)
                         .zIndex(2f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+//                    Icon(
+//                        imageVector = Icons.Default.Delete,
+//                        contentDescription = "删除",
+//                        modifier = Modifier.size(16.dp)
+//                    )
+//                    Spacer(modifier = Modifier.width(4.dp))
                     Text("删除")
                 }
             }
