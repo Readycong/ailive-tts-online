@@ -1,10 +1,13 @@
 package com.danshuang.AiLive.navigation
 
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import com.danshuang.AiLive.ui.components.WithLoginProtection
 import com.danshuang.AiLive.ui.screens.ContentEditScreen
 import com.danshuang.AiLive.ui.screens.HomeScreen

@@ -6,12 +6,25 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.danshuang.AiLive.api.ServerApiUtilsV2
+import com.danshuang.AiLive.api.service.KnowledgeApiService
+import com.danshuang.AiLive.config.AppConfig
+import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.navigation.NavigationState
+import com.danshuang.AiLive.ui.theme.AiLiveTheme
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -21,18 +34,95 @@ fun GreetingSettingsScreen(
     // 招呼设置状态
     var isActiveGreeting by remember { mutableStateOf(true) }
     var maxOnlineUsers by remember { mutableStateOf("20") }
-    var responseDelay by remember { mutableStateOf("5") }
+    var responseDelay by remember { mutableStateOf("1") }
 
     // 输入验证错误状态
     var maxOnlineUsersError by remember { mutableStateOf(false) }
     var responseDelayError by remember { mutableStateOf(false) }
+    
+    // 加载和操作状态
+    var isLoading by remember { mutableStateOf(false) }
+    var isSaving by remember { mutableStateOf(false) }
+    
+    // Snackbar状态
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+
+    // 初始化API依赖项
+    val loginRepository = remember { LoginRepository(context) }
+    val tokenManager = remember { TokenManager(loginRepository) }
+
+    val serverApiUtils = remember {
+        ServerApiUtilsV2.createFromContext(
+            context = context,
+            tokenManager = tokenManager,
+            loginRepository = loginRepository
+        )
+    }
+    // 用户信息状态
+    val userProfile by loginRepository.userProfile.collectAsState(initial = com.danshuang.AiLive.data.model.UserProfile())
+    val douyinId = userProfile.boundAccount?.userId ?: ""
+
+
+    // 页面初始化时加载数据
+    LaunchedEffect(Unit) {
+        isLoading = true
+        scope.launch {
+            try {
+                val result = serverApiUtils.getGreetingConfig(douyinId)
+                if (result.isSuccess && result.data != null) {
+                    val config = result.data
+                    isActiveGreeting = config.greetStatus == 1
+                    maxOnlineUsers = config.maxOnline.toString()
+                    responseDelay = config.delaySeconds.toString()
+                } else {
+                    // 加载失败时显示错误提示但继续显示默认值
+                    snackbarHostState.showSnackbar("加载招呼设置失败: ${result.msg}")
+                }
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar("加载招呼设置失败: ${e.message}")
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+    
+    // 保存设置的协程函数
+    suspend fun saveSettings() {
+        isSaving = true
+        try {
+            val result = serverApiUtils.updateGreetingConfig(
+                douyinId = douyinId,
+                greetStatus = if (isActiveGreeting) 1 else 0,
+                maxOnline = maxOnlineUsers.toInt(),
+                delaySeconds = responseDelay.toInt()
+            )
+            
+            if (result.isSuccess) {
+                snackbarHostState.showSnackbar("招呼设置保存成功")
+                delay(1500) // 让用户看到成功提示
+                navController.navigateUp()
+            } else {
+                snackbarHostState.showSnackbar("保存失败: ${result.msg}")
+            }
+        } catch (e: Exception) {
+            snackbarHostState.showSnackbar("保存失败: ${e.message}")
+        } finally {
+            isSaving = false
+        }
+    }
 
     Scaffold(
         topBar = {
             TopAppBar(
                 title = { Text("招呼设置") },
                 navigationIcon = {
-                    IconButton(onClick = { navController.navigateUp() }) {
+                    IconButton(
+                        onClick = { navController.navigateUp() },
+                        enabled = !isLoading && !isSaving
+                    ) {
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "返回"
@@ -50,15 +140,28 @@ fun GreetingSettingsScreen(
                             responseDelayError = delay == null || delay < 0 || delay > 20
                             
                             if (!maxOnlineUsersError && !responseDelayError) {
-                                // 保存设置（这里可以添加实际的保存逻辑）
-                                navController.navigateUp()
+                                // 保存设置
+                                scope.launch {
+                                    saveSettings()
+                                }
                             }
-                        }
+                        },
+                        enabled = !isLoading && !isSaving
                     ) {
-                        Text("保存", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("保存", fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+                        }
                     }
                 }
             )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
         }
     ) { innerPadding ->
         Column(
@@ -68,6 +171,25 @@ fun GreetingSettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
+            // 加载状态指示器
+            if (isLoading) {
+                Box(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = "正在加载招呼设置...",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            } else {
             // 主动招呼设置
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -93,7 +215,8 @@ fun GreetingSettingsScreen(
                         )
                         Switch(
                             checked = isActiveGreeting,
-                            onCheckedChange = { isActiveGreeting = it }
+                            onCheckedChange = { isActiveGreeting = it },
+                            enabled = !isLoading && !isSaving
                         )
                     }
                     Text(
@@ -134,6 +257,7 @@ fun GreetingSettingsScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         isError = maxOnlineUsersError,
+                        enabled = !isLoading && !isSaving,
                         supportingText = {
                             if (maxOnlineUsersError) {
                                 Text("请输入0-100之间的数字")
@@ -174,6 +298,7 @@ fun GreetingSettingsScreen(
                         singleLine = true,
                         modifier = Modifier.fillMaxWidth(),
                         isError = responseDelayError,
+                        enabled = !isLoading && !isSaving,
                         supportingText = {
                             if (responseDelayError) {
                                 Text("请输入0-20之间的数字")
@@ -183,7 +308,26 @@ fun GreetingSettingsScreen(
                         }
                     )
                 }
+                }
             }
         }
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun GreetingSettingsScreenPreview() {
+    // 注意：Preview中无法使用真实的API调用
+    // 在实际集成中，需要通过依赖注入或工厂方法传入真实的serverApiUtils和douyinId
+    AiLiveTheme {
+        // Preview模式下使用模拟数据
+        // GreetingSettingsScreen(
+        //     navController = NavigationState(),
+        //     serverApiUtils = mockServerApiUtils,
+        //     douyinId = "preview_douyin_id"
+        // )
+        
+        // 暂时注释掉，因为需要真实的依赖
+        Text("GreetingSettingsScreen Preview")
     }
 }

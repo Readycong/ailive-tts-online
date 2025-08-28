@@ -13,6 +13,7 @@ import com.danshuang.AiLive.data.model.DouyinAccount
 import com.danshuang.AiLive.data.model.KnowledgeItem
 import com.danshuang.AiLive.data.model.AiComment
 import com.danshuang.AiLive.data.model.ConfigItem
+import com.danshuang.AiLive.data.model.GreetingConfig
 import kotlinx.coroutines.flow.first
 
 /**
@@ -250,7 +251,131 @@ class ServerApiUtilsV2(
         return configApiService.uploadAudioWithValidation(token, douyinId, filePath)
     }
     
+    /**
+     * 获取招呼设置配置
+     */
+    suspend fun getGreetingConfig(
+        douyinId: String
+    ): ServerResponse<GreetingConfig> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
+        return configApiService.getGreetingConfig(token, douyinId)
+    }
+    
+    /**
+     * 提交招呼设置配置
+     */
+    suspend fun updateGreetingConfig(
+        douyinId: String,
+        greetStatus: Int,
+        maxOnline: Int,
+        delaySeconds: Int
+    ): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return configApiService.updateGreetingConfig(token, douyinId, greetStatus, maxOnline, delaySeconds)
+    }
+    
+    // ============== 限制配置管理 ==============
+    
+    /**
+     * 获取限制配置
+     * @param restrictionType 限制类型 ("stop_nickname" | "stop_comment")
+     * @return 解析后的限制项列表
+     */
+    suspend fun getRestrictionConfig(
+        douyinId: String,
+        restrictionType: String
+    ): ServerResponse<List<String>> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = emptyList())
+        
+        return try {
+            val response = configApiService.getConfig(token, douyinId, restrictionType)
+            if (response.isSuccess && response.data != null) {
+                val restrictionItems = parseRestrictionItems(response.data.value)
+                ServerResponse(
+                    code = response.code,
+                    msg = response.msg,
+                    data = restrictionItems
+                )
+            } else {
+                // 配置不存在时返回默认配置
+                val defaultItems = getDefaultRestrictionItems(restrictionType)
+                ServerResponse(
+                    code = 1,
+                    msg = "使用默认配置",
+                    data = defaultItems
+                )
+            }
+        } catch (e: Exception) {
+            ServerResponse(
+                code = 0,
+                msg = "获取限制配置失败: ${e.message}",
+                data = getDefaultRestrictionItems(restrictionType)
+            )
+        }
+    }
+    
+    /**
+     * 更新限制配置
+     * @param restrictionType 限制类型
+     * @param restrictionItems 限制项列表
+     * @return 保存结果
+     */
+    suspend fun updateRestrictionConfig(
+        douyinId: String,
+        restrictionType: String,
+        restrictionItems: List<String>
+    ): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        
+        return try {
+            val configValue = formatRestrictionItems(restrictionItems)
+            configApiService.updateConfig(token, douyinId, restrictionType, configValue)
+        } catch (e: Exception) {
+            ServerResponse(code = 0, msg = "保存限制配置失败: ${e.message}", data = null)
+        }
+    }
+    
     // ============== 工具方法 ==============
+    
+    /**
+     * 解析服务器返回的限制配置字符串
+     * 支持逗号、空格、换行符分隔
+     */
+    private fun parseRestrictionItems(configValue: String): List<String> {
+        return configValue
+            .split(",", " ", "\n", "\r\n")
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinct()
+            .sorted()
+    }
+    
+    /**
+     * 将限制项列表转换为服务器格式
+     * 使用逗号分隔
+     */
+    private fun formatRestrictionItems(items: List<String>): String {
+        return items
+            .filter { it.isNotBlank() }
+            .map { it.trim() }
+            .distinct()
+            .joinToString(",")
+    }
+    
+    /**
+     * 获取默认限制配置
+     */
+    private fun getDefaultRestrictionItems(restrictionType: String): List<String> {
+        return when (restrictionType) {
+            "stop_nickname" -> listOf(
+                "广告号", "机器人", "测试用户", "管理员", "客服号"
+            )
+            "stop_comment" -> listOf(
+                "广告链接", "联系方式", "敏感词汇", "辱骂言论", "垃圾信息"
+            )
+            else -> emptyList()
+        }.sorted()
+    }
     
     /**
      * 获取当前token，如果未登录返回null

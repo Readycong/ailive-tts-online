@@ -131,6 +131,16 @@ data class ConfigItem(
 )
 
 /**
+ * 招呼设置配置
+ */
+@Keep
+data class GreetingConfig(
+    val greetStatus: Int,        // 主动招呼状态：0-关闭，1-开启
+    val maxOnline: Int,          // 最大在线人数
+    val delaySeconds: Int        // 响应延迟（秒）
+)
+
+/**
  * 在线用户信息
  */
 @Keep

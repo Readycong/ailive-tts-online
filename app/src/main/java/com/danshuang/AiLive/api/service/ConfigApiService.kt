@@ -5,6 +5,7 @@ import com.danshuang.AiLive.api.client.BaseApiClient
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.model.ServerResponse
 import com.danshuang.AiLive.data.model.ConfigItem
+import com.danshuang.AiLive.data.model.GreetingConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -106,6 +107,92 @@ class ConfigApiService(
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
             ServerResponse(code = 0, msg = "更新配置失败: ${e.message}", data = null)
+        }
+    }
+    
+    /**
+     * 获取招呼设置配置
+     */
+    suspend fun getGreetingConfig(
+        token: String,
+        douyinId: String
+    ): ServerResponse<GreetingConfig> = withContext(Dispatchers.IO) {
+        val apiName = "GetGreetingConfig"
+        return@withContext try {
+            val url = "${baseUrl}/dscrm/dylive-android/get-greeting-config"
+            val postData = mapOf(
+                "douyin_id" to douyinId
+            )
+            
+            responseHandler.logApiCall(apiName, url, "POST", postData)
+            
+            val requestBody = createJsonRequestBody(postData)
+            val request = createPostRequest(url, requestBody)
+                .addTokenHeader(token)
+                .build()
+            
+            val response = executeRequest(request)
+            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName)
+            
+            if (serverResponse.isSuccess && serverResponse.data != null) {
+                val data = serverResponse.data
+                val greetingConfig = GreetingConfig(
+                    greetStatus = (data["greet_status"] as? Number)?.toInt() ?: 0,
+                    maxOnline = (data["max_online"] as? Number)?.toInt() ?: 0,
+                    delaySeconds = (data["delay_seconds"] as? Number)?.toInt() ?: 0
+                )
+                ServerResponse(
+                    code = serverResponse.code,
+                    msg = serverResponse.msg,
+                    data = greetingConfig
+                )
+            } else {
+                ServerResponse(
+                    code = serverResponse.code,
+                    msg = serverResponse.msg,
+                    data = null
+                )
+            }
+            
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "获取招呼设置失败: ${e.message}", data = null)
+        }
+    }
+    
+    /**
+     * 提交招呼设置配置
+     */
+    suspend fun updateGreetingConfig(
+        token: String,
+        douyinId: String,
+        greetStatus: Int,
+        maxOnline: Int,
+        delaySeconds: Int
+    ): ServerResponse<Any> = withContext(Dispatchers.IO) {
+        val apiName = "UpdateGreetingConfig"
+        return@withContext try {
+            val url = "${baseUrl}/dscrm/dylive-android/update-greeting-config"
+            val postData = mapOf(
+                "douyin_id" to douyinId,
+                "greet_status" to greetStatus,
+                "max_online" to maxOnline,
+                "delay_seconds" to delaySeconds
+            )
+            
+            responseHandler.logApiCall(apiName, url, "POST", postData)
+            
+            val requestBody = createJsonRequestBody(postData)
+            val request = createPostRequest(url, requestBody)
+                .addTokenHeader(token)
+                .build()
+            
+            val response = executeRequest(request)
+            responseHandler.handleSimpleResponse(response, apiName)
+            
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "更新招呼设置失败: ${e.message}", data = null)
         }
     }
     
