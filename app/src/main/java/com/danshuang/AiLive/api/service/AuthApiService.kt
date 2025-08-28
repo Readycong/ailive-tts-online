@@ -125,6 +125,35 @@ class AuthApiService(
     }
     
     /**
+     * 修改密码
+     */
+    suspend fun changePassword(oldPassword: String, newPassword: String): ServerResponse<Any> = withContext(Dispatchers.IO) {
+        val apiName = "ChangePassword"
+        return@withContext try {
+            val url = "${baseUrl}/change-passwd"
+            
+            // 构建POST请求参数
+            val postData = mapOf(
+                "old_password" to oldPassword,
+                "new_password" to newPassword
+            )
+            
+            responseHandler.logApiCall(apiName, url, "POST", postData)
+            
+            val requestBody = createJsonRequestBody(postData)
+            val request = createPostRequest(url, requestBody)
+                .build()
+            
+            val response = executeRequest(request)
+            responseHandler.handleSimpleResponse(response, apiName)
+            
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "修改密码失败: ${e.message}", data = null)
+        }
+    }
+    
+    /**
      * 组合登录和获取用户信息的完整登录流程
      */
     suspend fun loginWithUserInfo(username: String, password: String): LoginResult {

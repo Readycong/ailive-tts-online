@@ -160,7 +160,7 @@ fun rememberNavigationState(): NavigationState {
 }
 
 @Composable
-fun AppNavigation(
+fun ScreenNavigation(
     navigationState: NavigationState,
     onLogout: () -> Unit = {}
 ) {
