@@ -34,23 +34,26 @@ class AuthApiService(
             val response = executeRequest(request)
             
             if (!response.isSuccessful) {
-                return LoginResult.Error(IOException("登录失败: HTTP ${response.code}"))
+                responseHandler.handleSimpleResponse(response, apiName)
+                return LoginResult.Error(IOException("登录失败: ${response.code}"))
             }
-            
-            val responseBody = response.body?.string()
-            val jsonObject = com.google.gson.Gson().fromJson(responseBody, Map::class.java)
-            val dataMap = jsonObject["data"] as? Map<*, *>
-                ?: return LoginResult.Error(IOException("登录响应数据格式错误"))
-            
-            // 构建登录用户信息
-            val loggedInUser = LoggedInUser(
-                token = dataMap["token"] as String,
-                mobile = dataMap["mobile"] as String,
-                expiresTime = (dataMap["expires_time"] as Double).toUInt(),
-                userProfile = UserProfile() // 初始为空，后续通过getMemberInfo填充
-            )
-            
-            LoginResult.Success(loggedInUser)
+            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName)
+
+            if (serverResponse.isSuccess && serverResponse.data != null) {
+                val dataMap = serverResponse.data
+
+                // 构建登录用户信息
+                val loggedInUser = LoggedInUser(
+                    token = dataMap["token"] as String,
+                    mobile = dataMap["mobile"] as String,
+                    expiresTime = (dataMap["expires_time"] as Double).toUInt(),
+                    userProfile = UserProfile() // 初始为空，后续通过getMemberInfo填充
+                )
+
+                LoginResult.Success(loggedInUser)
+            } else {
+                LoginResult.Error(IOException("登录失败: ${serverResponse.msg}"))
+            }
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -127,10 +130,10 @@ class AuthApiService(
     /**
      * 修改密码
      */
-    suspend fun changePassword(oldPassword: String, newPassword: String): ServerResponse<Any> = withContext(Dispatchers.IO) {
+    suspend fun changePassword(token: String, oldPassword: String, newPassword: String): ServerResponse<Any> = withContext(Dispatchers.IO) {
         val apiName = "ChangePassword"
         return@withContext try {
-            val url = "${baseUrl}/change-passwd"
+            val url = "${baseUrl}/dscrm/dylive-android/change-passwd"
             
             // 构建POST请求参数
             val postData = mapOf(
@@ -142,6 +145,7 @@ class AuthApiService(
             
             val requestBody = createJsonRequestBody(postData)
             val request = createPostRequest(url, requestBody)
+                .addTokenHeader(token)
                 .build()
             
             val response = executeRequest(request)

@@ -97,7 +97,8 @@ class ServerApiUtilsV2(
      * 修改密码
      */
     suspend fun changePassword(oldPassword: String, newPassword: String): ServerResponse<Any> {
-        return authApiService.changePassword(oldPassword, newPassword)
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return authApiService.changePassword(token, oldPassword, newPassword)
     }
     
     // ============== 抖音相关 ==============

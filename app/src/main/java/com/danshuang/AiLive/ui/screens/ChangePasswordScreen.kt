@@ -49,7 +49,7 @@ fun ChangePasswordScreen(
         newPassword.isNotEmpty() &&
         confirmPassword.isNotEmpty() &&
         newPassword == confirmPassword &&
-        newPassword.length >= 6
+        newPassword.length >= 8
     } }
 
     // 提交密码修改
@@ -57,8 +57,8 @@ fun ChangePasswordScreen(
         if (!isFormValid) {
             if (newPassword != confirmPassword) {
                 errorMessage = "两次输入的新密码不一致"
-            } else if (newPassword.length < 6) {
-                errorMessage = "新密码长度至少为6位"
+            } else if (newPassword.length < 8) {
+                errorMessage = "新密码长度至少为8位"
             } else {
                 errorMessage = "请填写完整信息"
             }
