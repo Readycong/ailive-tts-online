@@ -27,14 +27,14 @@ class KnowledgeApiService(
     suspend fun fetchKbItems(
         token: String,
         typeId: String,
-        kbId: String? = null
+        kbId: Number? = null
     ): ServerResponse<List<KnowledgeItem>> = withContext(Dispatchers.IO) {
         val apiName = "FetchKbItems"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/fetch-kb-items"
             val postData = mapOf(
                 "type_id" to typeId,
-                "kb_id" to (kbId ?: "0")
+                "kb_id" to (kbId ?: 0)
             )
             
             responseHandler.logApiCall(apiName, url, "POST", postData)
@@ -76,7 +76,7 @@ class KnowledgeApiService(
                         }
                         
                         KnowledgeItem(
-                            id = (itemMap["id"] as? Number)?.toString() ?: "",
+                            id = (itemMap["id"] as? Number) ?: 0,
                             typeId = typeId, // 使用传入的 typeId 参数
                             question = itemMap["question"] as? String ?: "",
                             answer = itemMap["answer"] as? String ?: "",
@@ -112,9 +112,8 @@ class KnowledgeApiService(
      */
     suspend fun updateKbItem(
         token: String,
-        douyinId: String,
         typeId: String,
-        id: String,
+        id: Number,
         question: String,
         answer: String
     ): ServerResponse<Any> = withContext(Dispatchers.IO) {
@@ -122,7 +121,6 @@ class KnowledgeApiService(
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/update-kb-item"
             val postData = mapOf(
-                "douyin_id" to douyinId,
                 "type_id" to typeId,
                 "id" to id,
                 "question" to question,
@@ -150,14 +148,12 @@ class KnowledgeApiService(
      */
     suspend fun deleteKbItem(
         token: String,
-        douyinId: String,
-        id: String
+        id: Number
     ): ServerResponse<Any> = withContext(Dispatchers.IO) {
         val apiName = "DeleteKbItem"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/delete-kb-item"
             val postData = mapOf(
-                "douyin_id" to douyinId,
                 "id" to id
             )
             
@@ -182,7 +178,6 @@ class KnowledgeApiService(
      */
     suspend fun addKbItem(
         token: String,
-        douyinId: String,
         typeId: String,
         question: String,
         answer: String
@@ -191,7 +186,6 @@ class KnowledgeApiService(
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/update-kb-item"
             val postData = mapOf(
-                "douyin_id" to douyinId,
                 "type_id" to typeId,
                 "question" to question,
                 "answer" to answer
@@ -218,13 +212,11 @@ class KnowledgeApiService(
      */
     suspend fun batchUpdateKbItems(
         token: String,
-        douyinId: String,
         items: List<KnowledgeItem>
     ): List<ServerResponse<Any>> {
         return items.map { item ->
             updateKbItem(
                 token = token,
-                douyinId = douyinId,
                 typeId = item.typeId,
                 id = item.id,
                 question = item.question,
@@ -238,11 +230,10 @@ class KnowledgeApiService(
      */
     suspend fun batchDeleteKbItems(
         token: String,
-        douyinId: String,
-        itemIds: List<String>
+        itemIds: List<Number>
     ): List<ServerResponse<Any>> {
         return itemIds.map { id ->
-            deleteKbItem(token, douyinId, id)
+            deleteKbItem(token, id)
         }
     }
 }

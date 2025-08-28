@@ -65,7 +65,7 @@ fun LiveScriptScreen(
         )
     }
     
-    var currentSwipeId by remember { mutableStateOf<String?>(null) }
+    var currentSwipeId by remember { mutableStateOf<Number?>(null) }
     
     // 状态管理
     var isLoading by remember { mutableStateOf(true) }
@@ -143,14 +143,12 @@ fun LiveScriptScreen(
             isSaving = true
             try {
                 val currentToken = tokenManager.currentToken.first()
-                val douyinId = getCurrentDouyinId()
                 
-                if (currentToken != null && douyinId != null) {
+                if (currentToken != null) {
                     val response = if (editingItem != null) {
                         // 更新现有话术
                         knowledgeApiService.updateKbItem(
                             token = currentToken,
-                            douyinId = douyinId,
                             typeId = typeId,
                             id = editingItem!!.id,
                             question = editingItem!!.question,
@@ -160,7 +158,6 @@ fun LiveScriptScreen(
                         // 添加新话术
                         knowledgeApiService.addKbItem(
                             token = currentToken,
-                            douyinId = douyinId,
                             typeId = typeId,
                             question = title,
                             answer = editContent
@@ -180,7 +177,7 @@ fun LiveScriptScreen(
                         snackbarMessage = if (editingItem != null) "保存失败: ${response.msg}" else "添加失败: ${response.msg}"
                     }
                 } else {
-                    snackbarMessage = "未登录或缺少必要信息"
+                    snackbarMessage = "未登录"
                 }
             } catch (e: Exception) {
                 snackbarMessage = "操作失败: ${e.message}"
@@ -197,12 +194,10 @@ fun LiveScriptScreen(
             isSaving = true
             try {
                 val currentToken = tokenManager.currentToken.first()
-                val douyinId = getCurrentDouyinId()
                 
-                if (currentToken != null && douyinId != null) {
+                if (currentToken != null) {
                     val response = knowledgeApiService.deleteKbItem(
                         token = currentToken,
-                        douyinId = douyinId,
                         id = item.id
                     )
                     
@@ -217,7 +212,7 @@ fun LiveScriptScreen(
                         snackbarMessage = "删除失败: ${response.msg}"
                     }
                 } else {
-                    snackbarMessage = "未登录或缺少必要信息"
+                    snackbarMessage = "未登录"
                 }
             } catch (e: Exception) {
                 snackbarMessage = "删除失败: ${e.message}"
@@ -295,25 +290,19 @@ fun LiveScriptScreen(
                         onEditClick = {
                             scope.launch {
                                 try {
-                                    val douyinId = getCurrentDouyinId()
-                                    if (douyinId != null) {
-                                        // 先获取最新的answer内容
-                                        val response = serverApiUtils.fetchKbById(item.typeId, item.id)
-                                        if (response.isSuccess && response.data?.isNotEmpty() == true) {
-                                            val latestItem = response.data.first()
-                                            editingItem = item
-                                            editContent = latestItem.answer // 使用最新的answer
-                                            showEditDialog = true
-                                        } else {
-                                            // 如果获取失败，使用原有的answer
-                                            editingItem = item
-                                            editContent = item.answer
-                                            showEditDialog = true
-                                            snackbarMessage = "获取最新内容失败，使用缓存内容: ${response.msg}"
-                                            showSnackbar = true
-                                        }
+                                    // 先获取最新的answer内容
+                                    val response = serverApiUtils.fetchKbById(item.typeId, item.id)
+                                    if (response.isSuccess && response.data?.isNotEmpty() == true) {
+                                        val latestItem = response.data.first()
+                                        editingItem = item
+                                        editContent = latestItem.answer // 使用最新的answer
+                                        showEditDialog = true
                                     } else {
-                                        snackbarMessage = "缺少必要信息，无法获取最新内容"
+                                        // 如果获取失败，使用原有的answer
+                                        editingItem = item
+                                        editContent = item.answer
+                                        showEditDialog = true
+                                        snackbarMessage = "获取最新内容失败，使用缓存内容: ${response.msg}"
                                         showSnackbar = true
                                     }
                                 } catch (e: Exception) {
@@ -441,8 +430,8 @@ fun KnowledgeScriptCard(
     item: KnowledgeItem,
     onDeleteClick: () -> Unit,
     onEditClick: () -> Unit,
-    currentSwipeId: String?,
-    onSwipeStateChange: (String?) -> Unit
+    currentSwipeId: Number?,
+    onSwipeStateChange: (Number?) -> Unit
 ) {
     var offsetX by remember { mutableStateOf(0f) }
     val maxSwipeOffset = -300f

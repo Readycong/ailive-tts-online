@@ -1,6 +1,6 @@
 package com.danshuang.AiLive.ui.screens
 
-
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -23,15 +24,21 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
 import androidx.compose.material3.SecondaryTabRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TextField
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
@@ -39,74 +46,226 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.zIndex
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.navigation.NavigationState
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.ui.zIndex
+import com.danshuang.AiLive.api.ServerApiUtilsV2
+import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.data.manager.TokenManager
+import com.danshuang.AiLive.data.model.KnowledgeItem
+import kotlinx.coroutines.launch
 
-data class QAItem(
-    val id: Int,
-    val category: String,
-    val question: String,
-    val answer: String
-)
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KnowledgeScreen(
     navController: NavigationState? = null
 ) {
-    var selectedTabIndex by remember { mutableStateOf(0) }
-    var currentSwipeId by remember { mutableStateOf<Int?>(null) }
-
-    val categories = listOf("我的知识库", "行业库")
-
-    // 美业领域问答数据
-    val beautyAppQA = listOf(
-        QAItem(1, "我的知识", "如何选择适合自己肤质的护肤品？", "根据肤质类型选择：干性皮肤选择滋润型，油性皮肤选择清爽控油型，混合性皮肤分区护理，敏感性皮肤选择温和无刺激产品。建议先做皮肤测试再购买。"),
-        QAItem(2, "我的知识", "美容院预约系统如何使用？", "打开应用→选择服务项目→选择时间→选择美容师→确认预约→收到确认短信→到店扫码签到。支持在线支付和会员积分抵扣。"),
-        QAItem(3, "我的知识", "美业会员卡有哪些优惠？", "会员卡享受项目折扣8.5折起，生日当月免费体验项目，积分兑换礼品，专属美容师服务，优先预约权，会员专享活动邀请。"),
-        QAItem(4, "我的知识", "如何查看美容项目的效果对比？", "在【我的】页面点击【效果记录】，可查看前后对比照片，系统会自动标注时间和项目类型，支持分享朋友圈获得积分奖励。"),
-        QAItem(5, "我的知识", "皮肤检测功能准确吗？", "采用AI皮肤检测技术，准确率达95%以上，可识别毛孔粗大、色素沉着、细纹、水分油分等8项指标，建议每月检测一次对比效果。"),
-        QAItem(6, "我的知识", "美业小程序和APP有什么区别？", "小程序无需下载即开即用，适合轻度用户；APP功能更完整，支持离线缓存、消息推送、AR试妆等高级功能，会员数据互通。"),
-        QAItem(7, "我的知识", "如何成为美业平台认证美容师？", "提交身份证+美容师资格证→平台审核→技能考核→背景调查→认证通过→获得专属二维码和认证标识→开始接单服务。"),
-        QAItem(8, "我的知识", "美业直播带货可信吗？", "平台严格筛选合作品牌，所有产品均有质检报告，支持7天无理由退货，专业美容师直播讲解，用户可实时提问互动。")
-    )
-
-    val beautyIndustryQA = listOf(
-        QAItem(9, "行业库", "2024年美业最新流行趋势是什么？", "轻医美项目持续火热，包括水光针、热玛吉、超声炮等；天然有机护肤品需求增长；个性化定制护肤方案；男性美容市场快速扩张。"),
-        QAItem(10, "行业库", "美容院如何提高客户复购率？", "建立会员体系、定期回访关怀、个性化护肤方案、效果可视化对比、节日专属活动、老带新优惠、专业美容师一对一服务。"),
-        QAItem(11, "行业库", "美业门店数字化转型需要哪些步骤？", "1.上线预约系统2.建立会员数据库3.引入AI皮肤检测4.开通线上商城5.运营私域社群6.数据分析优化7.培训员工数字化技能。"),
-        QAItem(12, "行业库", "美容师职业发展路径有哪些？", "初级美容师→高级美容师→美容顾问→店长→区域经理→培训讲师→自主创业开店，或转向产品经理、品牌营销、培训教育等方向发展。"),
-        QAItem(13, "行业库", "美业门店如何选址才赚钱？", "核心商圈人流量大但租金高，社区店稳定但增长慢，写字楼针对白领群体，商场店曝光度高，需根据目标客群和预算综合评估。"),
-        QAItem(14, "行业库", "美业产品进货渠道有哪些？", "品牌官方代理、美博会采购、阿里巴巴1688、海外代购、OEM贴牌定制、加盟连锁品牌直供，注意查验产品资质和质检报告。"),
-        QAItem(15, "行业库", "美业营销最有效的推广方式？", "短视频平台种草（抖音小红书）、KOL合作推广、会员转介绍奖励、节日主题活动、直播带货、私域社群运营、异业联盟合作。"),
-        QAItem(16, "行业库", "美业门店如何控制成本？", "优化人员配置、精准库存管理、能耗监控、产品损耗控制、预约排班最大化、供应商谈判、数字化管理减少人工错误。"),
-        QAItem(17, "行业库", "美业客户投诉如何处理？", "第一时间安抚情绪→详细了解问题→提出解决方案→及时补偿→跟进回访→记录案例培训→完善服务流程避免再次发生。")
-    )
-
-    // 合并所有问答数据
-    var qaList by remember {
-        mutableStateOf(beautyAppQA + beautyIndustryQA)
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
+    
+    // 初始化API服务
+    val tokenManager = remember { TokenManager(LoginRepository(context)) }
+    val loginRepository = remember { LoginRepository(context) }
+    val serverApiUtils = remember {
+        ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository)
     }
-
+    
+    // 页面状态
+    var currentSwipeId by remember { mutableStateOf<Number?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var knowledgeList by remember { mutableStateOf<List<KnowledgeItem>>(emptyList()) }
+    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+    
+    // 编辑对话框状态
     var showEditDialog by remember { mutableStateOf(false) }
-    var editingItem by remember { mutableStateOf<QAItem?>(null) }
+    var editingItem by remember { mutableStateOf<KnowledgeItem?>(null) }
     var editQuestion by remember { mutableStateOf("") }
     var editAnswer by remember { mutableStateOf("") }
+    var isSaving by remember { mutableStateOf(false) }
+    
+    // 分类设置：仅保留"我的知识库"
+    val categories = listOf("我的知识库")
+    val selectedTabIndex = 0 // 固定为0，因为只有一个分类
+    
+    // 获取当前用户信息
+    var currentUser by remember { mutableStateOf<com.danshuang.AiLive.data.model.LoggedInUser?>(null) }
 
+    // 页面初始化时加载用户信息和知识库数据
+    LaunchedEffect(Unit) {
+        scope.launch {
+            try {
+                // 获取当前用户信息
+                currentUser = serverApiUtils.getCurrentUser()
+                
+                if (currentUser != null) {
+                    // 加载知识库数据
+                    isLoading = true
+                    val response = serverApiUtils.fetchKbItems("QA")
+                    if (response.isSuccess && response.data != null) {
+                        knowledgeList = response.data
+                    } else {
+                        snackbarMessage = "加载我的知识库失败：${response.msg}"
+                    }
+                } else {
+                    snackbarMessage = "用户未登录，请先登录"
+                }
+            } catch (e: Exception) {
+                snackbarMessage = "加载我的知识库失败：${e.message}"
+            } finally {
+                isLoading = false
+            }
+        }
+    }
+    
+    // 新增知识条目
+    fun addNewItem() {
+        scope.launch {
+            isSaving = true
+            try {
+                val response = serverApiUtils.updateKbItem(
+                    typeId = "QA",
+                    id = 0, // 新增时id为0
+                    question = editQuestion.trim(),
+                    answer = editAnswer.trim()
+                )
+                
+                if (response.isSuccess) {
+                    snackbarMessage = "添加成功"
+                    showEditDialog = false
+                    editQuestion = ""
+                    editAnswer = ""
+                    editingItem = null
+                    
+                    // 重新加载数据
+                    val refreshResponse = serverApiUtils.fetchKbItems("QA")
+                    if (refreshResponse.isSuccess && refreshResponse.data != null) {
+                        knowledgeList = refreshResponse.data
+                    }
+                } else {
+                    snackbarMessage = "添加失败：${response.msg}"
+                }
+            } catch (e: Exception) {
+                snackbarMessage = "添加失败：${e.message}"
+            } finally {
+                isSaving = false
+            }
+        }
+    }
+    
+    // 编辑知识条目
+    fun editItem(item: KnowledgeItem) {
+        scope.launch {
+            try {
+                // 先获取最新数据
+                val response = serverApiUtils.fetchKbById("QA", item.id)
+                if (response.isSuccess && response.data?.isNotEmpty() == true) {
+                    val latestItem = response.data.first()
+                    editingItem = latestItem
+                    editQuestion = latestItem.question
+                    editAnswer = latestItem.answer
+                } else {
+                    // 获取失败时使用缓存数据
+                    editingItem = item
+                    editQuestion = item.question
+                    editAnswer = item.answer
+                    snackbarMessage = "获取最新数据失败，使用缓存数据"
+                }
+                showEditDialog = true
+            } catch (e: Exception) {
+                editingItem = item
+                editQuestion = item.question
+                editAnswer = item.answer
+                showEditDialog = true
+                snackbarMessage = "获取最新数据失败：${e.message}"
+            }
+        }
+    }
+    
+    // 保存编辑
+    fun saveEdit() {
+        scope.launch {
+            isSaving = true
+            try {
+                val response = serverApiUtils.updateKbItem(
+                    typeId = "QA",
+                    id = editingItem!!.id,
+                    question = editQuestion.trim(),
+                    answer = editAnswer.trim()
+                )
+                
+                if (response.isSuccess) {
+                    snackbarMessage = "更新成功"
+                    showEditDialog = false
+                    editQuestion = ""
+                    editAnswer = ""
+                    editingItem = null
+                    
+                    // 重新加载数据
+                    val refreshResponse = serverApiUtils.fetchKbItems("QA")
+                    if (refreshResponse.isSuccess && refreshResponse.data != null) {
+                        knowledgeList = refreshResponse.data
+                    }
+                } else {
+                    snackbarMessage = "更新失败：${response.msg}"
+                }
+            } catch (e: Exception) {
+                snackbarMessage = "更新失败：${e.message}"
+            } finally {
+                isSaving = false
+            }
+        }
+    }
+    
+    // 删除知识条目
+    fun deleteItem(item: KnowledgeItem) {
+        scope.launch {
+            try {
+                val response = serverApiUtils.deleteKbItem(
+                    id = item.id
+                )
+                
+                if (response.isSuccess) {
+                    snackbarMessage = "删除成功"
+                    knowledgeList = knowledgeList.filterNot { it.id == item.id }
+                    currentSwipeId = null
+                } else {
+                    snackbarMessage = "删除失败：${response.msg}"
+                }
+            } catch (e: Exception) {
+                snackbarMessage = "删除失败：${e.message}"
+            }
+        }
+    }
+    
+    // Snackbar消息处理
+    snackbarMessage?.let { message ->
+        LaunchedEffect(message) {
+            snackbarHostState.showSnackbar(
+                message = message,
+                duration = SnackbarDuration.Short
+            )
+            snackbarMessage = null
+        }
+    }
+    
     Scaffold(
         topBar = {
             TopAppBar(
@@ -128,7 +287,14 @@ fun KnowledgeScreen(
                     }
                 },
                 actions = {
-                    IconButton(onClick = { showEditDialog = true }) {
+                    IconButton(
+                        onClick = {
+                            editingItem = null
+                            editQuestion = ""
+                            editAnswer = ""
+                            showEditDialog = true
+                        }
+                    ) {
                         Icon(
                             imageVector = Icons.Default.Add,
                             contentDescription = "添加问答"
@@ -137,73 +303,79 @@ fun KnowledgeScreen(
                 }
             )
         },
-
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
+        }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // 分类标签
-            SecondaryTabRow(
-                selectedTabIndex = selectedTabIndex,
-                containerColor = MaterialTheme.colorScheme.surface
+        if (isLoading) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center
             ) {
-                categories.forEachIndexed { index, category ->
-                    Tab(
-                        selected = selectedTabIndex == index,
-                        onClick = { selectedTabIndex = index },
-                        text = { Text(category) }
-                    )
-                }
+                CircularProgressIndicator()
             }
-
-            // 问答列表
-            val filteredList = when (selectedTabIndex) {
-                0 -> qaList.filter { it.category == "我的知识" }
-                1 -> qaList.filter { it.category == "行业库" }
-                else -> qaList
-            }
-
-            val listState = rememberLazyListState()
-
-            LazyColumn(
-                state = listState,
-                modifier = Modifier.fillMaxSize(),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
-                contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
             ) {
-                items(filteredList) { item ->
-                    QACard(
-                        item = item,
-                        onDeleteClick = {
-                            qaList = qaList.filterNot { it.id == item.id }
-                            currentSwipeId = null
-                        },
-                        onEditClick = {
-                            editingItem = item
-                            editQuestion = item.question
-                            editAnswer = item.answer
-                            showEditDialog = true
-                        },
-                        currentSwipeId = currentSwipeId,
-                        onSwipeStateChange = { newSwipeId ->
-                            currentSwipeId = newSwipeId
-                        }
-                    )
-                }
-            }
-
-            // 添加新项后自动滚动到底部
-            val previousListSize = remember { mutableStateOf(qaList.size) }
-            LaunchedEffect(qaList.size) {
-                if (qaList.size > previousListSize.value) {
-                    val lastItemIndex = filteredList.size - 1
-                    if (lastItemIndex >= 0) {
-                        listState.animateScrollToItem(lastItemIndex)
+                // 分类标签（仅显示"我的知识库"）
+                SecondaryTabRow(
+                    selectedTabIndex = selectedTabIndex,
+                    containerColor = MaterialTheme.colorScheme.surface
+                ) {
+                    categories.forEachIndexed { index, category ->
+                        Tab(
+                            selected = selectedTabIndex == index,
+                            onClick = { /* 固定选中，无需切换 */ },
+                            text = { Text(category) }
+                        )
                     }
                 }
-                previousListSize.value = qaList.size
+
+                // 知识条目列表
+                val listState = rememberLazyListState()
+
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp)
+                ) {
+                    items(
+                        items = knowledgeList,
+                        key = { it.id }
+                    ) { item ->
+                        KnowledgeCard(
+                            item = item,
+                            onDeleteClick = {
+                                deleteItem(item)
+                            },
+                            onEditClick = {
+                                editItem(item)
+                            },
+                            currentSwipeId = currentSwipeId,
+                            onSwipeStateChange = { newSwipeId ->
+                                currentSwipeId = newSwipeId
+                            }
+                        )
+                    }
+                }
+
+                // 添加新项后自动滚动到底部
+                val previousListSize = remember { mutableStateOf(knowledgeList.size) }
+                LaunchedEffect(knowledgeList.size) {
+                    if (knowledgeList.size > previousListSize.value) {
+                        val lastItemIndex = knowledgeList.size - 1
+                        if (lastItemIndex >= 0) {
+                            listState.animateScrollToItem(lastItemIndex)
+                        }
+                    }
+                    previousListSize.value = knowledgeList.size
+                }
             }
         }
     }
@@ -211,25 +383,30 @@ fun KnowledgeScreen(
     // 编辑对话框
     if (showEditDialog) {
         AlertDialog(
-            onDismissRequest = { showEditDialog = false },
-            title = { Text(if (editingItem != null) "编辑问答" else "添加问答") },
+            onDismissRequest = {
+                if (!isSaving) {
+                    showEditDialog = false
+                }
+            },
+            title = { Text(if (editingItem != null) "编辑知识条目" else "新增知识条目") },
             text = {
                 Column(
-                    modifier = Modifier.padding(8.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    TextField(
+                    OutlinedTextField(
                         value = editQuestion,
                         onValueChange = { editQuestion = it },
                         label = { Text("问题") },
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSaving
                     )
-                    TextField(
+                    OutlinedTextField(
                         value = editAnswer,
                         onValueChange = { editAnswer = it },
                         label = { Text("答案") },
                         modifier = Modifier.fillMaxWidth(),
-                        maxLines = 5
+                        maxLines = 5,
+                        enabled = !isSaving
                     )
                 }
             },
@@ -237,31 +414,37 @@ fun KnowledgeScreen(
                 Button(
                     onClick = {
                         if (editingItem != null) {
-                            // 编辑现有问答
-                            qaList = qaList.map {
-                                if (it.id == editingItem!!.id) {
-                                    it.copy(question = editQuestion, answer = editAnswer)
-                                } else it
-                            }
+                            saveEdit()
                         } else {
-                            // 添加新问答
-                            val newItem = QAItem(
-                                id = qaList.maxOfOrNull { it.id }?.plus(1) ?: 1,
-                                category = categories.getOrNull(selectedTabIndex) ?: "我的知识",
-                                question = editQuestion,
-                                answer = editAnswer
-                            )
-                            qaList = qaList + newItem
+                            addNewItem()
                         }
-                        showEditDialog = false
-                    }
+                    },
+                    enabled = !isSaving && editQuestion.isNotBlank() && editAnswer.isNotBlank()
                 ) {
-                    Text("保存")
+                    if (isSaving) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Text("保存中...")
+                        }
+                    } else {
+                        Text("保存")
+                    }
                 }
             },
             dismissButton = {
-                Button(
-                    onClick = { showEditDialog = false }
+                TextButton(
+                    onClick = {
+                        showEditDialog = false
+                        editQuestion = ""
+                        editAnswer = ""
+                        editingItem = null
+                    },
+                    enabled = !isSaving
                 ) {
                     Text("取消")
                 }
@@ -272,12 +455,12 @@ fun KnowledgeScreen(
 }
 
 @Composable
-fun QACard(
-    item: QAItem,
+fun KnowledgeCard(
+    item: KnowledgeItem,
     onDeleteClick: () -> Unit,
     onEditClick: () -> Unit,
-    currentSwipeId: Int?,
-    onSwipeStateChange: (Int?) -> Unit
+    currentSwipeId: Number?,
+    onSwipeStateChange: (Number?) -> Unit
 ) {
     var offsetX by remember { mutableStateOf(0f) }
     val maxSwipeOffset = -300f // 最大侧滑距离

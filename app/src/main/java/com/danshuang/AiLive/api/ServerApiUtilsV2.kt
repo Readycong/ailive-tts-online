@@ -186,7 +186,7 @@ class ServerApiUtilsV2(
     /**
      * 获取单条知识库条目
      */
-    suspend fun fetchKbById(typeId: String, kbId: String): ServerResponse<List<KnowledgeItem>> {
+    suspend fun fetchKbById(typeId: String, kbId: Number): ServerResponse<List<KnowledgeItem>> {
         val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = emptyList())
         return knowledgeApiService.fetchKbItems(token, typeId, kbId)
     }
@@ -195,25 +195,23 @@ class ServerApiUtilsV2(
      * 更新知识库条目
      */
     suspend fun updateKbItem(
-        douyinId: String,
         typeId: String,
-        id: String,
+        id: Number,
         question: String,
         answer: String
     ): ServerResponse<Any> {
         val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
-        return knowledgeApiService.updateKbItem(token, douyinId, typeId, id, question, answer)
+        return knowledgeApiService.updateKbItem(token, typeId, id, question, answer)
     }
     
     /**
      * 删除知识库条目
      */
     suspend fun deleteKbItem(
-        douyinId: String,
-        id: String
+        id: Number
     ): ServerResponse<Any> {
         val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
-        return knowledgeApiService.deleteKbItem(token, douyinId, id)
+        return knowledgeApiService.deleteKbItem(token, id)
     }
     
     // ============== 配置管理 ==============

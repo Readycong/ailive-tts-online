@@ -102,7 +102,7 @@ data class DouyinAccount(
  */
 @Keep
 data class KnowledgeItem(
-    val id: String,
+    val id: Number,
     val typeId: String,
     val question: String,
     val answer: String,
