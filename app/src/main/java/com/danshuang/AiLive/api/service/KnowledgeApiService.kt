@@ -80,7 +80,7 @@ class KnowledgeApiService(
      */
     suspend fun updateKbItem(
         token: String,
-        scriptKey: String,
+        douyinId: String,
         typeId: String,
         id: String,
         question: String,
