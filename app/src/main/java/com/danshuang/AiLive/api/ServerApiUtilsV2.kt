@@ -176,17 +176,17 @@ class ServerApiUtilsV2(
     /**
      * 获取知识库条目
      */
-    suspend fun fetchKbItems(douyinId: String): ServerResponse<List<KnowledgeItem>> {
+    suspend fun fetchKbItems(typeId: String): ServerResponse<List<KnowledgeItem>> {
         val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = emptyList())
-        return knowledgeApiService.fetchKbItems(token, douyinId)
+        return knowledgeApiService.fetchKbItems(token, typeId)
     }
 
     /**
      * 获取单条知识库条目
      */
-    suspend fun fetchKbById(douyinId: String, kbId: String): ServerResponse<List<KnowledgeItem>> {
+    suspend fun fetchKbById(typeId: String, kbId: String): ServerResponse<List<KnowledgeItem>> {
         val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = emptyList())
-        return knowledgeApiService.fetchKbItems(token, douyinId, kbId)
+        return knowledgeApiService.fetchKbItems(token, typeId, kbId)
     }
 
     /**

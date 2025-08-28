@@ -189,7 +189,7 @@ class KnowledgeApiService(
     ): ServerResponse<Any> = withContext(Dispatchers.IO) {
         val apiName = "AddKbItem"
         return@withContext try {
-            val url = "${baseUrl}/dscrm/dylive-android/add-kb-item"
+            val url = "${baseUrl}/dscrm/dylive-android/update-kb-item"
             val postData = mapOf(
                 "douyin_id" to douyinId,
                 "type_id" to typeId,

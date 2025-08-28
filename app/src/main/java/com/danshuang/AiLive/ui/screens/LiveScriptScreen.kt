@@ -30,6 +30,7 @@ import androidx.compose.ui.window.Dialog
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.api.service.KnowledgeApiService
+import com.danshuang.AiLive.api.ServerApiUtilsV2
 import com.danshuang.AiLive.data.model.KnowledgeItem
 import com.danshuang.AiLive.config.AppConfig
 import kotlinx.coroutines.launch
@@ -54,6 +55,13 @@ fun LiveScriptScreen(
             tokenManager = tokenManager,
             baseUrl = AppConfig.getApiBaseUrl(context),
             context = context
+        )
+    }
+    val serverApiUtils = remember {
+        ServerApiUtilsV2.createFromContext(
+            context = context,
+            tokenManager = tokenManager,
+            loginRepository = loginRepository
         )
     }
     
@@ -96,7 +104,7 @@ fun LiveScriptScreen(
         try {
             val currentToken = tokenManager.currentToken.first()
             if (currentToken != null) {
-                val response = knowledgeApiService.fetchKbItems(currentToken, typeId)
+                val response = serverApiUtils.fetchKbItems(typeId)
                 if (response.isSuccess && response.data != null) {
                     scriptList = response.data
                 } else {
@@ -164,7 +172,7 @@ fun LiveScriptScreen(
                         showEditDialog = false
                         
                         // 重新获取列表数据
-                        val refreshResponse = knowledgeApiService.fetchKbItems(currentToken, typeId)
+                        val refreshResponse = serverApiUtils.fetchKbItems(typeId)
                         if (refreshResponse.isSuccess && refreshResponse.data != null) {
                             scriptList = refreshResponse.data
                         }
@@ -202,10 +210,9 @@ fun LiveScriptScreen(
                         snackbarMessage = "删除成功"
                         
                         // 重新获取列表数据
-                        val refreshResponse = knowledgeApiService.fetchKbItems(currentToken, typeId)
+                        val refreshResponse = serverApiUtils.fetchKbItems(typeId)
                         if (refreshResponse.isSuccess && refreshResponse.data != null) {
-                            scriptList = refreshResponse.data
-                        }
+                            scriptList = refreshResponse.data                        }
                     } else {
                         snackbarMessage = "删除失败: ${response.msg}"
                     }
@@ -286,9 +293,38 @@ fun LiveScriptScreen(
                         item = item,
                         onDeleteClick = { deleteItem(item) },
                         onEditClick = {
-                            editingItem = item
-                            editContent = item.answer
-                            showEditDialog = true
+                            scope.launch {
+                                try {
+                                    val douyinId = getCurrentDouyinId()
+                                    if (douyinId != null) {
+                                        // 先获取最新的answer内容
+                                        val response = serverApiUtils.fetchKbById(item.typeId, item.id)
+                                        if (response.isSuccess && response.data?.isNotEmpty() == true) {
+                                            val latestItem = response.data.first()
+                                            editingItem = item
+                                            editContent = latestItem.answer // 使用最新的answer
+                                            showEditDialog = true
+                                        } else {
+                                            // 如果获取失败，使用原有的answer
+                                            editingItem = item
+                                            editContent = item.answer
+                                            showEditDialog = true
+                                            snackbarMessage = "获取最新内容失败，使用缓存内容: ${response.msg}"
+                                            showSnackbar = true
+                                        }
+                                    } else {
+                                        snackbarMessage = "缺少必要信息，无法获取最新内容"
+                                        showSnackbar = true
+                                    }
+                                } catch (e: Exception) {
+                                    // 出现异常时使用原有的answer
+                                    editingItem = item
+                                    editContent = item.answer
+                                    showEditDialog = true
+                                    snackbarMessage = "获取最新内容异常: ${e.message}"
+                                    showSnackbar = true
+                                }
+                            }
                         },
                         currentSwipeId = currentSwipeId,
                         onSwipeStateChange = { newSwipeId ->
@@ -591,12 +627,12 @@ fun ScriptCard(
                         .padding(horizontal = 8.dp)
                         .zIndex(2f)
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "删除",
-                        modifier = Modifier.size(16.dp)
-                    )
-                    Spacer(modifier = Modifier.width(4.dp))
+//                    Icon(
+//                        imageVector = Icons.Default.Delete,
+//                        contentDescription = "删除",
+//                        modifier = Modifier.size(16.dp)
+//                    )
+//                    Spacer(modifier = Modifier.width(4.dp))
                     Text("删除")
                 }
             }
