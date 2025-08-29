@@ -6,6 +6,7 @@ import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.model.ServerResponse
 import com.danshuang.AiLive.data.model.DouyinAccount
 import com.danshuang.AiLive.data.model.AiComment
+import com.danshuang.AiLive.data.model.VoiceFileInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -141,12 +142,13 @@ class DouyinApiService(
     
     /**
      * 获取AI知识库信息
+     * 返回语音文件信息用于播放
      */
     suspend fun fetchAiKnowledges(
         token: String,
         roomId: String,
         stage: String
-    ): Map<String, Any>? = withContext(Dispatchers.IO) {
+    ): VoiceFileInfo? = withContext(Dispatchers.IO) {
         val apiName = "FetchAiKnowledges"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/fetch-kb-ai-list"
@@ -163,7 +165,16 @@ class DouyinApiService(
                 .build()
             
             val response = executeRequest(request)
-            responseHandler.handleMapResponse(response, apiName)
+            val dataMap = responseHandler.handleMapResponse(response, apiName)
+            
+            dataMap?.let { map ->
+                VoiceFileInfo(
+                    id = map["id"].toString(),
+                    text = map["text"] as? String ?: "",
+                    url = map["url"] as? String ?: "",
+                    cache = map["cache"] as? Boolean ?: false
+                )
+            }
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -173,12 +184,13 @@ class DouyinApiService(
     
     /**
      * 获取AI评论
+     * 返回AI评论音频内容列表
      */
     suspend fun fetchAiComments(
         token: String,
         roomId: String,
         stage: String
-    ): List<AiComment>? = withContext(Dispatchers.IO) {
+    ): List<VoiceFileInfo>? = withContext(Dispatchers.IO) {
         val apiName = "FetchAiComments"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/fetch-play-comments"
@@ -200,10 +212,11 @@ class DouyinApiService(
             dataList?.mapNotNull { item ->
                 try {
                     val commentMap = item as Map<String, Any>
-                    AiComment(
-                        content = commentMap["content"] as? String ?: "",
-                        type = commentMap["type"] as? String ?: "",
-                        timestamp = (commentMap["timestamp"] as? Double)?.toLong() ?: System.currentTimeMillis()
+                    VoiceFileInfo(
+                        id = commentMap["id"].toString(),
+                        text = commentMap["text"] as? String ?: "",
+                        url = commentMap["url"] as? String ?: "",
+                        cache = commentMap["cache"] as? Boolean ?: false
                     )
                 } catch (e: Exception) {
                     null // 跳过解析失败的条目

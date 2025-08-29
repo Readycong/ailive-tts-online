@@ -7,7 +7,6 @@ import com.danshuang.AiLive.ui.screens.MessageType
 import kotlinx.coroutines.*
 import kotlinx.serialization.json.*
 import kotlinx.serialization.SerializationException
-import android.util.Log
 
 /**
  * 消息处理器
@@ -47,7 +46,7 @@ class MessageProcessor(
      */
     suspend fun processMessage(rawMessage: String): ProcessResult {
         return try {
-            Log.d(TAG, "Processing message: $rawMessage")
+            logDebug("Processing message: $rawMessage")
             
             val messageData = parseWebSocketMessage(rawMessage)
             
@@ -65,11 +64,40 @@ class MessageProcessor(
                 else -> ProcessResult.Ignored("Unknown message type: ${messageData.type}")
             }
         } catch (e: SerializationException) {
-            Log.e(TAG, "Failed to parse message as JSON: $rawMessage", e)
+            logError("Failed to parse message as JSON: $rawMessage", e)
             ProcessResult.Error("Invalid JSON format: ${e.message}")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to process message: $rawMessage", e)
+            logError("Failed to process message: $rawMessage", e)
             ProcessResult.Error("Failed to process message: ${e.message}")
+        }
+    }
+    
+    // 日志方法，避免直接使用Android Log类
+    private fun logDebug(message: String) {
+        try {
+            android.util.Log.d(TAG, message)
+        } catch (e: Exception) {
+            // 在测试环境中忽略
+        }
+    }
+    
+    private fun logInfo(message: String) {
+        try {
+            android.util.Log.i(TAG, message)
+        } catch (e: Exception) {
+            // 在测试环境中忽略
+        }
+    }
+    
+    private fun logError(message: String, throwable: Throwable? = null) {
+        try {
+            if (throwable != null) {
+                android.util.Log.e(TAG, message, throwable)
+            } else {
+                android.util.Log.e(TAG, message)
+            }
+        } catch (e: Exception) {
+            // 在测试环境中忽略
         }
     }
     
@@ -109,7 +137,7 @@ class MessageProcessor(
         return try {
             val roomId = extractRoomId(messageData) ?: return ProcessResult.Error("Missing room ID")
             
-            Log.i(TAG, "Processing live start event for room: $roomId")
+            logInfo("Processing live start event for room: $roomId")
             
             // 获取直播间详细信息
             val roomInfo = liveRoomRepository.fetchLiveRoomDetails(roomId)
@@ -128,7 +156,7 @@ class MessageProcessor(
             
             ProcessResult.Success("Live room started: $roomId")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle live start event", e)
+            logError("Failed to handle live start event", e)
             ProcessResult.Error("Failed to handle live start: ${e.message}")
         }
     }
@@ -140,7 +168,7 @@ class MessageProcessor(
         return try {
             val roomId = extractRoomId(messageData) ?: return ProcessResult.Error("Missing room ID")
             
-            Log.i(TAG, "Processing live end event for room: $roomId")
+            logInfo("Processing live end event for room: $roomId")
             
             // 更新直播间状态
             liveRoomRepository.updateRoomStatus(roomId, RoomStatus.OFFLINE)
@@ -159,7 +187,7 @@ class MessageProcessor(
             
             ProcessResult.Success("Live room ended: $roomId")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle live end event", e)
+            logError("Failed to handle live end event", e)
             ProcessResult.Error("Failed to handle live end: ${e.message}")
         }
     }
@@ -172,7 +200,7 @@ class MessageProcessor(
             val roomId = extractRoomId(messageData) ?: return ProcessResult.Error("Missing room ID")
             val viewerCount = extractViewerCount(messageData) ?: return ProcessResult.Error("Missing viewer count")
             
-            Log.d(TAG, "Processing viewer update for room $roomId: $viewerCount viewers")
+            logDebug("Processing viewer update for room $roomId: $viewerCount viewers")
             
             // 更新观众数
             liveRoomRepository.updateViewerCount(roomId, viewerCount)
@@ -190,7 +218,7 @@ class MessageProcessor(
             
             ProcessResult.Success("Viewer count updated: $viewerCount")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle viewer update", e)
+            logError("Failed to handle viewer update", e)
             ProcessResult.Error("Failed to handle viewer update: ${e.message}")
         }
     }
@@ -202,7 +230,7 @@ class MessageProcessor(
         return try {
             val roomId = extractRoomId(messageData) ?: return ProcessResult.Error("Missing room ID")
             
-            Log.d(TAG, "Processing room info update for room: $roomId")
+            logDebug("Processing room info update for room: $roomId")
             
             // 获取并更新直播间信息
             val roomInfo = liveRoomRepository.fetchLiveRoomDetails(roomId)
@@ -210,7 +238,7 @@ class MessageProcessor(
             
             ProcessResult.Success("Room info updated: $roomId")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle room info update", e)
+            logError("Failed to handle room info update", e)
             ProcessResult.Error("Failed to handle room info: ${e.message}")
         }
     }
@@ -219,7 +247,7 @@ class MessageProcessor(
      * 处理心跳消息
      */
     private fun handleHeartbeat(messageData: MessageData): ProcessResult {
-        Log.d(TAG, "Received heartbeat at ${messageData.timestamp}")
+        logDebug("Received heartbeat at ${messageData.timestamp}")
         return ProcessResult.Success("Heartbeat received")
     }
     
@@ -231,7 +259,7 @@ class MessageProcessor(
             val userName = extractUserName(messageData) ?: "匿名用户"
             val content = extractContent(messageData) ?: return ProcessResult.Error("Missing comment content")
             
-            Log.d(TAG, "Processing comment from $userName: $content")
+            logDebug("Processing comment from $userName: $content")
             
             // 插入评论消息到UI
             withContext(Dispatchers.Main) {
@@ -244,7 +272,7 @@ class MessageProcessor(
             
             ProcessResult.Success("Comment processed from $userName")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle comment", e)
+            logError("Failed to handle comment", e)
             ProcessResult.Error("Failed to handle comment: ${e.message}")
         }
     }
@@ -264,7 +292,7 @@ class MessageProcessor(
                 "送出了$giftName"
             }
             
-            Log.d(TAG, "Processing gift from $userName: $content")
+            logDebug("Processing gift from $userName: $content")
             
             // 插入礼物消息到UI
             withContext(Dispatchers.Main) {
@@ -277,7 +305,7 @@ class MessageProcessor(
             
             ProcessResult.Success("Gift processed from $userName")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle gift", e)
+            logError("Failed to handle gift", e)
             ProcessResult.Error("Failed to handle gift: ${e.message}")
         }
     }
@@ -289,7 +317,7 @@ class MessageProcessor(
         return try {
             val userName = extractUserName(messageData) ?: "匿名用户"
             
-            Log.d(TAG, "Processing follow from $userName")
+            logDebug("Processing follow from $userName")
             
             // 插入关注消息到UI
             withContext(Dispatchers.Main) {
@@ -302,7 +330,7 @@ class MessageProcessor(
             
             ProcessResult.Success("Follow processed from $userName")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle follow", e)
+            logError("Failed to handle follow", e)
             ProcessResult.Error("Failed to handle follow: ${e.message}")
         }
     }
@@ -314,7 +342,7 @@ class MessageProcessor(
         return try {
             val userName = extractUserName(messageData) ?: "匿名用户"
             
-            Log.d(TAG, "Processing enter from $userName")
+            logDebug("Processing enter from $userName")
             
             // 插入进入消息到UI
             withContext(Dispatchers.Main) {
@@ -327,7 +355,7 @@ class MessageProcessor(
             
             ProcessResult.Success("Enter processed from $userName")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle enter", e)
+            logError("Failed to handle enter", e)
             ProcessResult.Error("Failed to handle enter: ${e.message}")
         }
     }
@@ -339,7 +367,7 @@ class MessageProcessor(
         return try {
             val content = extractContent(messageData) ?: return ProcessResult.Error("Missing system message content")
             
-            Log.d(TAG, "Processing system message: $content")
+            logDebug("Processing system message: $content")
             
             // 插入系统消息到UI
             withContext(Dispatchers.Main) {
@@ -352,7 +380,7 @@ class MessageProcessor(
             
             ProcessResult.Success("System message processed")
         } catch (e: Exception) {
-            Log.e(TAG, "Failed to handle system message", e)
+            logError("Failed to handle system message", e)
             ProcessResult.Error("Failed to handle system message: ${e.message}")
         }
     }

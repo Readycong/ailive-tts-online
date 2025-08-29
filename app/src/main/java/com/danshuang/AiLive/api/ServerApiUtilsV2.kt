@@ -14,6 +14,7 @@ import com.danshuang.AiLive.data.model.KnowledgeItem
 import com.danshuang.AiLive.data.model.AiComment
 import com.danshuang.AiLive.data.model.ConfigItem
 import com.danshuang.AiLive.data.model.GreetingConfig
+import com.danshuang.AiLive.data.model.VoiceFileInfo
 import kotlinx.coroutines.flow.first
 
 /**
@@ -127,22 +128,24 @@ class ServerApiUtilsV2(
     
     /**
      * 获取AI知识库信息
+     * 返回语音文件信息用于播放
      */
     suspend fun fetchAiKnowledges(
         roomId: String,
         stage: String
-    ): Map<String, Any>? {
+    ): VoiceFileInfo? {
         val token = getTokenOrThrow() ?: return null
         return douyinApiService.fetchAiKnowledges(token, roomId, stage)
     }
     
     /**
      * 获取AI评论
+     * 返回AI评论音频内容列表
      */
     suspend fun fetchAiComments(
         roomId: String,
         step: String
-    ): List<AiComment>? {
+    ): List<VoiceFileInfo>? {
         val token = getTokenOrThrow() ?: return null
         return douyinApiService.fetchAiComments(token, roomId, step)
     }

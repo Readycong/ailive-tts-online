@@ -10,8 +10,11 @@ import org.junit.Assert.*
 import org.mockito.Mock
 import org.mockito.MockitoAnnotations
 import org.mockito.kotlin.*
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.Config
 
 @ExperimentalCoroutinesApi
+@Config(manifest = Config.NONE)
 class MessageProcessorTest {
     
     @Mock
