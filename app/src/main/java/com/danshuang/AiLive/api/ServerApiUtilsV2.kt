@@ -129,23 +129,22 @@ class ServerApiUtilsV2(
      * 获取AI知识库信息
      */
     suspend fun fetchAiKnowledges(
-        douyinId: String,
-        roomId: String
+        roomId: String,
+        stage: String
     ): Map<String, Any>? {
         val token = getTokenOrThrow() ?: return null
-        return douyinApiService.fetchAiKnowledges(token, douyinId, roomId)
+        return douyinApiService.fetchAiKnowledges(token, roomId, stage)
     }
     
     /**
      * 获取AI评论
      */
     suspend fun fetchAiComments(
-        douyinId: String,
         roomId: String,
         step: String
     ): List<AiComment>? {
         val token = getTokenOrThrow() ?: return null
-        return douyinApiService.fetchAiComments(token, douyinId, roomId, step)
+        return douyinApiService.fetchAiComments(token, roomId, step)
     }
     
     /**

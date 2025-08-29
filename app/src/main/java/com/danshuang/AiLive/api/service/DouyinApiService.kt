@@ -144,14 +144,14 @@ class DouyinApiService(
      */
     suspend fun fetchAiKnowledges(
         token: String,
-        douyinId: String,
-        roomId: String
+        roomId: String,
+        stage: String
     ): Map<String, Any>? = withContext(Dispatchers.IO) {
         val apiName = "FetchAiKnowledges"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/fetch-kb-ai-list"
             val postData = mapOf(
-                "douyin_id" to douyinId,
+                "stage" to stage,
                 "room_id" to roomId
             )
             
@@ -176,17 +176,15 @@ class DouyinApiService(
      */
     suspend fun fetchAiComments(
         token: String,
-        douyinId: String,
         roomId: String,
-        step: String
+        stage: String
     ): List<AiComment>? = withContext(Dispatchers.IO) {
         val apiName = "FetchAiComments"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/fetch-play-comments"
             val postData = mapOf(
-                "douyin_id" to douyinId,
                 "room_id" to roomId,
-                "step" to step
+                "step" to stage
             )
             
             responseHandler.logApiCall(apiName, url, "POST", postData)
