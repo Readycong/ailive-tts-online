@@ -20,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -31,6 +32,9 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.navigation.NavigationState
+import com.danshuang.AiLive.service.LiveRoomPullingService
+import com.danshuang.AiLive.service.LiveChattingService
+import com.danshuang.AiLive.data.model.ConnectionState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -95,8 +99,19 @@ object LiveMessageManager {
 fun AILiveScreen(
     navController: NavigationState? = null
 ) {
-    var liveMonitorEnabled by remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    
+    // 监控服务状态
+    val pullingState by LiveRoomPullingService.pullingStateFlow.collectAsState()
+    val connectionState by LiveRoomPullingService.connectionStateFlow.collectAsState()
+    val errorMessage by LiveRoomPullingService.errorMessageFlow.collectAsState()
+    
+    // 根据服务状态确定开关状态
+    val liveMonitorEnabled = pullingState == LiveRoomPullingService.PULLING_STATE_MONITORING
     var aiLiveEnabled by remember { mutableStateOf(false) }
+    
+    // AI直播语音播放状态
+    val chattingState by LiveChattingService.chattingStateFlow.collectAsState()
     var showWebView by remember { mutableStateOf(false) } // 控制WebView显示状态
     val liveUrl = "https://v.douyin.com/fnaycbpwpAQ/" // 直播主页地址
     val listState = rememberLazyListState()
@@ -154,9 +169,15 @@ fun AILiveScreen(
         }
     }
     
-    // 模拟自动生成消息 - 优化用户体验
-    LaunchedEffect(liveMonitorEnabled, aiLiveEnabled) {
-        if (liveMonitorEnabled || aiLiveEnabled) {
+    // 启动/停止监控服务
+    LaunchedEffect(Unit) {
+        // 应用启动时自动启动监控服务
+        LiveRoomPullingService.startService(context)
+    }
+    
+    // 模拟自动生成消息 - 仅在AI直播开启时生成模拟消息
+    LaunchedEffect(aiLiveEnabled) {
+        if (aiLiveEnabled) {
             while (true) {
                 delay(3000) // 每3秒生成一条消息
                 
@@ -210,9 +231,27 @@ fun AILiveScreen(
                 // 上部：左右布局的两个Switch按钮
                 SwitchControlSection(
                     liveMonitorEnabled = liveMonitorEnabled,
-                    onLiveMonitorChanged = { liveMonitorEnabled = it },
+                    onLiveMonitorChanged = { enabled ->
+                        if (enabled) {
+                            LiveRoomPullingService.startService(context)
+                        } else {
+                            LiveRoomPullingService.stopService(context)
+                        }
+                    },
                     aiLiveEnabled = aiLiveEnabled,
-                    onAiLiveChanged = { aiLiveEnabled = it }
+                    onAiLiveChanged = { enabled ->
+                        aiLiveEnabled = enabled
+                        if (enabled) {
+                            LiveChattingService.startService(context)
+                            // 启动语音播放
+                            // 这里应该通过某种方式通知服务开始播放
+                        } else {
+                            LiveChattingService.stopService(context)
+                        }
+                    },
+                    connectionState = connectionState,
+                    errorMessage = errorMessage,
+                    chattingState = chattingState
                 )
             }
             
@@ -365,7 +404,10 @@ private fun SwitchControlSection(
     liveMonitorEnabled: Boolean,
     onLiveMonitorChanged: (Boolean) -> Unit,
     aiLiveEnabled: Boolean,
-    onAiLiveChanged: (Boolean) -> Unit
+    onAiLiveChanged: (Boolean) -> Unit,
+    connectionState: ConnectionState = ConnectionState.DISCONNECTED,
+    errorMessage: String? = null,
+    chattingState: Int = LiveChattingService.CHATTING_STATE_STOPPED
 ) {
     Card(
         modifier = Modifier
@@ -389,7 +431,9 @@ private fun SwitchControlSection(
                 checked = liveMonitorEnabled,
                 onCheckedChange = onLiveMonitorChanged,
                 icon = Icons.Default.Videocam,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                connectionState = connectionState,
+                errorMessage = errorMessage
             )
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -400,7 +444,8 @@ private fun SwitchControlSection(
                 checked = aiLiveEnabled,
                 onCheckedChange = onAiLiveChanged,
                 icon = Icons.Default.SmartToy,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.weight(1f),
+                chattingState = chattingState
             )
         }
     }
@@ -412,7 +457,10 @@ private fun SwitchItem(
     checked: Boolean,
     onCheckedChange: (Boolean) -> Unit,
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    connectionState: ConnectionState? = null,
+    errorMessage: String? = null,
+    chattingState: Int? = null
 ) {
     Column(
         modifier = modifier,
@@ -432,8 +480,15 @@ private fun SwitchItem(
         
         Spacer(modifier = Modifier.height(8.dp))
         
+        // 根据chattingState显示不同的标题
+        val displayTitle = if (chattingState != null && chattingState == LiveChattingService.CHATTING_STATE_PLAYING) {
+            "$title (播放中)"
+        } else {
+            title
+        }
+        
         Text(
-            text = title,
+            text = displayTitle,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
@@ -442,6 +497,44 @@ private fun SwitchItem(
             else 
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) // unchecked时文字也更淡
         )
+        
+        // 显示连接状态（仅对直播间监控显示）
+        if (connectionState != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            val statusText = when (connectionState) {
+                ConnectionState.CONNECTED -> "已连接"
+                ConnectionState.CONNECTING -> "连接中"
+                ConnectionState.DISCONNECTED -> "已断开"
+                ConnectionState.ERROR -> "连接错误"
+            }
+            
+            val statusColor = when (connectionState) {
+                ConnectionState.CONNECTED -> Color(0xFF4CAF50)
+                ConnectionState.CONNECTING -> Color(0xFFFF9800)
+                ConnectionState.DISCONNECTED -> Color(0xFF9E9E9E)
+                ConnectionState.ERROR -> Color(0xFFFF5722)
+            }
+            
+            Text(
+                text = statusText,
+                fontSize = 10.sp,
+                color = statusColor,
+                textAlign = TextAlign.Center
+            )
+            
+            // 显示错误信息
+            if (errorMessage != null && connectionState == ConnectionState.ERROR) {
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = errorMessage,
+                    fontSize = 9.sp,
+                    color = Color(0xFFFF5722),
+                    textAlign = TextAlign.Center,
+                    maxLines = 1
+                )
+            }
+        }
     }
 }
 
