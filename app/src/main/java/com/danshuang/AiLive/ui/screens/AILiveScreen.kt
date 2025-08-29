@@ -499,7 +499,8 @@ private fun SwitchItem(
         )
         
         // 显示连接状态（仅对直播间监控显示）
-        if (connectionState != null) {
+        if (false) {
+//        if (connectionState != null) {
             Spacer(modifier = Modifier.height(4.dp))
             
             val statusText = when (connectionState) {
@@ -507,6 +508,7 @@ private fun SwitchItem(
                 ConnectionState.CONNECTING -> "连接中"
                 ConnectionState.DISCONNECTED -> "已断开"
                 ConnectionState.ERROR -> "连接错误"
+                else -> "ERRRR"
             }
             
             val statusColor = when (connectionState) {
@@ -514,6 +516,7 @@ private fun SwitchItem(
                 ConnectionState.CONNECTING -> Color(0xFFFF9800)
                 ConnectionState.DISCONNECTED -> Color(0xFF9E9E9E)
                 ConnectionState.ERROR -> Color(0xFFFF5722)
+                else -> Color(0xFFFFFFFF)
             }
             
             Text(
