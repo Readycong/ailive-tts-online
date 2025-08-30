@@ -108,10 +108,16 @@ fun AILiveScreen(
     
     // 根据服务状态确定开关状态
     val liveMonitorEnabled = pullingState == LiveRoomPullingService.PULLING_STATE_MONITORING
-    var aiLiveEnabled by remember { mutableStateOf(false) }
     
     // AI直播语音播放状态
     val chattingState by LiveChattingService.chattingStateFlow.collectAsState()
+    val liveChattingServiceRunning by LiveChattingService.isServiceRunning.collectAsState()
+    var aiLiveEnabled by remember { mutableStateOf(false) }
+    
+    // 根据服务运行状态更新UI状态
+    LaunchedEffect(liveChattingServiceRunning) {
+        aiLiveEnabled = liveChattingServiceRunning
+    }
     var showWebView by remember { mutableStateOf(false) } // 控制WebView显示状态
     val liveUrl = "https://v.douyin.com/fnaycbpwpAQ/" // 直播主页地址
     val listState = rememberLazyListState()
@@ -177,7 +183,7 @@ fun AILiveScreen(
     
     // 模拟自动生成消息 - 仅在AI直播开启时生成模拟消息
     LaunchedEffect(aiLiveEnabled) {
-        if (aiLiveEnabled) {
+        if (false) {
             while (true) {
                 delay(3000) // 每3秒生成一条消息
                 
@@ -240,13 +246,18 @@ fun AILiveScreen(
                     },
                     aiLiveEnabled = aiLiveEnabled,
                     onAiLiveChanged = { enabled ->
-                        aiLiveEnabled = enabled
                         if (enabled) {
-                            LiveChattingService.startService(context)
-                            // 启动语音播放
-                            // 这里应该通过某种方式通知服务开始播放
+                            // 检查服务是否已经在运行
+                            if (!liveChattingServiceRunning) {
+                                LiveChattingService.startService(context)
+                                aiLiveEnabled = true
+                            } else {
+                                // 服务已经在运行，只更新UI状态
+                                aiLiveEnabled = true
+                            }
                         } else {
                             LiveChattingService.stopService(context)
+                            aiLiveEnabled = false
                         }
                     },
                     connectionState = connectionState,

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">huichuang100.com</domain>
+        <domain includeSubdomains="true">hc2099.com</domain>
+        <!-- 添加其他音频服务器域名 -->
+    </domain-config>
+    
+    <!-- 开发环境允许所有明文传输 -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system"/>
+        </trust-anchors>
+    </base-config>
+</network-security-config>
