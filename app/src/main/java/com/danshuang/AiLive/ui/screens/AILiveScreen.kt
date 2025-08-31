@@ -119,7 +119,7 @@ fun AILiveScreen(
         aiLiveEnabled = liveChattingServiceRunning
     }
     var showWebView by remember { mutableStateOf(false) } // 控制WebView显示状态
-    val liveUrl = "https://v.douyin.com/fnaycbpwpAQ/" // 直播主页地址
+    val liveUrl = "about:blank" // Webview默认显示空白页，只当启动监控才打开真实页面
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope() // 使用Compose的协程作用域
     var autoScrollEnabled by remember { mutableStateOf(true) } // 控制自动滚动
@@ -197,13 +197,7 @@ fun AILiveScreen(
             }
         }
     }
-    
-    // 启动/停止监控服务
-    LaunchedEffect(Unit) {
-        // 应用启动时自动启动监控服务
-        LiveRoomPullingService.startService(context)
-    }
-    
+
     // 模拟自动生成消息 - 仅在AI直播开启时生成模拟消息
     LaunchedEffect(aiLiveEnabled) {
         if (false) {
