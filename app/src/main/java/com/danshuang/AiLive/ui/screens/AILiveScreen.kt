@@ -126,6 +126,7 @@ fun AILiveScreen(
     var userScrolling by remember { mutableStateOf(false) } // 检测用户手动滚动
     var lastScrollTime by remember { mutableStateOf(0L) } // 防抖动时间戳
     var forceScrollToBottom by remember { mutableStateOf(false) } // 强制滚动到底部标记
+    val messageCount = LiveMessageManager.messages.size // 监听消息数量变化
     
     // 检测是否在列表底部 - 优化精确度
     val isAtBottom by remember {
@@ -171,6 +172,28 @@ fun AILiveScreen(
             // 只有在用户滚动到底部时才重新开启自动滚动
             if (isAtBottom) {
                 autoScrollEnabled = true
+            }
+        }
+    }
+    
+    // 监听消息数量变化，实现新消息自动滚动
+    LaunchedEffect(messageCount) {
+        // 只有在自动滚动开启且不是用户手动滚动时才执行
+        if (messageCount > 0 && autoScrollEnabled && !userScrolling && !listState.isScrollInProgress) {
+            delay(100) // 等待UI更新完成
+            
+            // 再次检查状态，确保用户没有在此期间开始滚动
+            if (autoScrollEnabled && !userScrolling && !listState.isScrollInProgress) {
+                try {
+                    coroutineScope.launch {
+                        listState.animateScrollToItem(
+                            index = messageCount - 1,
+                            scrollOffset = 0
+                        )
+                    }
+                } catch (e: Exception) {
+                    // 忽略滚动异常
+                }
             }
         }
     }
@@ -283,10 +306,12 @@ fun AILiveScreen(
                     isAtBottom = isAtBottom,
                     showWebView = showWebView,
                     onScrollToBottom = {
-                        forceScrollToBottom = true // 设置强制滚动标记
+                        // 立即启用自动滚动并重置用户滚动状态
                         autoScrollEnabled = true
                         userScrolling = false
-                        // 立即滚动到底部 - 使用更可靠的滚动方式
+                        forceScrollToBottom = true
+                        
+                        // 立即滚动到底部
                         if (LiveMessageManager.messages.isNotEmpty()) {
                             coroutineScope.launch {
                                 try {
@@ -301,12 +326,18 @@ fun AILiveScreen(
                                         index = LiveMessageManager.messages.size - 1,
                                         scrollOffset = 0
                                     )
+                                    // 滚动完成后重置强制滚动标记
+                                    delay(100)
+                                    forceScrollToBottom = false
                                 } catch (e: Exception) {
                                     // 降级到普通滚动
                                     try {
                                         listState.scrollToItem(LiveMessageManager.messages.size - 1)
+                                        delay(100)
+                                        forceScrollToBottom = false
                                     } catch (e2: Exception) {
                                         // 忽略所有错误
+                                        forceScrollToBottom = false
                                     }
                                 }
                             }
