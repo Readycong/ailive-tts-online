@@ -695,46 +695,46 @@ private fun WebViewControlSection(
                             webViewClient = object : WebViewClient() {
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
-                                        view?.evaluateJavascript(Utils.script) { html ->
-                                            addLogMessage("检测开播信息JSON：$html")
-                                            if (html != null && html.isNotEmpty()) {
-                                                if (html.contains(
-                                                        "user_detail_element",
-                                                        true
-                                                    )
-                                                ) {
-                                                    addLogMessage("检测到开播信息，开始解析直播间信息...")
-                                                    var gson = Gson()
-                                                    gson.fromJson(html, Map::class.java)
-                                                        ?.let { jsonMap ->
-                                                            val liveUrl =
-                                                                jsonMap["url"]?.toString()
-                                                            if (jsonMap["status"] != "PLAYING" && liveUrl?.indexOf(
-                                                                    "https://live.douyin.com/"
-                                                                )!! < 0
-                                                            ) {
-                                                                addLogMessage("检测到开播信息，开始解析直播间信息...")
+                                    view?.evaluateJavascript(Utils.script) { html ->
+                                        addLogMessage("检测开播信息JSON：$html")
+                                        if (html != null && html.isNotEmpty()) {
+                                            if (html.contains(
+                                                    "user_detail_element",
+                                                    true
+                                                )
+                                            ) {
+                                                addLogMessage("检测到开播信息，开始解析直播间信息...")
+                                                var gson = Gson()
+                                                gson.fromJson(html, Map::class.java)
+                                                    ?.let { jsonMap ->
+                                                        val liveUrl =
+                                                            jsonMap["url"]?.toString()
+                                                        if (jsonMap["status"] != "PLAYING" && liveUrl?.indexOf(
+                                                                "https://live.douyin.com/"
+                                                            )!! < 0
+                                                        ) {
+                                                            addLogMessage("检测到开播信息，开始解析直播间信息...")
 
-                                                                //swLiveMonitorEnabled = false
-                                                            } else {
-                                                                addLogMessage("进入直播间URL：$liveUrl...")
-                                                                //swLiveMonitorEnabled = true
+                                                            //swLiveMonitorEnabled = false
+                                                        } else {
+                                                            addLogMessage("进入直播间URL：$liveUrl...")
+                                                            //swLiveMonitorEnabled = true
 
-                                                                liveUrl?.let {
-                                                                    view.loadUrl(
-                                                                        it
-                                                                    )
-                                                                }
-                                                                try {
-                                                                    JoinLiveRoom(view, roomId, pushId, liveName)
-                                                                } catch (e: Exception) {
-                                                                    addLogMessage("直播间连接异常")
-                                                                }
+                                                            liveUrl?.let {
+                                                                view.loadUrl(
+                                                                    it
+                                                                )
+                                                            }
+                                                            try {
+                                                                JoinLiveRoom(view, roomId, pushId, liveName)
+                                                            } catch (e: Exception) {
+                                                                addLogMessage("直播间连接异常")
                                                             }
                                                         }
-                                                }
+                                                    }
                                             }
                                         }
+                                    }
                                 }
                             }
                             settings.apply {
@@ -899,7 +899,7 @@ private fun JoinLiveRoom(liveView: WebView, roomId: String? = null, pushId: Stri
 
                 if (roomId.isNullOrEmpty() || roomId == "null") {
                     val docHtml = cleanHtml ?: "null"
-                    var utilObj = DouyinHackUtil(requireContext(), docHtml)
+                    var utilObj = DouyinHackUtil(docHtml)
 
                     try {
                         roomId = utilObj.getRoomId().toString()
@@ -913,34 +913,16 @@ private fun JoinLiveRoom(liveView: WebView, roomId: String? = null, pushId: Stri
                         addLogMessage("Room ID: $roomId")
                         addLogMessage("Push ID: $pushId")
                         addLogMessage("Live Name: $liveName")
-                        user?.roomId = roomId
-                        user?.pushId = pushId
-                        val loginRepository = LoginRepository(
-                            dataSource = LoginDataSource(requireContext()),
-                            requireContext()
-                        )
-                        loginRepository.setLoggedInUser(user!!)
 
-                        viewLifecycleOwner.lifecycleScope.launch {
-                            val result = ServerApiUtils(getString(R.string.api_base_url), user?.token).bindDouyinLive(
-                                user?.douyin ?: "",
-                                user?.displayName ?: "",
-                                user?.avatar ?: "",
-                                roomId,
-                            )
-                        }
-                        addLogMessage("已绑定抖音账号与直播间: ${user?.douyin ?: "未知"}")
+                        //@TODO bindDouyinLive
+                        addLogMessage("已绑定抖音账号与直播间: $liveName $roomId")
 
                         val wsUri =
                             utilObj.getWssURL(liveView.settings.userAgentString, roomId, pushId)
                         Log.d("DouyinHackUtil", "WebSocket URI: $wsUri")
-                        val cookie = android.webkit.CookieManager.getInstance().getCookie(liveUrl)
+                        val cookie = android.webkit.CookieManager.getInstance().getCookie(url)
 
-                        service?.websocketTest(wsUri, cookie ?: "")
-                        service?.runningRoomId = roomId
-//                            liveView.loadUrl("about:blank") // 清空WebView内容
-//                            liveView.visibility = WebView.INVISIBLE
-//                            liveView.layoutParams.height = 1
+                        //@TODO 连接WebSocket wsUri，并传入cookie
                         hookWebView(liveView)
                     }
                 }
@@ -965,7 +947,7 @@ private fun hookWebView(liveView: WebView) {
 //                            return
 //                        }
 //                        lastUploadTime = currentTime
-                    audienceUrl = url
+                    val audienceUrl = url
                     Log.d("AudienceAjax", "audienceUrl: $audienceUrl")
                     try {
                         val gson = Gson()
@@ -983,21 +965,12 @@ private fun hookWebView(liveView: WebView) {
                         }
                         Log.d("AudienceAjax", "观众数据: $resultMap")
                         try {
-                            val response = ServerApiUtils(
-                                getString(R.string.api_base_url),
-                                user?.token
-                            ).onlineUsers(
-                                user?.douyin ?: "",
-                                user?.roomId ?: "",
-                                gson.toJson(resultMap)
-                            )
+                            //@TODO 上传观众数据到服务器，调用onlineUsers
                         }catch (e: Exception) {
-                            Log.e("AudienceAjax", "上传观众数据失败: ${e.message}")
-                            Toast.makeText(requireContext(), "上传观众数据失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                            addLogMessage("上传观众数据失败: ${e.message}")
                         }
                     } catch (e: Exception) {
-                        Log.e("AudienceAjax", "解析观众数据失败: ${e.message}")
-                        Toast.makeText(requireContext(), "解析观众数据失败: ${e.message}", Toast.LENGTH_SHORT).show()
+                        addLogMessage("解析观众数据失败: ${e.message}")
                     }
                 }
             }

@@ -20,7 +20,7 @@ import kotlin.text.toByteArray
 import kotlin.text.toRegex
 import kotlin.toString
 
-open class DouyinHackUtil(private val context: Context, open var docHtml: String) {
+open class DouyinHackUtil(open var docHtml: String) {
     // Cookies
     //ttwid=1%7CbEAUDOhVg5wznpGI_w-KkO94fU4MW1mh61DqmDdrHmw%7C1748422932%7C9f93796060ea84a970c4d9fa8559a372ba7559a60e1b717a670fae0971ea6b91
     //x-web-secsdk-uid=13884994-6ffd-4910-9820-bee868ba10cc
@@ -129,7 +129,7 @@ open class DouyinHackUtil(private val context: Context, open var docHtml: String
     }
 
     fun readScriptFromAssets(filename: String): String {
-        return context.assets.open(filename).bufferedReader().use { it.readText() }
+        return this::class.java.classLoader?.getResourceAsStream(filename)?.bufferedReader().use { it?.readText() } ?: ""
     }
 
     @SuppressLint("DefaultLocale")
