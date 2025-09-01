@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
         app = this.application as AiLiveApplication
         
         // 应用启动时自动启动直播间监控服务
-        LiveRoomPullingService.startService(this)
+//        LiveRoomPullingService.startService(this)
         
         setContent {
             AiLiveTheme {
