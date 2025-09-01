@@ -13,6 +13,7 @@ composeBom = "2024.10.01"
 datastorePreferences = "1.1.1"
 lifecycleViewmodelCompose = "2.8.7"
 materialIcons = "1.7.1"
+duktapeAndroid = "1.4.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -35,6 +36,7 @@ androidx-material3 = { group = "androidx.compose.material3", name = "material3" 
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
 androidx-compose-material-icons-core = { group = "androidx.compose.material", name = "material-icons-core", version.ref = "materialIcons" }
 androidx-compose-material-icons-extended = { group = "androidx.compose.material", name = "material-icons-extended", version.ref = "materialIcons" }
+duktape-android = { module = "com.squareup.duktape:duktape-android", version.ref = "duktapeAndroid" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

@@ -38,6 +38,18 @@ android {
     buildFeatures {
         compose = true
     }
+    
+    // 添加这些配置来解决文件锁定问题
+    packaging {
+        resources {
+            excludes += "/META-INF/{AL2.0,LGPL2.1}"
+        }
+    }
+    
+    // 禁用增量编译以避免文件锁定问题
+    androidResources {
+        noCompress += "jar"
+    }
 }
 
 dependencies {
@@ -71,6 +83,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.compose.material.icons.extended)
     implementation("io.coil-kt:coil-compose:2.4.0")
+    implementation(libs.duktape.android)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)

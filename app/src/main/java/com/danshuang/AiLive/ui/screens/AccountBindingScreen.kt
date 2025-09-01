@@ -49,7 +49,7 @@ import org.json.JSONObject
 import java.io.IOException
 
 // DataStore实例
-private val Context.dataStore by preferencesDataStore(name = "account_binding_prefs")
+private val Context.dataStore by preferencesDataStore(name = "login_prefs")
 
 // 绑定步骤枚举
 enum class BindingStep {
@@ -115,13 +115,17 @@ fun AccountBindingScreen(
     // 保存账户信息到本地存储
     suspend fun saveAccountToLocal(accountInfo: UserAccountInfo, url: String) {
         try {
-            context.dataStore.edit { preferences ->
-                preferences[stringPreferencesKey("account_avatar")] = accountInfo.avatar
-                preferences[stringPreferencesKey("account_nickname")] = accountInfo.nickname
-                preferences[stringPreferencesKey("account_user_id")] = accountInfo.userId
-                preferences[stringPreferencesKey("account_url")] = url
-                preferences[stringPreferencesKey("account_is_live")] = accountInfo.isLive.toString()
-            }
+            // 使用LoginRepository中的公共方法来保存绑定账户信息
+            val boundAccount = BoundAccountInfo(
+                platform = "douyin",
+                avatar = accountInfo.avatar,
+                nickname = accountInfo.nickname,
+                userId = accountInfo.userId,
+                homeUrl = url,
+                isLive = accountInfo.isLive,
+                bindTime = System.currentTimeMillis()
+            )
+            loginRepository.saveBoundAccountInfo(boundAccount)
         } catch (e: Exception) {
             // 处理保存异常
         }
@@ -138,7 +142,7 @@ fun AccountBindingScreen(
                 }
                 
                 // 从URL中提取房间ID（简单实现，实际可能需要更复杂的解析）
-                val roomId = accountInfo.userId.ifEmpty { "default_room_${System.currentTimeMillis()}" }
+                // val roomId = accountInfo.userId.ifEmpty { "default_room_${System.currentTimeMillis()}" }
                 
                 // 调用DouyinApiService的bindDouyinLive方法
                 val serverResponse = apiUtils.bindDouyinLive(
@@ -146,7 +150,7 @@ fun AccountBindingScreen(
                     douyinId = accountInfo.userId,
                     nickname = accountInfo.nickname,
                     avatar = accountInfo.avatar,
-                    roomId = roomId,
+                    roomId = "",
                     userHomeUrl = userRealHomeUrl
                 )
                 
