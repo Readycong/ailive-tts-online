@@ -709,6 +709,12 @@ private fun WebViewControlSection(
                                     // 添加空值检查，避免空指针异常
                                     if (view == null) return
                                     
+                                    // 防止无限循环调用
+                                    if (view.tag == true) {
+                                        view.tag = false
+                                        return
+                                    }
+                                    
                                     view.evaluateJavascript(Utils.script) { html ->
                                         addLogMessage("检测开播信息JSON：$html")
                                         // 添加空值检查，避免空指针异常
@@ -729,11 +735,16 @@ private fun WebViewControlSection(
                                                         addLogMessage("进入直播间URL：$liveUrl...")
                                                         //swLiveMonitorEnabled = true
 
-                                                        view.loadUrl(liveUrl)
-                                                        try {
-                                                            JoinLiveRoom(view, onLiveRoomInfoReceived)
-                                                        } catch (e: Exception) {
-                                                            addLogMessage("直播间连接异常")
+                                                        // 检查URL是否与当前URL相同，避免重复加载
+                                                        if (view.url != liveUrl) {
+                                                            // 设置标记以防止无限循环
+                                                            view.tag = true
+                                                            view.loadUrl(liveUrl)
+                                                            try {
+                                                                JoinLiveRoom(view, onLiveRoomInfoReceived)
+                                                            } catch (e: Exception) {
+                                                                addLogMessage("直播间连接异常")
+                                                            }
                                                         }
                                                     }
                                                 }
@@ -884,61 +895,55 @@ private fun LiveMessageList(
 
 private fun JoinLiveRoom(liveView: WebView, onLiveRoomInfoReceived: (String, String, String) -> Unit) {
     addLogMessage("正在尝试连接直播WSS...")
-    liveView.webViewClient = object : WebViewClient() {
-        override fun onPageFinished(view: WebView?, url: String?) {
-            super.onPageFinished(view, url)
-            // injectWebSocketHook(liveView)
+    // 不要重新设置webViewClient，这可能会导致循环或其他问题
+    // 直接执行需要的操作，而不是重新设置webViewClient
+    
+    val url = liveView.url
+    Log.d("WebViewCookie", "URL: $url")
 
-            val cookieManager = android.webkit.CookieManager.getInstance()
-            val cookies = cookieManager.getCookie(url)
-            Log.d("WebViewCookie", "Cookies: $cookies")
-            Log.d("WebViewCookie", "URL: $url")
+    // 你可以在这里处理cookie，比如显示到TextView
+    liveView.evaluateJavascript(
+        "(function() { return document.documentElement.outerHTML; })();"
+    ) { html ->
+        val cleanHtml = html?.removeSurrounding("\"")?.replace("\\u003C", "<")
+            ?.replace("""\\\"""", "\"")
+        Log.d("HTML", cleanHtml ?: "null")
 
-            // 你可以在这里处理cookie，比如显示到TextView
-            liveView.evaluateJavascript(
-                "(function() { return document.documentElement.outerHTML; })();"
-            ) { html ->
-                val cleanHtml = html?.removeSurrounding("\"")?.replace("\\u003C", "<")
-                    ?.replace("""\\\"""", "\"")
-                Log.d("HTML", cleanHtml ?: "null")
+        val docHtml = cleanHtml ?: "null"
+        var utilObj = DouyinHackUtil(docHtml)
 
-                val docHtml = cleanHtml ?: "null"
-                var utilObj = DouyinHackUtil(docHtml)
+        try {
+            // 添加空值检查，避免空指针异常
+            val roomId = utilObj.getRoomId()?.toString() ?: ""
+            val pushId = utilObj.getPushID()?.toString() ?: ""
+            val liveName = utilObj.getLiveName()?.toString() ?: ""
+            
+            // 通过回调传递获取到的直播间信息
+            onLiveRoomInfoReceived(roomId, pushId, liveName)
+            
+            // 添加空值检查，避免空指针异常
+            if (roomId.isNotEmpty() && roomId != "null") {
+                addLogMessage("Room ID: $roomId")
+                addLogMessage("Push ID: $pushId")
+                addLogMessage("Live Name: $liveName")
 
-                try {
-                    // 添加空值检查，避免空指针异常
-                    val roomId = utilObj.getRoomId()?.toString() ?: ""
-                    val pushId = utilObj.getPushID()?.toString() ?: ""
-                    val liveName = utilObj.getLiveName()?.toString() ?: ""
-                    
-                    // 通过回调传递获取到的直播间信息
-                    onLiveRoomInfoReceived(roomId, pushId, liveName)
-                    
-                    // 添加空值检查，避免空指针异常
-                    if (roomId.isNotEmpty() && roomId != "null") {
-                        addLogMessage("Room ID: $roomId")
-                        addLogMessage("Push ID: $pushId")
-                        addLogMessage("Live Name: $liveName")
+                //@TODO bindDouyinLive
+                addLogMessage("已绑定抖音账号与直播间: $liveName $roomId")
 
-                        //@TODO bindDouyinLive
-                        addLogMessage("已绑定抖音账号与直播间: $liveName $roomId")
-
-                        // 添加空值检查，避免空指针异常
-                        val userAgent = liveView.settings?.userAgentString
-                        if (userAgent != null) {
-                            val wsUri = utilObj.getWssURL(userAgent, roomId, pushId)
-                            Log.d("DouyinHackUtil", "WebSocket URI: $wsUri")
-                        }
-                        
-                        val cookie = android.webkit.CookieManager.getInstance().getCookie(url)
-                        //@TODO 连接WebSocket wsUri，并传入cookie
-                        hookWebView(liveView)
-                    }
-                } catch (e: Exception) {
-                    addLogMessage("直播间连接失败，请重新启动直播连接状态检测。")
-                    return@evaluateJavascript
+                // 添加空值检查，避免空指针异常
+                val userAgent = liveView.settings?.userAgentString
+                if (userAgent != null) {
+                    val wsUri = utilObj.getWssURL(userAgent, roomId, pushId)
+                    Log.d("DouyinHackUtil", "WebSocket URI: $wsUri")
                 }
+                
+                val cookie = android.webkit.CookieManager.getInstance().getCookie(url)
+                //@TODO 连接WebSocket wsUri，并传入cookie
+                hookWebView(liveView)
             }
+        } catch (e: Exception) {
+            addLogMessage("直播间连接失败，请重新启动直播连接状态检测。")
+            return@evaluateJavascript
         }
     }
 }
