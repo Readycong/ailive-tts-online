@@ -34,6 +34,7 @@ import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.Switch
 import android.widget.Toast
+import androidx.core.view.isNotEmpty
 import androidx.lifecycle.lifecycleScope
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.navigation.NavigationState
@@ -276,7 +277,6 @@ fun AILiveScreen(
                     liveMonitorEnabled = liveMonitorEnabled,
                     onLiveMonitorChanged = { enabled ->
                         if (enabled) {
-                            LiveRoomPullingService.startService(context)
                             // 当开启直播监控时，设置WebView的URL为userProfile.boundAccount.homeUrl
                             userProfile.boundAccount?.homeUrl?.let { url ->
                                 if (url.isNotEmpty()) {
@@ -698,57 +698,60 @@ private fun WebViewControlSection(
                 AndroidView(
                     factory = { context ->
                         WebView(context).apply {
+                            // 添加JavaScript接口
+                            addJavascriptInterface(WebAppInterface(context), "Android")
+                            
                             webViewClient = object : WebViewClient() {
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
 
                                     Log.d("WebView", "Page finished loading: $url")
-                                    // 添加安全检查
-                                    if (url?.startsWith("https://www.douyin.com/user/", true) == false) return
-                                    
                                     // 添加空值检查，避免空指针异常
                                     if (view == null) return
-                                    
+
                                     // 防止无限循环调用
                                     if (view.tag == true) {
                                         view.tag = false
                                         return
                                     }
-                                    
-                                    view.evaluateJavascript(Utils.script) { html ->
-                                        addLogMessage("检测开播信息JSON：$html")
-                                        // 添加空值检查，避免空指针异常
-                                        if (html.isNotEmpty()) {
-                                            if (html.contains("user_detail_element", true)) {
-                                                addLogMessage("检测到主页信息，开始解析直播间信息...")
-                                                var gson = Gson()
-                                                gson.fromJson(html, Map::class.java)?.let { jsonMap ->
-                                                    val liveUrl = jsonMap["url"]?.toString()
-                                                    // 修复空指针异常：检查liveUrl是否为null，避免使用!!操作符
-                                                    if (jsonMap["status"]?.toString() != "PLAYING" ||
-                                                        (liveUrl == null || liveUrl.indexOf("https://live.douyin.com/") < 0)
-                                                    ) {
-                                                        addLogMessage("直播间未开播")
+                                    // 添加安全检查
+                                    if (url?.startsWith("https://www.douyin.com/user/", true) == true) {
+                                        view.evaluateJavascript(Utils.script) { html ->
+                                            addLogMessage("检测开播信息JSON：$html")
+                                            // 添加空值检查，避免空指针异常
+                                            if (html.isNotEmpty()) {
+                                                if (html.contains("user_detail_element", true)) {
+                                                    addLogMessage("检测到主页信息，开始解析直播间信息...")
+                                                    var gson = Gson()
+                                                    gson.fromJson(html, Map::class.java)
+                                                        ?.let { jsonMap ->
+                                                            val liveUrl = jsonMap["url"]?.toString()
+                                                            // 修复空指针异常：检查liveUrl是否为null，避免使用!!操作符
+                                                            if (jsonMap["status"]?.toString() != "PLAYING" ||
+                                                                (liveUrl == null || liveUrl.indexOf("https://live.douyin.com/") < 0)
+                                                            ) {
+                                                                addLogMessage("直播间未开播")
+                                                            } else {
+                                                                addLogMessage("进入直播间URL：$liveUrl...")
 
-                                                        //swLiveMonitorEnabled = false
-                                                    } else {
-                                                        addLogMessage("进入直播间URL：$liveUrl...")
-                                                        //swLiveMonitorEnabled = true
-
-                                                        // 检查URL是否与当前URL相同，避免重复加载
-                                                        if (view.url != liveUrl) {
-                                                            // 设置标记以防止无限循环
-                                                            view.tag = true
-                                                            view.loadUrl(liveUrl)
-                                                            try {
-                                                                JoinLiveRoom(view, onLiveRoomInfoReceived)
-                                                            } catch (e: Exception) {
-                                                                addLogMessage("直播间连接异常")
+                                                                // 检查URL是否与当前URL相同，避免重复加载
+                                                                if (view.url != liveUrl) {
+                                                                    // 设置标记以防止无限循环
+                                                                    view.tag = true
+                                                                    view.loadUrl(liveUrl)
+                                                                }
                                                             }
                                                         }
-                                                    }
                                                 }
                                             }
+                                        }
+                                    }else if (url?.startsWith("https://live.douyin.com/") == true) {
+                                        try {
+                                            view.tag = true
+//                                            if (view?.isNotEmpty() == true)
+                                            JoinLiveRoom(view, onLiveRoomInfoReceived)
+                                        } catch (e: Exception) {
+                                            addLogMessage("直播间连接异常")
                                         }
                                     }
                                 }
@@ -899,7 +902,7 @@ private fun JoinLiveRoom(liveView: WebView, onLiveRoomInfoReceived: (String, Str
     // 直接执行需要的操作，而不是重新设置webViewClient
     
     val url = liveView.url
-    Log.d("WebViewCookie", "URL: $url")
+    Log.d("JoinLiveRoom", "URL: $url")
 
     // 你可以在这里处理cookie，比如显示到TextView
     liveView.evaluateJavascript(
@@ -907,7 +910,7 @@ private fun JoinLiveRoom(liveView: WebView, onLiveRoomInfoReceived: (String, Str
     ) { html ->
         val cleanHtml = html?.removeSurrounding("\"")?.replace("\\u003C", "<")
             ?.replace("""\\\"""", "\"")
-        Log.d("HTML", cleanHtml ?: "null")
+        Log.d("JoinLiveRoom", cleanHtml ?: "null")
 
         val docHtml = cleanHtml ?: "null"
         var utilObj = DouyinHackUtil(docHtml)
@@ -932,14 +935,24 @@ private fun JoinLiveRoom(liveView: WebView, onLiveRoomInfoReceived: (String, Str
 
                 // 添加空值检查，避免空指针异常
                 val userAgent = liveView.settings?.userAgentString
+                var wsUri = ""
                 if (userAgent != null) {
-                    val wsUri = utilObj.getWssURL(userAgent, roomId, pushId)
+                    wsUri = utilObj.getWssURL(userAgent, roomId, pushId)
                     Log.d("DouyinHackUtil", "WebSocket URI: $wsUri")
+
+                    val cookie = android.webkit.CookieManager.getInstance().getCookie(url)
+                    // 连接WebSocket wsUri，并传入cookie
+                    // 启动LiveRoomPullingService服务，传入websocket地址及cookie参数
+                    val context = liveView.context
+                    // 使用更新连接的方式，确保单实例模式下能更新连接参数
+                    LiveRoomPullingService.startService(
+                        context,
+                        wssUrl = wsUri,
+                        cookieString = cookie ?: ""
+                    )
+                    addLogMessage("已更新直播间监控服务连接")
+                    hookWebView(liveView)
                 }
-                
-                val cookie = android.webkit.CookieManager.getInstance().getCookie(url)
-                //@TODO 连接WebSocket wsUri，并传入cookie
-                hookWebView(liveView)
             }
         } catch (e: Exception) {
             addLogMessage("直播间连接失败，请重新启动直播连接状态检测。")
@@ -949,64 +962,6 @@ private fun JoinLiveRoom(liveView: WebView, onLiveRoomInfoReceived: (String, Str
 }
 
 private fun hookWebView(liveView: WebView) {
-    liveView.addJavascriptInterface(object : Any() {
-        @JavascriptInterface
-        fun onXhrResponse(method: String?, url: String?, status: Int, response: String?) {
-//                Log.d("XHR", "Method: " + method)
-//                Log.d("XHR", "URL: " + url)
-//                Log.d("XHR", "Status: " + status)
-//                Log.d("XHR", "Response: " + response)
-            // 添加空值检查，避免空指针异常
-            if (url != null && url.indexOf("https://live.douyin.com/webcast/ranklist/audience") != -1) {
-                // 添加空值检查，避免空指针异常
-                if (url.isNotEmpty() && response != null && response.isNotEmpty()) {
-//                        val currentTime = System.currentTimeMillis()/1000
-//                        if ((currentTime - lastUploadTime) < 60) {
-//                            Log.d("AudienceAjax", "请求过于频繁，跳过本次请求")
-//                            return
-//                        }
-//                        lastUploadTime = currentTime
-                    val audienceUrl = url
-                    Log.d("AudienceAjax", "audienceUrl: $audienceUrl")
-                    try {
-                        val gson = Gson()
-                        val audienceData = gson.fromJson(response, JsonObject::class.java)
-                        // 添加空值检查，避免空指针异常
-                        if (audienceData != null && audienceData.has("data")) {
-                            val data = audienceData.getAsJsonObject("data")
-                            // 添加空值检查，避免空指针异常
-                            if (data != null && data.has("ranks")) {
-                                val ranks = data.getAsJsonArray("ranks")
-                                val resultMap = mutableMapOf<String, String>()
-
-                                for (rank in ranks) {
-                                    // 添加空值检查，避免空指针异常
-                                    if (rank.isJsonObject) {
-                                        val user = rank.asJsonObject.getAsJsonObject("user")
-                                        // 添加空值检查，避免空指针异常
-                                        if (user != null) {
-                                            val nickname = user.get("nickname")?.asString ?: ""
-                                            val webcastUid = user.get("webcast_uid")?.asString ?: ""
-                                            resultMap[webcastUid] = nickname
-                                        }
-                                    }
-                                }
-                                Log.d("AudienceAjax", "观众数据: $resultMap")
-                                try {
-                                    //@TODO 上传观众数据到服务器，调用onlineUsers
-                                } catch (e: Exception) {
-                                    addLogMessage("上传观众数据失败: ${e.message}")
-                                }
-                            }
-                        }
-                    } catch (e: Exception) {
-                        addLogMessage("解析观众数据失败: ${e.message}")
-                    }
-                }
-            }
-        }
-    }, "Android")
-
     // 注入 JavaScript 拦截代码
     val jsCode = "(function() {" +
             "originalOpen = XMLHttpRequest.prototype.open;" +
@@ -1482,6 +1437,58 @@ fun MixedMessageFlowPreview() {
                 )
                 
                 AnimatedMessageItem(message = messages[index % messages.size])
+            }
+        }
+    }
+}
+
+// 添加WebAppInterface类定义
+class WebAppInterface(private val context: android.content.Context) {
+    @JavascriptInterface    fun onXhrResponse(method: String?, url: String?, status: Int, response: String?) {
+//                Log.d("XHR", "Method: " + method)
+//                Log.d("XHR", "URL: " + url)
+//                Log.d("XHR", "Status: " + status)
+//                Log.d("XHR", "Response: " + response)
+        if (url?.indexOf("https://live.douyin.com/webcast/ranklist/audience") != -1) {
+            if (url != null && response != null) {
+//                        val currentTime = System.currentTimeMillis()/1000
+//                        if ((currentTime - lastUploadTime) < 60) {
+//                            Log.d("AudienceAjax", "请求过于频繁，跳过本次请求")
+//                            return
+//                        }
+//                        lastUploadTime = currentTime
+                val audienceUrl = url
+                Log.d("AudienceAjax", "audienceUrl: $audienceUrl")
+                try {
+                    val gson = Gson()
+                    val audienceData = gson.fromJson(response, JsonObject::class.java)
+                    Log.d("AudienceAjax", "Audience Data: $audienceData")
+                    val data = audienceData.getAsJsonObject("data")
+                    val ranks = data.getAsJsonArray("ranks")
+                    val resultMap = mutableMapOf<String, String>()
+
+                    for (rank in ranks) {
+                        val user = rank.asJsonObject.getAsJsonObject("user")
+                        val nickname = user.get("nickname").asString
+                        val webcastUid = user.get("webcast_uid").asString
+                        resultMap[webcastUid] = nickname
+                    }
+                    Log.d("AudienceAjax", "观众数据: $resultMap")
+                    try {
+//                        val response = ServerApiUtils(
+//                            getString(R.string.api_base_url),
+//                            user?.token
+//                        ).onlineUsers(
+//                            user?.douyin ?: "",
+//                            user?.roomId ?: "",
+//                            gson.toJson(resultMap)
+//                        )
+                    }catch (e: Exception) {
+                        addLogMessage("上传观众数据失败: ${e.message}")
+                    }
+                } catch (e: Exception) {
+                    addLogMessage("解析观众数据失败: ${e.message}")
+                }
             }
         }
     }

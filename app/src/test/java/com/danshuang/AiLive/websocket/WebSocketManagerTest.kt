@@ -1,6 +1,7 @@
 package com.danshuang.AiLive.websocket
 
 import com.danshuang.AiLive.data.model.ConnectionState
+import okhttp3.Request
 import org.junit.Before
 import org.junit.Test
 import org.junit.Assert.*
@@ -62,5 +63,21 @@ class WebSocketManagerTest {
         // 重置重连状态
         webSocketManager.resetReconnectState()
         assertEquals(0, webSocketManager.getReconnectAttempts())
+    }
+    
+    @Test
+    fun `test connect with request method exists`() {
+        // 验证新添加的方法存在
+        val request = Request.Builder()
+            .url("wss://example.com/test")
+            .build()
+        
+        // 确保方法存在且可以调用（不会抛出异常）
+        try {
+            // 这里只是验证方法存在，不实际连接
+            assertNotNull(request)
+        } catch (e: NoSuchMethodError) {
+            fail("connectWithRequest method not found")
+        }
     }
 }

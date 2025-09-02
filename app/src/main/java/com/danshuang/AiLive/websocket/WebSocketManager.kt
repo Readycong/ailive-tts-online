@@ -46,6 +46,25 @@ class WebSocketManager {
                 .addHeader("Origin", "https://live.douyin.com")
                 .build()
             
+            connectWithRequest(request, stateCallback)
+        } catch (e: Exception) {
+            android.util.Log.e(TAG, "Failed to create WebSocket connection", e)
+            stateCallback(ConnectionState.ERROR)
+            handleConnectionFailure(e)
+        }
+    }
+    
+    /**
+     * 使用自定义请求连接WebSocket
+     * @param request 自定义的请求对象
+     * @param stateCallback 连接状态回调
+     */
+    fun connectWithRequest(request: Request, stateCallback: (ConnectionState) -> Unit) {
+        this.currentUrl = request.url.toString()
+        this.stateCallback = stateCallback
+        this.isManualDisconnect = false
+        
+        try {
             val client = OkHttpClient.Builder()
                 .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
                 .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
@@ -59,7 +78,7 @@ class WebSocketManager {
                 override fun onOpen(webSocket: WebSocket, response: Response) {
                     reconnectAttempts = 0
                     stateCallback(ConnectionState.CONNECTED)
-                    android.util.Log.d(TAG, "WebSocket connected to: $url")
+                    android.util.Log.d(TAG, "WebSocket connected to: ${request.url}")
                 }
                 
                 override fun onMessage(webSocket: WebSocket, text: String) {

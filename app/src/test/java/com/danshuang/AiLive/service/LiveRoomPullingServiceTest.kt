@@ -39,4 +39,27 @@ class LiveRoomPullingServiceTest {
         stateCallback(ConnectionState.ERROR)
         assertEquals(ConnectionState.ERROR, connectionState)
     }
+    
+    @Test
+    fun `test service constants`() {
+        // 验证服务常量
+        assertNotNull(LiveRoomPullingService.EXTRA_WEBSOCKET_URL)
+        assertNotNull(LiveRoomPullingService.EXTRA_COOKIE_STRING)
+        assertNotNull(LiveRoomPullingService.ACTION_START)
+        assertNotNull(LiveRoomPullingService.ACTION_STOP)
+        assertNotNull(LiveRoomPullingService.ACTION_UPDATE_CONNECTION)
+        assertTrue(LiveRoomPullingService.EXTRA_WEBSOCKET_URL.isNotEmpty())
+        assertTrue(LiveRoomPullingService.EXTRA_COOKIE_STRING.isNotEmpty())
+        assertTrue(LiveRoomPullingService.ACTION_START.isNotEmpty())
+        assertTrue(LiveRoomPullingService.ACTION_STOP.isNotEmpty())
+        assertTrue(LiveRoomPullingService.ACTION_UPDATE_CONNECTION.isNotEmpty())
+    }
+    
+    @Test
+    fun `test service action constants`() {
+        // 验证动作常量
+        assertEquals("start", LiveRoomPullingService.ACTION_START)
+        assertEquals("stop", LiveRoomPullingService.ACTION_STOP)
+        assertEquals("update_connection", LiveRoomPullingService.ACTION_UPDATE_CONNECTION)
+    }
 }

@@ -23,6 +23,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import android.util.Log
 import java.util.concurrent.atomic.AtomicBoolean
+import okhttp3.*
+import java.util.concurrent.TimeUnit
 
 /**
  * 直播间监控服务
@@ -37,11 +39,23 @@ class LiveRoomPullingService : Service() {
         const val PULLING_STATE_STOPPED = 0
         const val PULLING_STATE_MONITORING = 1
         
+        // Intent extra keys
+        const val EXTRA_WEBSOCKET_URL = "websocket_url"
+        const val EXTRA_COOKIE_STRING = "cookie_string"
+        const val EXTRA_ACTION = "action"
+        const val ACTION_START = "start"
+        const val ACTION_STOP = "stop"
+        const val ACTION_UPDATE_CONNECTION = "update_connection"
+        
         // 通知相关常量
         private const val NOTIFICATION_ID = 1001
         private const val CHANNEL_ID = "live_room_monitoring"
         private const val CHANNEL_NAME = "直播间监控"
         private const val CHANNEL_DESCRIPTION = "直播间实时监控服务"
+        
+        // 单实例引用
+        @Volatile
+        private var instance: LiveRoomPullingService? = null
         
         // 服务状态流
         private val _pullingStateFlow = MutableStateFlow(PULLING_STATE_STOPPED)
@@ -58,8 +72,13 @@ class LiveRoomPullingService : Service() {
         /**
          * 启动服务
          */
-        fun startService(context: Context) {
-            val intent = Intent(context, LiveRoomPullingService::class.java)
+        fun startService(context: Context, wssUrl: String? = null, cookieString: String? = null) {
+            val intent = Intent(context, LiveRoomPullingService::class.java).apply {
+                action = ACTION_START
+                putExtra(EXTRA_ACTION, ACTION_START)
+                wssUrl?.let { putExtra(EXTRA_WEBSOCKET_URL, it) }
+                cookieString?.let { putExtra(EXTRA_COOKIE_STRING, it) }
+            }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
             } else {
@@ -68,11 +87,27 @@ class LiveRoomPullingService : Service() {
         }
         
         /**
+         * 更新WebSocket连接
+         */
+        fun updateConnection(context: Context, wssUrl: String, cookieString: String) {
+            val intent = Intent(context, LiveRoomPullingService::class.java).apply {
+                action = ACTION_UPDATE_CONNECTION
+                putExtra(EXTRA_ACTION, ACTION_UPDATE_CONNECTION)
+                putExtra(EXTRA_WEBSOCKET_URL, wssUrl)
+                putExtra(EXTRA_COOKIE_STRING, cookieString)
+            }
+            context.startService(intent)
+        }
+        
+        /**
          * 停止服务
          */
         fun stopService(context: Context) {
-            val intent = Intent(context, LiveRoomPullingService::class.java)
-            context.stopService(intent)
+            val intent = Intent(context, LiveRoomPullingService::class.java).apply {
+                action = ACTION_STOP
+                putExtra(EXTRA_ACTION, ACTION_STOP)
+            }
+            context.startService(intent)
         }
         
         /**
@@ -84,6 +119,11 @@ class LiveRoomPullingService : Service() {
          * 获取当前连接状态
          */
         fun getCurrentConnectionState(): ConnectionState = _connectionStateFlow.value
+        
+        /**
+         * 获取服务实例
+         */
+        internal fun getInstance(): LiveRoomPullingService? = instance
     }
     
     // 核心组件
@@ -116,6 +156,7 @@ class LiveRoomPullingService : Service() {
     
     // 配置缓存
     private var currentWebSocketUrl: String? = null
+    private var currentCookieString: String? = null
     private var lastConfigCheckTime = 0L
     private val configCheckInterval = 5 * 60 * 1000L // 5分钟检查一次配置
     
@@ -123,18 +164,54 @@ class LiveRoomPullingService : Service() {
         super.onCreate()
         Log.i(TAG, "LiveRoomPullingService created")
         
+        // 设置单实例引用
+        instance = this
+        
         initializeComponents()
         createNotificationChannel()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        Log.i(TAG, "LiveRoomPullingService started")
+        Log.i(TAG, "LiveRoomPullingService started with action: ${intent?.getStringExtra(EXTRA_ACTION)}")
         
-        if (!isServiceRunning.get()) {
-            isServiceRunning.set(true)
-            startForegroundService()
-            initializeWebSocketConnection()
-            startPeriodicTasks()
+        when (intent?.getStringExtra(EXTRA_ACTION)) {
+            ACTION_START -> {
+                // 获取传入的WebSocket URL和Cookie参数
+                val wssUrl = intent.getStringExtra(EXTRA_WEBSOCKET_URL)
+                val cookieString = intent.getStringExtra(EXTRA_COOKIE_STRING)
+                
+                if (!isServiceRunning.get()) {
+                    isServiceRunning.set(true)
+                    startForegroundService()
+                    initializeWebSocketConnection(wssUrl, cookieString)
+                    startPeriodicTasks()
+                } else if (wssUrl != null && cookieString != null) {
+                    // 如果服务已经在运行，但传入了新的URL和Cookie，则重新连接
+                    connectWebSocket(wssUrl, cookieString)
+                }
+            }
+            ACTION_UPDATE_CONNECTION -> {
+                // 更新WebSocket连接
+                val wssUrl = intent.getStringExtra(EXTRA_WEBSOCKET_URL)
+                val cookieString = intent.getStringExtra(EXTRA_COOKIE_STRING)
+                
+                if (wssUrl != null && cookieString != null) {
+                    connectWebSocket(wssUrl, cookieString)
+                }
+            }
+            ACTION_STOP -> {
+                // 停止服务
+                stopSelf()
+            }
+            else -> {
+                // 默认行为
+                if (!isServiceRunning.get()) {
+                    isServiceRunning.set(true)
+                    startForegroundService()
+                    initializeWebSocketConnection()
+                    startPeriodicTasks()
+                }
+            }
         }
         
         return START_STICKY // 服务被杀死后自动重启
@@ -142,6 +219,9 @@ class LiveRoomPullingService : Service() {
     
     override fun onDestroy() {
         Log.i(TAG, "LiveRoomPullingService destroyed")
+        
+        // 清除单实例引用
+        instance = null
         
         stopMonitoring()
         cleanupResources()
@@ -188,13 +268,19 @@ class LiveRoomPullingService : Service() {
     /**
      * 初始化WebSocket连接
      */
-    private fun initializeWebSocketConnection() {
+    private fun initializeWebSocketConnection(wssUrl: String? = null, cookieString: String? = null) {
         serviceScope.launch {
             try {
                 Log.i(TAG, "Initializing WebSocket connection...")
                 
-                val config = liveRoomRepository.fetchWebSocketConfig()
-                connectWebSocket(config.websocketUrl)
+                if (wssUrl != null && cookieString != null) {
+                    // 使用传入的URL和Cookie连接
+                    connectWebSocket(wssUrl, cookieString)
+                } else {
+                    // 使用默认配置连接
+                    val config = liveRoomRepository.fetchWebSocketConfig()
+                    connectWebSocket(config.websocketUrl)
+                }
                 
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize WebSocket connection", e)
@@ -206,22 +292,42 @@ class LiveRoomPullingService : Service() {
     /**
      * 连接WebSocket
      */
-    private suspend fun connectWebSocket(url: String) {
+    private fun connectWebSocket(url: String, cookieString: String? = null) {
         if (currentWebSocketUrl == url && webSocketManager.isConnected()) {
             Log.d(TAG, "Already connected to the same URL: $url")
             return
         }
         
         currentWebSocketUrl = url
+        currentCookieString = cookieString
         Log.i(TAG, "Connecting to WebSocket: $url")
         
         // 先断开现有连接
         webSocketManager.disconnect()
         
         // 保存服务状态
-        saveServiceState()
+        serviceScope.launch {
+            saveServiceState()
+        }
         
-        webSocketManager.connect(url) { state ->
+        // 创建带Cookie的请求
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .addHeader("User-Agent", "AiLive/1.0")
+            .addHeader("Origin", "https://live.douyin.com")
+        
+        // 如果提供了Cookie，则添加到请求头中
+        cookieString?.let {
+            if (it.isNotEmpty()) {
+                requestBuilder.addHeader("Cookie", it)
+                Log.d(TAG, "Added cookie to WebSocket request")
+            }
+        }
+        
+        val request = requestBuilder.build()
+        
+        // 使用自定义请求连接WebSocket
+        webSocketManager.connectWithRequest(request) { state ->
             connectionState = state
             when (state) {
                 ConnectionState.CONNECTING -> {
@@ -288,7 +394,10 @@ class LiveRoomPullingService : Service() {
         configCheckJob = serviceScope.launch {
             while (isActive) {
                 try {
-                    checkConfigurationUpdate()
+                    // 检查配置更新
+                    serviceScope.launch {
+                        checkConfigurationUpdate()
+                    }
                     delay(configCheckInterval)
                 } catch (e: Exception) {
                     Log.w(TAG, "Failed to check configuration", e)
