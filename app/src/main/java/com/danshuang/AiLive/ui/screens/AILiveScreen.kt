@@ -44,6 +44,8 @@ import com.danshuang.AiLive.data.model.ConnectionState
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.util.Utils
 import com.danshuang.AiLive.util.DouyinHackUtil
+import com.danshuang.AiLive.data.manager.TokenManager
+import com.danshuang.AiLive.api.ServerApiUtilsV2
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import kotlinx.coroutines.CoroutineScope
@@ -57,6 +59,7 @@ import kotlin.collections.get
 import kotlin.text.contains
 import kotlin.text.isNotEmpty
 
+var gRoomId = ""
 // 直播间动态信息数据类
 data class LiveMessage(
     val id: Long,
@@ -219,42 +222,6 @@ fun AILiveScreen(
         }
     }
 
-    // 模拟自动生成消息 - 仅在AI直播开启时生成模拟消息
-    LaunchedEffect(aiLiveEnabled) {
-        if (false) {
-            while (true) {
-                delay(3000) // 每3秒生成一条消息
-                
-                // 检查是否允许自动滚动：只有在未手动滚动且允许自动滚动时才执行
-                if (!userScrolling && autoScrollEnabled && !listState.isScrollInProgress) {
-                    generateMockMessage()
-                    
-                    // 再次检查用户是否开始滚动
-                    if (!userScrolling && autoScrollEnabled && LiveMessageManager.messages.isNotEmpty()) {
-                        // 添加短暂延迟让UI更新完成
-                        delay(150)
-                        
-                        // 第三次检查，确保用户没有在此期间开始滚动
-                        if (!userScrolling && autoScrollEnabled && !listState.isScrollInProgress) {
-                            try {
-                                // 使用更精确的滚动方式
-                                listState.animateScrollToItem(
-                                    index = LiveMessageManager.messages.size - 1,
-                                    scrollOffset = 0
-                                )
-                            } catch (e: Exception) {
-                                // 忽略滚动过程中的异常
-                            }
-                        }
-                    }
-                } else {
-                    // 即使不能滚动，也要生成消息，保持直播实时性
-                    generateMockMessage()
-                }
-            }
-        }
-    }
-    
     // 使用Scaffold来组织TopBar和内容
     Scaffold(
         topBar = {
@@ -324,6 +291,8 @@ fun AILiveScreen(
                         roomId = newRoomId
                         pushId = newPushId
                         liveName = newLiveName
+
+                        gRoomId = newRoomId
                     },
                     onVisibilityChange = { showWebView = it }
                 )
@@ -1475,15 +1444,29 @@ class WebAppInterface(private val context: android.content.Context) {
                     }
                     Log.d("AudienceAjax", "观众数据: $resultMap")
                     try {
-//                        val response = ServerApiUtils(
-//                            getString(R.string.api_base_url),
-//                            user?.token
-//                        ).onlineUsers(
-//                            user?.douyin ?: "",
-//                            user?.roomId ?: "",
-//                            gson.toJson(resultMap)
-//                        )
-                    }catch (e: Exception) {
+                        // 获取当前用户信息和roomId
+                        val loginRepository = LoginRepository(context)
+                        val tokenManager = TokenManager(loginRepository)
+                        val serverApiUtils = ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository)
+                        
+                        CoroutineScope(Dispatchers.IO).launch {
+                            try {
+                                val currentUser = serverApiUtils.getCurrentUser()
+                                val douyinId = currentUser?.userProfile?.boundAccount?.userId ?: ""
+
+                                if (douyinId.isNotEmpty() && gRoomId.isNotEmpty()) {
+                                    val result = serverApiUtils.onlineUsers(douyinId, gRoomId, gson.toJson(resultMap))
+                                    if (!result.isSuccess) {
+                                        addLogMessage("上传观众数据失败: ${result.msg}")
+                                    }
+                                } else {
+                                    addLogMessage("上传观众数据失败: 用户未绑定抖音账号或roomId为空")
+                                }
+                            } catch (e: Exception) {
+                                addLogMessage("上传观众数据失败: ${e.message}")
+                            }
+                        }
+                    } catch (e: Exception) {
                         addLogMessage("上传观众数据失败: ${e.message}")
                     }
                 } catch (e: Exception) {
