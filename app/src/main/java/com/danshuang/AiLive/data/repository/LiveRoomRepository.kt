@@ -82,7 +82,7 @@ class LiveRoomRepository(
     /**
      * 保存WebSocket配置到本地
      */
-    private suspend fun saveWebSocketConfig(config: WebSocketConfig) {
+    suspend fun saveWebSocketConfig(config: WebSocketConfig) {
         context.liveRoomDataStore.edit { preferences ->
             preferences[WEBSOCKET_URL_KEY] = config.websocketUrl
             preferences[WEBSOCKET_UPDATE_TIME_KEY] = config.lastUpdateTime

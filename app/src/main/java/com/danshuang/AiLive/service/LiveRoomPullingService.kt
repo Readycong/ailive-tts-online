@@ -17,6 +17,8 @@ import com.danshuang.AiLive.data.repository.LiveRoomRepository
 import com.danshuang.AiLive.api.service.LiveRoomApiService
 import com.danshuang.AiLive.websocket.WebSocketManager
 import com.danshuang.AiLive.websocket.MessageProcessor
+import com.danshuang.AiLive.ui.screens.LiveMessageManager
+import com.danshuang.AiLive.ui.screens.MessageType
 import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +44,7 @@ class LiveRoomPullingService : Service() {
         // Intent extra keys
         const val EXTRA_WEBSOCKET_URL = "websocket_url"
         const val EXTRA_COOKIE_STRING = "cookie_string"
+        const val EXTRA_SECONDARY_WEBSOCKET_URL = "secondary_websocket_url"
         const val EXTRA_ACTION = "action"
         const val ACTION_START = "start"
         const val ACTION_STOP = "stop"
@@ -65,6 +68,10 @@ class LiveRoomPullingService : Service() {
         private val _connectionStateFlow = MutableStateFlow(ConnectionState.DISCONNECTED)
         val connectionStateFlow: StateFlow<ConnectionState> = _connectionStateFlow.asStateFlow()
         
+        // 第二个WebSocket连接状态流
+        private val _secondaryConnectionStateFlow = MutableStateFlow(ConnectionState.DISCONNECTED)
+        val secondaryConnectionStateFlow: StateFlow<ConnectionState> = _secondaryConnectionStateFlow.asStateFlow()
+        
         // 错误信息流
         private val _errorMessageFlow = MutableStateFlow<String?>(null)
         val errorMessageFlow: StateFlow<String?> = _errorMessageFlow.asStateFlow()
@@ -72,12 +79,13 @@ class LiveRoomPullingService : Service() {
         /**
          * 启动服务
          */
-        fun startService(context: Context, wssUrl: String? = null, cookieString: String? = null) {
+        fun startService(context: Context, wssUrl: String? = null, cookieString: String? = null, secondaryWssUrl: String? = null) {
             val intent = Intent(context, LiveRoomPullingService::class.java).apply {
                 action = ACTION_START
                 putExtra(EXTRA_ACTION, ACTION_START)
                 wssUrl?.let { putExtra(EXTRA_WEBSOCKET_URL, it) }
                 cookieString?.let { putExtra(EXTRA_COOKIE_STRING, it) }
+                secondaryWssUrl?.let { putExtra(EXTRA_SECONDARY_WEBSOCKET_URL, it) }
             }
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 context.startForegroundService(intent)
@@ -89,12 +97,13 @@ class LiveRoomPullingService : Service() {
         /**
          * 更新WebSocket连接
          */
-        fun updateConnection(context: Context, wssUrl: String, cookieString: String) {
+        fun updateConnection(context: Context, wssUrl: String, cookieString: String, secondaryWssUrl: String? = null) {
             val intent = Intent(context, LiveRoomPullingService::class.java).apply {
                 action = ACTION_UPDATE_CONNECTION
                 putExtra(EXTRA_ACTION, ACTION_UPDATE_CONNECTION)
                 putExtra(EXTRA_WEBSOCKET_URL, wssUrl)
                 putExtra(EXTRA_COOKIE_STRING, cookieString)
+                secondaryWssUrl?.let { putExtra(EXTRA_SECONDARY_WEBSOCKET_URL, it) }
             }
             context.startService(intent)
         }
@@ -121,6 +130,11 @@ class LiveRoomPullingService : Service() {
         fun getCurrentConnectionState(): ConnectionState = _connectionStateFlow.value
         
         /**
+         * 获取第二个WebSocket连接状态
+         */
+        fun getSecondaryConnectionState(): ConnectionState = _secondaryConnectionStateFlow.value
+        
+        /**
          * 获取服务实例
          */
         internal fun getInstance(): LiveRoomPullingService? = instance
@@ -128,6 +142,7 @@ class LiveRoomPullingService : Service() {
     
     // 核心组件
     private lateinit var webSocketManager: WebSocketManager
+    private lateinit var secondaryWebSocketManager: WebSocketManager
     private lateinit var messageProcessor: MessageProcessor
     private lateinit var liveRoomRepository: LiveRoomRepository
     private lateinit var apiService: LiveRoomApiService
@@ -149,16 +164,27 @@ class LiveRoomPullingService : Service() {
             _connectionStateFlow.value = value
         }
     
+    private var secondaryConnectionState = ConnectionState.DISCONNECTED
+        set(value) {
+            field = value
+            _secondaryConnectionStateFlow.value = value
+        }
+    
     // 控制标志
     private val isServiceRunning = AtomicBoolean(false)
     private var heartbeatJob: Job? = null
+    private var secondaryHeartbeatJob: Job? = null
     private var configCheckJob: Job? = null
     
     // 配置缓存
     private var currentWebSocketUrl: String? = null
+    private var currentSecondaryWebSocketUrl: String? = "wss://www.huichuang100.com/wss"
     private var currentCookieString: String? = null
     private var lastConfigCheckTime = 0L
     private val configCheckInterval = 5 * 60 * 1000L // 5分钟检查一次配置
+    
+    // 消息转发标志
+    private var isMessageForwardingEnabled = true
     
     override fun onCreate() {
         super.onCreate()
@@ -179,25 +205,30 @@ class LiveRoomPullingService : Service() {
                 // 获取传入的WebSocket URL和Cookie参数
                 val wssUrl = intent.getStringExtra(EXTRA_WEBSOCKET_URL)
                 val cookieString = intent.getStringExtra(EXTRA_COOKIE_STRING)
+                val secondaryWssUrl = intent.getStringExtra(EXTRA_SECONDARY_WEBSOCKET_URL) ?: currentSecondaryWebSocketUrl
                 
                 if (!isServiceRunning.get()) {
                     isServiceRunning.set(true)
                     startForegroundService()
-                    initializeWebSocketConnection(wssUrl, cookieString)
-                    startPeriodicTasks()
+                    initializeWebSocketConnection(wssUrl, cookieString, secondaryWssUrl)
+                    //startPeriodicTasks()
                 } else if (wssUrl != null && cookieString != null) {
                     // 如果服务已经在运行，但传入了新的URL和Cookie，则重新连接
                     connectWebSocket(wssUrl, cookieString)
+                    secondaryWssUrl?.let { connectSecondaryWebSocket(it) }
                 }
             }
             ACTION_UPDATE_CONNECTION -> {
                 // 更新WebSocket连接
                 val wssUrl = intent.getStringExtra(EXTRA_WEBSOCKET_URL)
                 val cookieString = intent.getStringExtra(EXTRA_COOKIE_STRING)
+                val secondaryWssUrl = intent.getStringExtra(EXTRA_SECONDARY_WEBSOCKET_URL) ?: currentSecondaryWebSocketUrl
                 
                 if (wssUrl != null && cookieString != null) {
                     connectWebSocket(wssUrl, cookieString)
                 }
+                
+                secondaryWssUrl?.let { connectSecondaryWebSocket(it) }
             }
             ACTION_STOP -> {
                 // 停止服务
@@ -209,7 +240,7 @@ class LiveRoomPullingService : Service() {
                     isServiceRunning.set(true)
                     startForegroundService()
                     initializeWebSocketConnection()
-                    startPeriodicTasks()
+                    //startPeriodicTasks()
                 }
             }
         }
@@ -240,20 +271,72 @@ class LiveRoomPullingService : Service() {
             apiService = LiveRoomApiService()
             liveRoomRepository = LiveRoomRepository(this, apiService)
             webSocketManager = WebSocketManager()
+            secondaryWebSocketManager = WebSocketManager()
             messageProcessor = MessageProcessor(liveRoomRepository, serviceScope)
             
-            // 设置WebSocket消息监听器
-            webSocketManager.setMessageListener { message ->
+            // 设置主WebSocket二进制消息监听器
+            webSocketManager.setBinaryMessageListener { bytes ->
                 serviceScope.launch {
                     try {
-                        val result = messageProcessor.processMessage(message)
-                        when (result) {
-                            is ProcessResult.Success -> Log.d(TAG, "Message processed: ${result.message}")
-                            is ProcessResult.Error -> Log.e(TAG, "Message processing error: ${result.error}")
-                            is ProcessResult.Ignored -> Log.d(TAG, "Message ignored: ${result.reason}")
+                        // 转发二进制消息到第二个WebSocket
+                        if (isMessageForwardingEnabled && secondaryWebSocketManager.isConnected()) {
+                            secondaryWebSocketManager.sendBinaryMessage(bytes)
+                            Log.d(TAG, "Forwarded binary message to secondary WebSocket")
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Failed to process WebSocket message", e)
+                        Log.e(TAG, "Failed to forward binary message to secondary WebSocket", e)
+                    }
+                }
+            }
+            
+            // 设置第二个WebSocket消息监听器
+            secondaryWebSocketManager.setTextMessageListener { message ->
+                serviceScope.launch {
+                    try {
+                        // 解析JSON消息格式 {"id":"111","nickname":"nickname","message":"text"}
+                        var userId: String = ""
+                        var userNickname: String = ""
+                        var userContent: String = ""
+                        
+                        try {
+                            val jsonObject = org.json.JSONObject(message)
+                            userId = jsonObject.optString("id")
+                            userNickname = jsonObject.optString("nickname")
+                            userContent = jsonObject.optString("message")
+                        } catch (jsonException: org.json.JSONException) {
+                            Log.w(TAG, "Failed to parse JSON message, using raw message", jsonException)
+                            userContent = message
+                            userNickname = "推送"
+                        }
+                        
+                        // 将文本消息显示到AI直播屏幕的消息列表
+                        try {
+                            LiveMessageManager.insertMessage(
+                                type = MessageType.COMMENT,
+                                content = userContent,
+                                userName = userNickname
+                            )
+                            Log.d(TAG, "Inserted secondary WebSocket message to LiveMessageManager: $message")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Failed to insert secondary WebSocket message to LiveMessageManager", e)
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to process secondary WebSocket message", e)
+                    }
+                }
+            }
+            
+            // 设置第二个WebSocket二进制消息监听器
+            secondaryWebSocketManager.setBinaryMessageListener { bytes ->
+                serviceScope.launch {
+                    try {
+                        // 转发二进制消息到主WebSocket
+                        if (isMessageForwardingEnabled && webSocketManager.isConnected()) {
+                            webSocketManager.sendBinaryMessage(bytes)
+                            Log.d(TAG, "Forwarded binary message to primary WebSocket")
+                        }
+                    } catch (e: Exception) {
+                        Log.e(TAG, "Failed to forward binary message to primary WebSocket", e)
                     }
                 }
             }
@@ -268,36 +351,45 @@ class LiveRoomPullingService : Service() {
     /**
      * 初始化WebSocket连接
      */
-    private fun initializeWebSocketConnection(wssUrl: String? = null, cookieString: String? = null) {
+    private fun initializeWebSocketConnection(wssUrl: String? = null, cookieString: String? = null, secondaryWssUrl: String? = null) {
         serviceScope.launch {
             try {
-                Log.i(TAG, "Initializing WebSocket connection...")
+                Log.i(TAG, "Initializing WebSocket connections...")
                 
                 if (wssUrl != null && cookieString != null) {
-                    // 使用传入的URL和Cookie连接
+                    // 使用传入的URL和Cookie连接主WebSocket
                     connectWebSocket(wssUrl, cookieString)
                 } else {
-                    Log.d(TAG, "Failed to initialize WebSocket connection: wssUrl=%s, cookieString=%s".format(wssUrl, cookieString))
+                    Log.d(TAG, "Failed to initialize primary WebSocket connection: wssUrl=%s, cookieString=%s".format(wssUrl, cookieString))
                 }
+                
+                // 连接第二个WebSocket
+                val secondaryUrl = secondaryWssUrl ?: currentSecondaryWebSocketUrl
+                if (secondaryUrl != null) {
+                    connectSecondaryWebSocket(secondaryUrl)
+                }
+                
+                // 保存配置
+                saveConfiguration(wssUrl, cookieString, secondaryUrl)
             } catch (e: Exception) {
-                Log.e(TAG, "Failed to initialize WebSocket connection", e)
+                Log.e(TAG, "Failed to initialize WebSocket connections", e)
                 handleConnectionError(e)
             }
         }
     }
     
     /**
-     * 连接WebSocket
+     * 连接主WebSocket
      */
     private fun connectWebSocket(url: String, cookieString: String? = null) {
         if (currentWebSocketUrl == url && webSocketManager.isConnected()) {
-            Log.d(TAG, "Already connected to the same URL: $url")
+            Log.d(TAG, "Already connected to the same primary URL: $url")
             return
         }
         
         currentWebSocketUrl = url
         currentCookieString = cookieString
-        Log.i(TAG, "Connecting to WebSocket: $url")
+        Log.i(TAG, "Connecting to primary WebSocket: $url")
         
         // 先断开现有连接
         webSocketManager.disconnect()
@@ -317,7 +409,7 @@ class LiveRoomPullingService : Service() {
         cookieString?.let {
             if (it.isNotEmpty()) {
                 requestBuilder.addHeader("Cookie", it)
-                Log.d(TAG, "Added cookie to WebSocket request")
+                Log.d(TAG, "Added cookie to primary WebSocket request")
             }
         }
         
@@ -328,25 +420,24 @@ class LiveRoomPullingService : Service() {
             connectionState = state
             when (state) {
                 ConnectionState.CONNECTING -> {
-                    Log.d(TAG, "WebSocket connecting...")
+                    Log.d(TAG, "Primary WebSocket connecting...")
                     _errorMessageFlow.value = null
                 }
                 ConnectionState.CONNECTED -> {
-                    Log.i(TAG, "WebSocket connected successfully")
+                    Log.i(TAG, "Primary WebSocket connected successfully")
                     pullingState = PULLING_STATE_MONITORING
                     _errorMessageFlow.value = null
-                    startHeartbeat()
                 }
                 ConnectionState.DISCONNECTED -> {
-                    Log.w(TAG, "WebSocket disconnected")
+                    Log.w(TAG, "Primary WebSocket disconnected")
                     pullingState = PULLING_STATE_STOPPED
-                    stopHeartbeat()
+//                    stopHeartbeat()
                 }
                 ConnectionState.ERROR -> {
-                    Log.e(TAG, "WebSocket connection error")
+                    Log.e(TAG, "Primary WebSocket connection error")
                     pullingState = PULLING_STATE_STOPPED
-                    _errorMessageFlow.value = "连接失败，正在重试..."
-                    stopHeartbeat()
+                    _errorMessageFlow.value = "主连接失败，正在重试..."
+//                    stopHeartbeat()
                 }
             }
             
@@ -357,30 +448,51 @@ class LiveRoomPullingService : Service() {
     }
     
     /**
-     * 启动心跳机制
+     * 连接第二个WebSocket
      */
-    private fun startHeartbeat() {
-        stopHeartbeat()
+    private fun connectSecondaryWebSocket(url: String) {
+        if (currentSecondaryWebSocketUrl == url && secondaryWebSocketManager.isConnected()) {
+            Log.d(TAG, "Already connected to the same secondary URL: $url")
+            return
+        }
         
-        heartbeatJob = serviceScope.launch {
-            while (isActive && webSocketManager.isConnected()) {
-                try {
-                    webSocketManager.sendHeartbeat()
-                    delay(30000) // 30秒发送一次心跳
-                } catch (e: Exception) {
-                    Log.w(TAG, "Failed to send heartbeat", e)
-                    break
+        currentSecondaryWebSocketUrl = url
+        Log.i(TAG, "Connecting to secondary WebSocket: $url")
+        
+        // 先断开现有连接
+        secondaryWebSocketManager.disconnect()
+        
+        // 创建请求
+        val requestBuilder = Request.Builder()
+            .url(url)
+            .addHeader("User-Agent", "AiLive/1.0")
+        
+        val request = requestBuilder.build()
+        
+        // 使用自定义请求连接WebSocket
+        secondaryWebSocketManager.connectWithRequest(request) { state ->
+            secondaryConnectionState = state
+            when (state) {
+                ConnectionState.CONNECTING -> {
+                    Log.d(TAG, "Secondary WebSocket connecting...")
+                }
+                ConnectionState.CONNECTED -> {
+                    Log.i(TAG, "Secondary WebSocket connected successfully")
+                }
+                ConnectionState.DISCONNECTED -> {
+                    Log.w(TAG, "Secondary WebSocket disconnected")
+//                    stopSecondaryHeartbeat()
+                }
+                ConnectionState.ERROR -> {
+                    Log.e(TAG, "Secondary WebSocket connection error")
+//                    stopSecondaryHeartbeat()
                 }
             }
+            
+            serviceScope.launch {
+                saveServiceState()
+            }
         }
-    }
-    
-    /**
-     * 停止心跳机制
-     */
-    private fun stopHeartbeat() {
-        heartbeatJob?.cancel()
-        heartbeatJob = null
     }
     
     /**
@@ -422,7 +534,7 @@ class LiveRoomPullingService : Service() {
             
             if (config.websocketUrl != currentWebSocketUrl) {
                 Log.i(TAG, "WebSocket URL changed: ${currentWebSocketUrl} -> ${config.websocketUrl}")
-                connectWebSocket(config.websocketUrl)
+                connectWebSocket(config.websocketUrl, currentCookieString ?: "")
             }
 
         } catch (e: Exception) {
@@ -441,6 +553,31 @@ class LiveRoomPullingService : Service() {
         
         serviceScope.launch {
             saveServiceState()
+        }
+    }
+    
+    /**
+     * 保存配置到本地存储
+     */
+    private suspend fun saveConfiguration(primaryUrl: String?, cookieString: String?, secondaryUrl: String?) {
+        try {
+            // 保存到本地存储
+            val config = WebSocketConfig(
+                websocketUrl = primaryUrl ?: "",
+                lastUpdateTime = System.currentTimeMillis(),
+                isActive = true
+            )
+            
+            liveRoomRepository.saveWebSocketConfig(config)
+            
+            // 更新当前配置
+            currentWebSocketUrl = primaryUrl
+            currentCookieString = cookieString
+            currentSecondaryWebSocketUrl = secondaryUrl
+            
+            Log.i(TAG, "Configuration saved successfully")
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to save configuration", e)
         }
     }
     
@@ -470,8 +607,8 @@ class LiveRoomPullingService : Service() {
         isServiceRunning.set(false)
         pullingState = PULLING_STATE_STOPPED
         
-        stopHeartbeat()
         webSocketManager.disconnect()
+        secondaryWebSocketManager.disconnect()
         
         serviceScope.launch {
             saveServiceState()
@@ -484,7 +621,6 @@ class LiveRoomPullingService : Service() {
      * 清理资源
      */
     private fun cleanupResources() {
-        heartbeatJob?.cancel()
         configCheckJob?.cancel()
         serviceScope.cancel()
         messageProcessor.cleanup()
@@ -540,15 +676,22 @@ class LiveRoomPullingService : Service() {
         }
         
         val connectionText = when (connectionState) {
-            ConnectionState.CONNECTED -> "已连接"
-            ConnectionState.CONNECTING -> "连接中"
-            ConnectionState.DISCONNECTED -> "已断开"
-            ConnectionState.ERROR -> "连接错误"
+            ConnectionState.CONNECTED -> "主连接已连接"
+            ConnectionState.CONNECTING -> "主连接连接中"
+            ConnectionState.DISCONNECTED -> "主连接已断开"
+            ConnectionState.ERROR -> "主连接错误"
+        }
+        
+        val secondaryConnectionText = when (secondaryConnectionState) {
+            ConnectionState.CONNECTED -> "副连接已连接"
+            ConnectionState.CONNECTING -> "副连接连接中"
+            ConnectionState.DISCONNECTED -> "副连接已断开"
+            ConnectionState.ERROR -> "副连接错误"
         }
         
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("AI直播监控服务")
-            .setContentText("$statusText ($connectionText)")
+            .setContentText("$statusText ($connectionText, $secondaryConnectionText)")
             .setSmallIcon(android.R.drawable.ic_menu_info_details)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)

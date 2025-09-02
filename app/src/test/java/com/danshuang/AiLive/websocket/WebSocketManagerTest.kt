@@ -28,7 +28,7 @@ class WebSocketManagerTest {
         var receivedMessage: String? = null
         
         // 设置消息监听器
-        webSocketManager.setMessageListener { message ->
+        webSocketManager.setTextMessageListener { message ->
             receivedMessage = message
         }
         
@@ -49,7 +49,7 @@ class WebSocketManagerTest {
     @Test
     fun `test send message when not connected`() {
         // 在未连接状态下发送消息
-        val result = webSocketManager.sendMessage("test message")
+        val result = webSocketManager.sendTextMessage("test message")
         
         // 验证返回false
         assertFalse(result)
