@@ -277,11 +277,8 @@ class LiveRoomPullingService : Service() {
                     // 使用传入的URL和Cookie连接
                     connectWebSocket(wssUrl, cookieString)
                 } else {
-                    // 使用默认配置连接
-                    val config = liveRoomRepository.fetchWebSocketConfig()
-                    connectWebSocket(config.websocketUrl)
+                    Log.d(TAG, "Failed to initialize WebSocket connection: wssUrl=%s, cookieString=%s".format(wssUrl, cookieString))
                 }
-                
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to initialize WebSocket connection", e)
                 handleConnectionError(e)
@@ -427,7 +424,7 @@ class LiveRoomPullingService : Service() {
                 Log.i(TAG, "WebSocket URL changed: ${currentWebSocketUrl} -> ${config.websocketUrl}")
                 connectWebSocket(config.websocketUrl)
             }
-            
+
         } catch (e: Exception) {
             Log.w(TAG, "Failed to check configuration update", e)
         }

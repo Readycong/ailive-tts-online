@@ -97,9 +97,10 @@ open class DouyinHackUtil(open var docHtml: String) {
     fun jsSignature(md5String: String): String? {
         try {
             val jsEngine: Duktape = Duktape.create()
-            val script = readScriptFromAssets("webmssdk.js")
+            val script = readScriptFromAssets("assets/webmssdk.js")
             jsEngine.evaluate(script)
             var sign = jsEngine.evaluate("get_sign('$md5String')") as CharSequence?
+            jsEngine.close()
             return sign.toString()
 
         }catch (e: Exception) {
