@@ -59,8 +59,6 @@ import kotlin.collections.get
 import kotlin.text.contains
 import kotlin.text.isNotEmpty
 
-var gRoomId = ""
-var gLiveRoomLoaded = false
 // 直播间动态信息数据类
 data class LiveMessage(
     val id: Long,
@@ -150,9 +148,6 @@ fun AILiveScreen(
     var lastScrollTime by remember { mutableStateOf(0L) } // 防抖动时间戳
     var forceScrollToBottom by remember { mutableStateOf(false) } // 强制滚动到底部标记
     val messageCount = LiveMessageManager.messages.size // 监听消息数量变化
-    var roomId by remember { mutableStateOf("") }
-    var pushId by remember { mutableStateOf("") }
-    var liveName by remember { mutableStateOf("") }
     // 检测是否在列表底部 - 优化精确度
     val isAtBottom by remember {
         derivedStateOf {
@@ -274,7 +269,6 @@ fun AILiveScreen(
                                 aiLiveEnabled = true
                             }
                         } else {
-                            gLiveRoomLoaded = false
                             LiveChattingService.stopService(context)
                             aiLiveEnabled = false
                         }
@@ -291,7 +285,6 @@ fun AILiveScreen(
                     modifier = Modifier.fillMaxWidth(),
                     listState = listState,
                     isAtBottom = isAtBottom,
-                    showWebView = showWebView,
                     onScrollToBottom = {
                         // 立即启用自动滚动并重置用户滚动状态
                         autoScrollEnabled = true
@@ -694,7 +687,6 @@ private fun LiveMessageList(
     listState: LazyListState,
     isAtBottom: Boolean,
     onScrollToBottom: () -> Unit,
-    showWebView: Boolean = false
 ) {
     val configuration = LocalConfiguration.current
 
