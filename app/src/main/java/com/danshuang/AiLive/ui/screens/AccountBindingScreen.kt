@@ -90,8 +90,9 @@ fun AccountBindingScreen(
     val loginRepository = remember { LoginRepository(context) }
     val tokenManager = remember { TokenManager(loginRepository) }
     val apiUtils = remember { ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository) }
-    
-    var accountUrl by remember { mutableStateOf(TextFieldValue("7- 长按复制此条消息，打开抖音搜索，查看TA的更多作品。 https://v.douyin.com/eGtOuTv39gM/ 0@2.com :0pm")) }
+
+//    var accountUrl by remember { mutableStateOf(TextFieldValue("7- 长按复制此条消息，打开抖音搜索，查看TA的更多作品。 https://v.douyin.com/eGtOuTv39gM/ 0@2.com :0pm")) }
+    var accountUrl by remember { mutableStateOf(TextFieldValue("https://www.douyin.com/user/MS4wLjABAAAAEpM-VSWnKAiy3wJvdZOXxor9Zo7Ts-buI0VW2jrtIxA?from_tab_name=live")) }
     var isLoading by remember { mutableStateOf(false) }
     var bindingResult by remember { mutableStateOf<BindingResult?>(null) }
     var bindingTrigger by remember { mutableStateOf(false) }

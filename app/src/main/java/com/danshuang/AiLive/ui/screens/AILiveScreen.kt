@@ -1,7 +1,6 @@
 package com.danshuang.AiLive.ui.screens
 
 import android.util.Log
-import android.webkit.JavascriptInterface
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -11,52 +10,38 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.*
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.Switch
-import android.widget.Toast
-import androidx.core.view.isNotEmpty
-import androidx.lifecycle.lifecycleScope
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.navigation.NavigationState
 import com.danshuang.AiLive.service.LiveRoomPullingService
 import com.danshuang.AiLive.service.LiveChattingService
 import com.danshuang.AiLive.data.model.ConnectionState
 import com.danshuang.AiLive.data.LoginRepository
-import com.danshuang.AiLive.util.Utils
-import com.danshuang.AiLive.util.DouyinHackUtil
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.api.ServerApiUtilsV2
-import com.google.gson.Gson
-import com.google.gson.JsonObject
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.*
-import kotlin.collections.get
-import kotlin.text.contains
 import kotlin.text.isNotEmpty
 
 // 直播间动态信息数据类
@@ -113,6 +98,12 @@ object LiveMessageManager {
     }
 }
 
+// 添加新的数据类用于消息发送状态管理
+enum class SendMode {
+    TEXT,  // 原文模式
+    CHAT     // AI CHAT模式
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AILiveScreen(
@@ -121,6 +112,8 @@ fun AILiveScreen(
     val context = LocalContext.current
     val loginRepository = remember { LoginRepository(context) } // 添加LoginRepository
     val userProfile by loginRepository.userProfile.collectAsState(initial = com.danshuang.AiLive.data.model.UserProfile()) // 获取UserProfile
+    val tokenManager = remember { TokenManager(loginRepository) }
+    val serverApiUtils = remember { ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository) }
 
     // 监控服务状态
     val pullingState by LiveRoomPullingService.pullingStateFlow.collectAsState()
@@ -218,6 +211,18 @@ fun AILiveScreen(
         }
     }
 
+    // 消息发送状态管理
+    var sendMode by remember { mutableStateOf(SendMode.TEXT) }
+    var messageText by remember { mutableStateOf("") }
+    var isSendEnabled by remember { mutableStateOf(false) }
+    var isSending by remember { mutableStateOf(false) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    // 监听消息文本变化，更新发送按钮状态
+    LaunchedEffect(messageText) {
+        isSendEnabled = messageText.isNotBlank()
+    }
+
     // 使用Scaffold来组织TopBar和内容
     Scaffold(
         topBar = {
@@ -235,107 +240,180 @@ fun AILiveScreen(
                     }
                 }
             )
+        },
+        snackbarHost = {
+            SnackbarHost(hostState = snackbarHostState)
         }
     ) { paddingValues ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .background(MaterialTheme.colorScheme.background),
-            contentPadding = PaddingValues(bottom = 16.dp)
         ) {
-            item {
-                // 上部：左右布局的两个Switch按钮
-                SwitchControlSection(
-                    liveMonitorEnabled = liveMonitorEnabled,
-                    onLiveMonitorChanged = { enabled ->
-                        if (enabled) {
-                            LiveRoomPullingService.startService(
-                                context,
-                                wssUrl = "",
-                                cookieString = ""
-                            )
-                        } else {
-                            LiveRoomPullingService.stopService(context)
-                        }
-                    },
-                    aiLiveEnabled = aiLiveEnabled,
-                    onAiLiveChanged = { enabled ->
-                        if (enabled) {
-                            // 检查服务是否已经在运行
-                            if (!liveChattingServiceRunning) {
-                                LiveChattingService.startService(context)
-                                aiLiveEnabled = true
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .background(MaterialTheme.colorScheme.background),
+                contentPadding = PaddingValues(bottom = 16.dp)
+            ) {
+                item {
+                    // 上部：左右布局的两个Switch按钮
+                    SwitchControlSection(
+                        liveMonitorEnabled = liveMonitorEnabled,
+                        onLiveMonitorChanged = { enabled ->
+                            if (enabled) {
+                                LiveRoomPullingService.startService(
+                                    context,
+                                    wssUrl = "",
+                                    cookieString = ""
+                                )
                             } else {
-                                // 服务已经在运行，只更新UI状态
-                                aiLiveEnabled = true
+                                LiveRoomPullingService.stopService(context)
                             }
-                        } else {
-                            LiveChattingService.stopService(context)
-                            aiLiveEnabled = false
-                        }
-                    },
-                    connectionState = connectionState,
-                    errorMessage = errorMessage,
-                    chattingState = chattingState
-                )
-            }
+                        },
+                        aiLiveEnabled = aiLiveEnabled,
+                        onAiLiveChanged = { enabled ->
+                            if (enabled) {
+                                // 检查服务是否已经在运行
+                                if (!liveChattingServiceRunning) {
+                                    LiveChattingService.startService(context)
+                                    aiLiveEnabled = true
+                                } else {
+                                    // 服务已经在运行，只更新UI状态
+                                    aiLiveEnabled = true
+                                }
+                            } else {
+                                LiveChattingService.stopService(context)
+                                aiLiveEnabled = false
+                            }
+                        },
+                        connectionState = connectionState,
+                        errorMessage = errorMessage,
+                        chattingState = chattingState
+                    )
+                }
 
-            item {
-                // 下部：实时刷新的直播间动态信息列表
-                LiveMessageList(
-                    modifier = Modifier.fillMaxWidth(),
-                    listState = listState,
-                    isAtBottom = isAtBottom,
-                    onScrollToBottom = {
-                        // 立即启用自动滚动并重置用户滚动状态
-                        autoScrollEnabled = true
-                        userScrolling = false
-                        forceScrollToBottom = true
+                item {
+                    // 下部：实时刷新的直播间动态信息列表
+                    LiveMessageList(
+                        modifier = Modifier.fillMaxWidth(),
+                        listState = listState,
+                        isAtBottom = isAtBottom,
+                        onScrollToBottom = {
+                            // 立即启用自动滚动并重置用户滚动状态
+                            autoScrollEnabled = true
+                            userScrolling = false
+                            forceScrollToBottom = true
 
-                        // 立即滚动到底部
-                        if (LiveMessageManager.messages.isNotEmpty()) {
-                            coroutineScope.launch {
-                                try {
-                                    // 先用不带动画的方式快速滚动
-                                    listState.scrollToItem(
-                                        index = LiveMessageManager.messages.size,
-                                        scrollOffset = 0
-                                    )
-                                    // 等待一帧后再次确认位置
-                                    delay(50)
-                                    listState.animateScrollToItem(
-                                        index = LiveMessageManager.messages.size,
-                                        scrollOffset = 0
-                                    )
-                                    // 滚动完成后重置强制滚动标记
-                                    delay(100)
-                                    forceScrollToBottom = false
-                                } catch (e: Exception) {
-                                    // 降级到普通滚动
+                            // 立即滚动到底部
+                            if (LiveMessageManager.messages.isNotEmpty()) {
+                                coroutineScope.launch {
                                     try {
-                                        listState.scrollToItem(LiveMessageManager.messages.size)
+                                        listState.scrollToItem(
+                                            index = LiveMessageManager.messages.size,
+                                            scrollOffset = 0
+                                        )
+                                        // 等待一帧后再次确认位置
+                                        delay(50)
+                                        listState.animateScrollToItem(
+                                            index = LiveMessageManager.messages.size,
+                                            scrollOffset = 0
+                                        )
+                                        // 滚动完成后重置强制滚动标记
                                         delay(100)
                                         forceScrollToBottom = false
-                                    } catch (e2: Exception) {
-                                        // 忽略所有错误
-                                        forceScrollToBottom = false
+                                    } catch (e: Exception) {
+                                        // 降级到普通滚动
+                                        try {
+                                            listState.scrollToItem(LiveMessageManager.messages.size)
+                                            delay(100)
+                                            forceScrollToBottom = false
+                                        } catch (e2: Exception) {
+                                            // 忽略所有错误
+                                            forceScrollToBottom = false
+                                        }
                                     }
                                 }
                             }
                         }
-                    }
-                )
+                    )
+                }
+
+                item {
+                    // WebView控制区域
+                    WebViewControlSection(
+                        url = liveUrl,
+                        isVisible = showWebView,
+                        onVisibilityChange = { showWebView = it }
+                    )
+                }
             }
 
-            item {
-                // WebView控制区域
-                WebViewControlSection(
-                    url = liveUrl,
-                    isVisible = showWebView,
-                    onVisibilityChange = { showWebView = it }
-                )
-            }
+            // 消息发送控件 - 固定在底部
+            MessageSendBar(
+                sendMode = sendMode,
+                onSendModeChange = { sendMode = it },
+                messageText = messageText,
+                onMessageTextChange = { messageText = it },
+                isSendEnabled = isSendEnabled && !isSending,
+                isSending = isSending,
+                onSendClick = {
+                    coroutineScope.launch {
+                        // 获取当前绑定账户信息
+                        val douyinId = userProfile.boundAccount?.userId ?: ""
+                        // roomId 需要通过其他方式获取，暂时使用 userId 作为替代
+                        val roomId = userProfile.boundAccount?.userId ?: ""
+                        
+                        // 检查必要信息
+                        if (douyinId.isEmpty() || roomId.isEmpty()) {
+                            snackbarHostState.showSnackbar("请先绑定抖音账号并进入直播间")
+                            return@launch
+                        }
+                        
+                        if (messageText.isBlank()) {
+                            snackbarHostState.showSnackbar("请输入要发送的消息")
+                            return@launch
+                        }
+                        
+                        // 设置发送状态
+                        isSending = true
+                        
+                        try {
+                            // 调用API发送消息
+                            val type = if (sendMode == SendMode.TEXT) "text" else "chat"
+                            val result = serverApiUtils.addHostComment(
+                                douyinId = douyinId,
+                                roomId = roomId,
+                                type = type,
+                                content = messageText
+                            )
+                            
+                            if (result.isSuccess) {
+                                snackbarHostState.showSnackbar("消息发送成功")
+                                
+                                // 将发送的消息添加到本地消息列表显示
+                                LiveMessageManager.insertMessage(
+                                    type = MessageType.AI_RESPONSE,
+                                    content = messageText,
+                                    userName = if (sendMode == SendMode.TEXT) "直接播音" else "AI转播"
+                                )
+
+                                // 发送成功，清空输入框
+                                messageText = ""
+                            } else {
+                                // 发送失败，显示错误信息
+                                snackbarHostState.showSnackbar("发送失败: ${result.msg}")
+                            }
+                        } catch (e: Exception) {
+                            // 网络或其他异常
+                            snackbarHostState.showSnackbar("发送失败: ${e.message}")
+                        } finally {
+                            // 重置发送状态
+                            isSending = false
+                        }
+                    }
+                }
+            )
         }
     }
 }
@@ -1022,6 +1100,129 @@ private fun RegularMessageContent(
                 color = textColor,
                 lineHeight = 18.sp
             )
+        }
+    }
+}
+
+@Composable
+private fun MessageSendBar(
+    sendMode: SendMode,
+    onSendModeChange: (SendMode) -> Unit,
+    messageText: String,
+    onMessageTextChange: (String) -> Unit,
+    isSendEnabled: Boolean,
+    isSending: Boolean,
+    onSendClick: () -> Unit
+) {
+    Surface(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp),
+        shadowElevation = 4.dp,
+        tonalElevation = 4.dp,
+        color = MaterialTheme.colorScheme.surface
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            // 左侧图标按钮 - 切换发送模式
+            IconButton(
+                onClick = {
+                    onSendModeChange(if (sendMode == SendMode.TEXT) SendMode.CHAT else SendMode.TEXT)
+                },
+                modifier = Modifier.size(48.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Cached,
+                    contentDescription = "切换发送模式",
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            // 中间文本输入框
+            OutlinedTextField(
+                value = messageText,
+                onValueChange = onMessageTextChange,
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 8.dp),
+                placeholder = {
+                    Text(
+                        text = "请输入要发送的消息...",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                },
+                maxLines = 5,
+                minLines = 1,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Send
+                ),
+                keyboardActions = KeyboardActions(
+                    onSend = {
+                        if (isSendEnabled && !isSending) {
+                            onSendClick()
+                        }
+                    }
+                ),
+                shape = RoundedCornerShape(24.dp)
+            )
+
+            // 右侧发送按钮
+            IconButton(
+                onClick = onSendClick,
+                enabled = isSendEnabled && !isSending,
+                modifier = Modifier.size(48.dp)
+            ) {
+                if (isSending) {
+                    // 发送中显示加载指示器
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(24.dp),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                } else {
+                    // 根据模式显示不同图标和文本
+                    when (sendMode) {
+                        SendMode.TEXT -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Send,
+                                    contentDescription = "发送原文",
+                                    tint = if (isSendEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                )
+                                Text(
+                                    text = "发送",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSendEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                        SendMode.CHAT -> {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SmartToy,
+                                    contentDescription = "AI发送",
+                                    tint = if (isSendEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                )
+                                Text(
+                                    text = "AI发送",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = if (isSendEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

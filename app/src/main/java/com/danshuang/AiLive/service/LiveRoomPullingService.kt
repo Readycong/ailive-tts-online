@@ -708,9 +708,9 @@ class LiveRoomPullingService : Service() {
                                                                     "https://live.douyin.com/"
                                                                 ) < 0)
                                                             ) {
-                                                                addLogMessage("直播间未开播")
+                                                                addLogMessage("直播间未开播", true)
                                                             } else {
-                                                                addLogMessage("进入直播间URL：$liveUrl...")
+                                                                addLogMessage("直播间连接成功", true)
 
                                                                 // 检查URL是否与当前URL相同，避免重复加载
                                                                 if (view.url != liveUrl) {
@@ -1031,12 +1031,13 @@ class WebAppInterface(private val context: android.content.Context) {
     }
 }
 
-fun addLogMessage(message: String) {
+fun addLogMessage(message: String, showList: Boolean = false) {
     Log.d("LiveRoomPullingService", message)
-    return
-    LiveMessageManager.insertMessage(
-        type = MessageType.COMMENT,
-        content = message,
-        userName = "系统"
-    )
+    if (showList) {
+        LiveMessageManager.insertMessage(
+            type = MessageType.COMMENT,
+            content = message,
+            userName = "系统"
+        )
+    }
 }
