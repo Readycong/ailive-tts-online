@@ -88,7 +88,7 @@ class WebSocketManager {
                 }
                 
                 override fun onMessage(webSocket: WebSocket, text: String) {
-                    android.util.Log.d(TAG, "Received text message: $text")
+//                    android.util.Log.d(TAG, "Received text message: $text")
                     // 更新最后心跳时间
                     lastHeartbeatTime = System.currentTimeMillis()
                     textMessageListener?.invoke(text)
@@ -96,7 +96,7 @@ class WebSocketManager {
                 
                 override fun onMessage(webSocket: WebSocket, bytes: okio.ByteString) {
                     // 处理二进制消息
-                    android.util.Log.d(TAG, "Received binary message: ${bytes.hex()}")
+//                    android.util.Log.d(TAG, "Received binary message: ${bytes.hex()}")
                     // 更新最后心跳时间
                     lastHeartbeatTime = System.currentTimeMillis()
                     binaryMessageListener?.invoke(bytes)

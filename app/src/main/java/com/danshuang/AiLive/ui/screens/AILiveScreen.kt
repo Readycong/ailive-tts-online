@@ -60,6 +60,7 @@ import kotlin.text.contains
 import kotlin.text.isNotEmpty
 
 var gRoomId = ""
+var gLiveRoomLoaded = false
 // 直播间动态信息数据类
 data class LiveMessage(
     val id: Long,
@@ -268,6 +269,7 @@ fun AILiveScreen(
                                 aiLiveEnabled = true
                             }
                         } else {
+                            gLiveRoomLoaded = false
                             LiveChattingService.stopService(context)
                             aiLiveEnabled = false
                         }
@@ -275,26 +277,6 @@ fun AILiveScreen(
                     connectionState = connectionState,
                     errorMessage = errorMessage,
                     chattingState = chattingState
-                )
-            }
-            
-            item {
-                // WebView控制区域
-                WebViewControlSection(
-                    url = liveUrl,
-                    isVisible = showWebView,
-                    liveMonitorEnabled = liveMonitorEnabled,
-                    roomId = roomId,
-                    pushId = pushId,
-                    liveName = liveName,
-                    onLiveRoomInfoReceived = { newRoomId, newPushId, newLiveName ->
-                        roomId = newRoomId
-                        pushId = newPushId
-                        liveName = newLiveName
-
-                        gRoomId = newRoomId
-                    },
-                    onVisibilityChange = { showWebView = it }
                 )
             }
             
@@ -343,6 +325,29 @@ fun AILiveScreen(
                             }
                         }
                     }
+                )
+            }
+
+            item {
+                // WebView控制区域
+                WebViewControlSection(
+                    url = liveUrl,
+                    isVisible = showWebView,
+                    liveMonitorEnabled = liveMonitorEnabled,
+                    roomId = roomId,
+                    pushId = pushId,
+                    liveName = liveName,
+                    onLiveRoomInfoReceived = { newRoomId, newPushId, newLiveName ->
+                        roomId = newRoomId
+                        pushId = newPushId
+                        liveName = newLiveName
+
+                        gRoomId = newRoomId
+                    },
+                    onFindLiveUrl = { newUrl ->
+                        liveUrl = newUrl
+                    },
+                    onVisibilityChange = { showWebView = it }
                 )
             }
         }
@@ -592,6 +597,7 @@ private fun WebViewControlSection(
     pushId: String = "",
     liveName: String = "",
     onLiveRoomInfoReceived: (String, String, String) -> Unit = { _, _, _ -> },
+    onFindLiveUrl: (String) -> Unit = { _ -> },
     onVisibilityChange: (Boolean) -> Unit = {}
 ) {
     AnimatedVisibility(
@@ -676,7 +682,7 @@ private fun WebViewControlSection(
 
                                     Log.d("WebView", "Page finished loading: $url")
                                     // 添加空值检查，避免空指针异常
-                                    if (view == null) return
+                                    if (view == null || gLiveRoomLoaded) return
 
                                     // 防止无限循环调用
                                     if (view.tag == true) {
@@ -707,7 +713,8 @@ private fun WebViewControlSection(
                                                                 if (view.url != liveUrl) {
                                                                     // 设置标记以防止无限循环
                                                                     view.tag = true
-                                                                    view.loadUrl(liveUrl)
+//                                                                    view.loadUrl(liveUrl)
+                                                                    onFindLiveUrl(liveUrl)
                                                                 }
                                                             }
                                                         }
@@ -920,6 +927,7 @@ private fun JoinLiveRoom(liveView: WebView, onLiveRoomInfoReceived: (String, Str
                         cookieString = cookie ?: ""
                     )
                     addLogMessage("已更新直播间监控服务连接")
+                    gLiveRoomLoaded = true
                     hookWebView(liveView)
                 }
             }

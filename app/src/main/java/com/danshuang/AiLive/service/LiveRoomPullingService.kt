@@ -281,10 +281,10 @@ class LiveRoomPullingService : Service() {
                         // 转发二进制消息到第二个WebSocket
                         if (isMessageForwardingEnabled && secondaryWebSocketManager.isConnected()) {
                             secondaryWebSocketManager.sendBinaryMessage(bytes)
-                            Log.d(TAG, "Forwarded binary message to secondary WebSocket")
+//                            Log.d(TAG, "Forwarded binary message to platform websocket")
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Failed to forward binary message to secondary WebSocket", e)
+                        Log.e(TAG, "Failed to forward binary message to platform websocket", e)
                     }
                 }
             }
@@ -316,12 +316,12 @@ class LiveRoomPullingService : Service() {
                                 content = userContent,
                                 userName = userNickname
                             )
-                            Log.d(TAG, "Inserted secondary WebSocket message to LiveMessageManager: $message")
+                            Log.d(TAG, "Inserted platform websocket message to LiveMessageManager: $message")
                         } catch (e: Exception) {
-                            Log.e(TAG, "Failed to insert secondary WebSocket message to LiveMessageManager", e)
+                            Log.e(TAG, "Failed to insert platform websocket message to LiveMessageManager", e)
                         }
                     } catch (e: Exception) {
-                        Log.e(TAG, "Failed to process secondary WebSocket message", e)
+                        Log.e(TAG, "Failed to process platform websocket message", e)
                     }
                 }
             }
@@ -333,7 +333,7 @@ class LiveRoomPullingService : Service() {
                         // 转发二进制消息到主WebSocket
                         if (isMessageForwardingEnabled && webSocketManager.isConnected()) {
                             webSocketManager.sendBinaryMessage(bytes)
-                            Log.d(TAG, "Forwarded binary message to primary WebSocket")
+//                            Log.d(TAG, "Forwarded binary message to primary WebSocket")
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to forward binary message to primary WebSocket", e)
@@ -360,7 +360,7 @@ class LiveRoomPullingService : Service() {
                     // 使用传入的URL和Cookie连接主WebSocket
                     connectWebSocket(wssUrl, cookieString)
                 } else {
-                    Log.d(TAG, "Failed to initialize primary WebSocket connection: wssUrl=%s, cookieString=%s".format(wssUrl, cookieString))
+                    Log.d(TAG, "Failed to initialize pulling WebSocket connection: wssUrl=%s, cookieString=%s".format(wssUrl, cookieString))
                 }
                 
                 // 连接第二个WebSocket
@@ -383,7 +383,7 @@ class LiveRoomPullingService : Service() {
      */
     private fun connectWebSocket(url: String, cookieString: String? = null) {
         if (currentWebSocketUrl == url && webSocketManager.isConnected()) {
-            Log.d(TAG, "Already connected to the same primary URL: $url")
+            Log.d(TAG, "Already connected to the same pulling URL: $url")
             return
         }
         
@@ -402,9 +402,7 @@ class LiveRoomPullingService : Service() {
         // 创建带Cookie的请求
         val requestBuilder = Request.Builder()
             .url(url)
-            .addHeader("User-Agent", "AiLive/1.0")
-            .addHeader("Origin", "https://live.douyin.com")
-        
+
         // 如果提供了Cookie，则添加到请求头中
         cookieString?.let {
             if (it.isNotEmpty()) {
@@ -420,21 +418,21 @@ class LiveRoomPullingService : Service() {
             connectionState = state
             when (state) {
                 ConnectionState.CONNECTING -> {
-                    Log.d(TAG, "Primary WebSocket connecting...")
+                    Log.d(TAG, "Pulling WebSocket connecting...")
                     _errorMessageFlow.value = null
                 }
                 ConnectionState.CONNECTED -> {
-                    Log.i(TAG, "Primary WebSocket connected successfully")
+                    Log.i(TAG, "Pulling WebSocket connected successfully")
                     pullingState = PULLING_STATE_MONITORING
                     _errorMessageFlow.value = null
                 }
                 ConnectionState.DISCONNECTED -> {
-                    Log.w(TAG, "Primary WebSocket disconnected")
+                    Log.w(TAG, "Pulling WebSocket disconnected")
                     pullingState = PULLING_STATE_STOPPED
 //                    stopHeartbeat()
                 }
                 ConnectionState.ERROR -> {
-                    Log.e(TAG, "Primary WebSocket connection error")
+                    Log.e(TAG, "Pulling WebSocket connection error")
                     pullingState = PULLING_STATE_STOPPED
                     _errorMessageFlow.value = "主连接失败，正在重试..."
 //                    stopHeartbeat()
@@ -457,7 +455,7 @@ class LiveRoomPullingService : Service() {
         }
         
         currentSecondaryWebSocketUrl = url
-        Log.i(TAG, "Connecting to secondary WebSocket: $url")
+        Log.i(TAG, "Connecting to platform websocket: $url")
         
         // 先断开现有连接
         secondaryWebSocketManager.disconnect()
