@@ -84,9 +84,9 @@ enum class MessageType {
 object LiveMessageManager {
     private val _messages = mutableStateListOf<LiveMessage>()
     val messages: List<LiveMessage> get() = _messages
-    
+
     private var messageIdCounter = 0L
-    
+
     // 插入新消息的接口
     fun insertMessage(
         type: MessageType,
@@ -102,13 +102,13 @@ object LiveMessageManager {
             userName = userName
         )
         _messages.add(newMessage)
-        
+
         // 保持最多1000条消息
         if (_messages.size > 1000) {
             _messages.removeAt(0)
         }
     }
-    
+
     // 清空消息
     fun clearMessages() {
         _messages.clear()
@@ -123,25 +123,25 @@ fun AILiveScreen(
     val context = LocalContext.current
     val loginRepository = remember { LoginRepository(context) } // 添加LoginRepository
     val userProfile by loginRepository.userProfile.collectAsState(initial = com.danshuang.AiLive.data.model.UserProfile()) // 获取UserProfile
-    
+
     // 监控服务状态
     val pullingState by LiveRoomPullingService.pullingStateFlow.collectAsState()
     val connectionState by LiveRoomPullingService.connectionStateFlow.collectAsState()
     val errorMessage by LiveRoomPullingService.errorMessageFlow.collectAsState()
-    
+
     // 根据服务状态确定开关状态
     var liveMonitorEnabled = pullingState == LiveRoomPullingService.PULLING_STATE_MONITORING
-    
+
     // AI直播语音播放状态
     val chattingState by LiveChattingService.chattingStateFlow.collectAsState()
     val liveChattingServiceRunning by LiveChattingService.isServiceRunning.collectAsState()
     var aiLiveEnabled by remember { mutableStateOf(false) }
-    
+
     // 根据服务运行状态更新UI状态
     LaunchedEffect(liveChattingServiceRunning) {
         aiLiveEnabled = liveChattingServiceRunning
     }
-    var showWebView by remember { mutableStateOf(true) } // 控制WebView显示状态
+    var showWebView by remember { mutableStateOf(false) } // 控制WebView显示状态
     var liveUrl by remember { mutableStateOf("about:blank") } // Webview默认显示空白页，只当启动监控才打开真实页面
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope() // 使用Compose的协程作用域
@@ -159,13 +159,13 @@ fun AILiveScreen(
             val layoutInfo = listState.layoutInfo
             val visibleItems = layoutInfo.visibleItemsInfo
             val totalItems = LiveMessageManager.messages.size
-            
+
             if (visibleItems.isEmpty() || totalItems == 0) {
                 true
             } else {
                 val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: 0
                 val lastItemInfo = visibleItems.lastOrNull()
-                
+
                 // 检查是否显示最后一项，且最后一项完全可见
                 if (lastVisibleIndex >= totalItems - 1) {
                     lastItemInfo?.let { item ->
@@ -180,7 +180,7 @@ fun AILiveScreen(
             }
         }
     }
-    
+
     // 监听用户滚动行为 - 优化立即停止逻辑
     LaunchedEffect(listState.isScrollInProgress) {
         if (listState.isScrollInProgress && !forceScrollToBottom) {
@@ -193,20 +193,20 @@ fun AILiveScreen(
             delay(500)
             userScrolling = false
             forceScrollToBottom = false // 重置强制滚动标记
-            
+
             // 只有在用户滚动到底部时才重新开启自动滚动
             if (isAtBottom) {
                 autoScrollEnabled = true
             }
         }
     }
-    
+
     // 监听消息数量变化，实现新消息自动滚动
     LaunchedEffect(messageCount) {
         // 只有在自动滚动开启且不是用户手动滚动时才执行
         if (messageCount > 0 && autoScrollEnabled && !userScrolling && !listState.isScrollInProgress) {
             delay(100) // 等待UI更新完成
-            
+
             // 再次检查状态，确保用户没有在此期间开始滚动
             if (autoScrollEnabled && !userScrolling && !listState.isScrollInProgress) {
                 try {
@@ -251,6 +251,11 @@ fun AILiveScreen(
                                     liveUrl = url
                                 }
                             }
+                            LiveRoomPullingService.startService(
+                                context,
+                                wssUrl = "",
+                                cookieString = ""
+                            )
                         } else {
                             LiveRoomPullingService.stopService(context)
                             // 当关闭直播监控时，重置WebView的URL
@@ -279,7 +284,7 @@ fun AILiveScreen(
                     chattingState = chattingState
                 )
             }
-            
+
             item {
                 // 下部：实时刷新的直播间动态信息列表
                 LiveMessageList(
@@ -292,7 +297,7 @@ fun AILiveScreen(
                         autoScrollEnabled = true
                         userScrolling = false
                         forceScrollToBottom = true
-                        
+
                         // 立即滚动到底部
                         if (LiveMessageManager.messages.isNotEmpty()) {
                             coroutineScope.launch {
@@ -333,20 +338,6 @@ fun AILiveScreen(
                 WebViewControlSection(
                     url = liveUrl,
                     isVisible = showWebView,
-                    liveMonitorEnabled = liveMonitorEnabled,
-                    roomId = roomId,
-                    pushId = pushId,
-                    liveName = liveName,
-                    onLiveRoomInfoReceived = { newRoomId, newPushId, newLiveName ->
-                        roomId = newRoomId
-                        pushId = newPushId
-                        liveName = newLiveName
-
-                        gRoomId = newRoomId
-                    },
-                    onFindLiveUrl = { newUrl ->
-                        liveUrl = newUrl
-                    },
                     onVisibilityChange = { showWebView = it }
                 )
             }
@@ -361,7 +352,7 @@ private fun AILiveTopBar(
     onWebDebugClick: () -> Unit = {}
 ) {
     var showMenu by remember { mutableStateOf(false) }
-    
+
     TopAppBar(
         title = {
             Text(
@@ -393,7 +384,7 @@ private fun AILiveTopBar(
                         tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
-                
+
                 DropdownMenu(
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false }
@@ -482,9 +473,9 @@ private fun SwitchControlSection(
                 connectionState = connectionState,
                 errorMessage = errorMessage
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             // AI直播状态
             SwitchItem(
                 title = "AI直播状态",
@@ -524,32 +515,32 @@ private fun SwitchItem(
                 uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f) // 边框颜色
             )
         )
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // 根据chattingState显示不同的标题
         val displayTitle = if (chattingState != null && chattingState == LiveChattingService.CHATTING_STATE_PLAYING) {
             "$title (播放中)"
         } else {
             title
         }
-        
+
         Text(
             text = displayTitle,
             fontSize = 12.sp,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.Center,
-            color = if (checked) 
-                MaterialTheme.colorScheme.onSurface 
-            else 
+            color = if (checked)
+                MaterialTheme.colorScheme.onSurface
+            else
                 MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f) // unchecked时文字也更淡
         )
-        
+
         // 显示连接状态（仅对直播间监控显示）
         if (false) {
 //        if (connectionState != null) {
             Spacer(modifier = Modifier.height(4.dp))
-            
+
             val statusText = when (connectionState) {
                 ConnectionState.CONNECTED -> "已连接"
                 ConnectionState.CONNECTING -> "连接中"
@@ -557,7 +548,7 @@ private fun SwitchItem(
                 ConnectionState.ERROR -> "连接错误"
                 else -> "ERRRR"
             }
-            
+
             val statusColor = when (connectionState) {
                 ConnectionState.CONNECTED -> Color(0xFF4CAF50)
                 ConnectionState.CONNECTING -> Color(0xFFFF9800)
@@ -565,14 +556,14 @@ private fun SwitchItem(
                 ConnectionState.ERROR -> Color(0xFFFF5722)
                 else -> Color(0xFFFFFFFF)
             }
-            
+
             Text(
                 text = statusText,
                 fontSize = 10.sp,
                 color = statusColor,
                 textAlign = TextAlign.Center
             )
-            
+
             // 显示错误信息
             if (errorMessage != null && connectionState == ConnectionState.ERROR) {
                 Spacer(modifier = Modifier.height(2.dp))
@@ -592,12 +583,6 @@ private fun SwitchItem(
 private fun WebViewControlSection(
     url: String,
     isVisible: Boolean,
-    liveMonitorEnabled: Boolean,
-    roomId: String = "",
-    pushId: String = "",
-    liveName: String = "",
-    onLiveRoomInfoReceived: (String, String, String) -> Unit = { _, _, _ -> },
-    onFindLiveUrl: (String) -> Unit = { _ -> },
     onVisibilityChange: (Boolean) -> Unit = {}
 ) {
     AnimatedVisibility(
@@ -663,75 +648,16 @@ private fun WebViewControlSection(
                         )
                     )
                 }
-                
+
                 HorizontalDivider(
                     color = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                     thickness = 1.dp
                 )
-                
+
                 // WebView内容
                 AndroidView(
                     factory = { context ->
                         WebView(context).apply {
-                            // 添加JavaScript接口
-                            addJavascriptInterface(WebAppInterface(context), "Android")
-                            
-                            webViewClient = object : WebViewClient() {
-                                override fun onPageFinished(view: WebView?, url: String?) {
-                                    super.onPageFinished(view, url)
-
-                                    Log.d("WebView", "Page finished loading: $url")
-                                    // 添加空值检查，避免空指针异常
-                                    if (view == null || gLiveRoomLoaded) return
-
-                                    // 防止无限循环调用
-                                    if (view.tag == true) {
-                                        view.tag = false
-                                        return
-                                    }
-                                    // 添加安全检查
-                                    if (url?.startsWith("https://www.douyin.com/user/", true) == true) {
-                                        view.evaluateJavascript(Utils.script) { html ->
-                                            addLogMessage("检测开播信息JSON：$html")
-                                            // 添加空值检查，避免空指针异常
-                                            if (html.isNotEmpty()) {
-                                                if (html.contains("user_detail_element", true)) {
-                                                    addLogMessage("检测到主页信息，开始解析直播间信息...")
-                                                    var gson = Gson()
-                                                    gson.fromJson(html, Map::class.java)
-                                                        ?.let { jsonMap ->
-                                                            val liveUrl = jsonMap["url"]?.toString()
-                                                            // 修复空指针异常：检查liveUrl是否为null，避免使用!!操作符
-                                                            if (jsonMap["status"]?.toString() != "PLAYING" ||
-                                                                (liveUrl == null || liveUrl.indexOf("https://live.douyin.com/") < 0)
-                                                            ) {
-                                                                addLogMessage("直播间未开播")
-                                                            } else {
-                                                                addLogMessage("进入直播间URL：$liveUrl...")
-
-                                                                // 检查URL是否与当前URL相同，避免重复加载
-                                                                if (view.url != liveUrl) {
-                                                                    // 设置标记以防止无限循环
-                                                                    view.tag = true
-//                                                                    view.loadUrl(liveUrl)
-                                                                    onFindLiveUrl(liveUrl)
-                                                                }
-                                                            }
-                                                        }
-                                                }
-                                            }
-                                        }
-                                    }else if (url?.startsWith("https://live.douyin.com/") == true) {
-                                        try {
-                                            view.tag = true
-//                                            if (view?.isNotEmpty() == true)
-                                            JoinLiveRoom(view, onLiveRoomInfoReceived)
-                                        } catch (e: Exception) {
-                                            addLogMessage("直播间连接异常")
-                                        }
-                                    }
-                                }
-                            }
                             settings.apply {
                                 javaScriptEnabled = true
                                 loadWithOverviewMode = true
@@ -750,7 +676,7 @@ private fun WebViewControlSection(
                     },
                     update = { webView ->
                         // 当URL变化时重新加载
-                        webView?.loadUrl(url)
+                        webView.loadUrl(url)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -771,14 +697,14 @@ private fun LiveMessageList(
     showWebView: Boolean = false
 ) {
     val configuration = LocalConfiguration.current
-    
+
     // 计算屏幕高度
     val screenHeightDp = configuration.screenHeightDp.dp
-    
+
     // 固定高度计算：屏幕高度 - TopAppBar(64dp) - SwitchControlSection(100dp) - 安全边距(40dp)
     // 不再根据WebView状态调整，始终保持一屏高度
     val listHeight = screenHeightDp - 204.dp
-    
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -818,7 +744,7 @@ private fun LiveMessageList(
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
                 )
-                
+
                 // 滚动到底部按钮区域 - 固定宽度避免布局变化
                 Box(
                     modifier = Modifier.width(40.dp), // 固定宽度
@@ -841,9 +767,9 @@ private fun LiveMessageList(
                 }
             }
         }
-        
+
         Spacer(modifier = Modifier.height(8.dp))
-        
+
         // 消息列表
         LazyColumn(
             state = listState,
@@ -872,109 +798,16 @@ private fun LiveMessageList(
     }
 }
 
-private fun JoinLiveRoom(liveView: WebView, onLiveRoomInfoReceived: (String, String, String) -> Unit) {
-    addLogMessage("正在尝试连接直播WSS...")
-    // 不要重新设置webViewClient，这可能会导致循环或其他问题
-    // 直接执行需要的操作，而不是重新设置webViewClient
-    
-    val url = liveView.url
-    Log.d("JoinLiveRoom", "URL: $url")
-
-    // 你可以在这里处理cookie，比如显示到TextView
-    liveView.evaluateJavascript(
-        "(function() { return document.documentElement.outerHTML; })();"
-    ) { html ->
-        val cleanHtml = html?.removeSurrounding("\"")?.replace("\\u003C", "<")
-            ?.replace("""\\\"""", "\"")
-        Log.d("JoinLiveRoom", cleanHtml ?: "null")
-
-        val docHtml = cleanHtml ?: "null"
-        var utilObj = DouyinHackUtil(docHtml)
-
-        try {
-            // 添加空值检查，避免空指针异常
-            val roomId = utilObj.getRoomId()?.toString() ?: ""
-            val pushId = utilObj.getPushID()?.toString() ?: ""
-            val liveName = utilObj.getLiveName()?.toString() ?: ""
-            
-            // 通过回调传递获取到的直播间信息
-            onLiveRoomInfoReceived(roomId, pushId, liveName)
-            
-            // 添加空值检查，避免空指针异常
-            if (roomId.isNotEmpty() && roomId != "null") {
-                addLogMessage("Room ID: $roomId")
-                addLogMessage("Push ID: $pushId")
-                addLogMessage("Live Name: $liveName")
-
-                //@TODO bindDouyinLive
-                addLogMessage("已绑定抖音账号与直播间: $liveName $roomId")
-
-                // 添加空值检查，避免空指针异常
-                val userAgent = liveView.settings?.userAgentString
-                var wsUri = ""
-                if (userAgent != null) {
-                    wsUri = utilObj.getWssURL(userAgent, roomId, pushId)
-                    Log.d("DouyinHackUtil", "WebSocket URI: $wsUri")
-
-                    val cookie = android.webkit.CookieManager.getInstance().getCookie(url)
-                    // 连接WebSocket wsUri，并传入cookie
-                    // 启动LiveRoomPullingService服务，传入websocket地址及cookie参数
-                    val context = liveView.context
-                    // 使用更新连接的方式，确保单实例模式下能更新连接参数
-                    LiveRoomPullingService.startService(
-                        context,
-                        wssUrl = wsUri,
-                        cookieString = cookie ?: ""
-                    )
-                    addLogMessage("已更新直播间监控服务连接")
-                    gLiveRoomLoaded = true
-                    hookWebView(liveView)
-                }
-            }
-        } catch (e: Exception) {
-            addLogMessage("直播间连接失败，请重新启动直播连接状态检测。")
-            return@evaluateJavascript
-        }
-    }
-}
-
-private fun hookWebView(liveView: WebView) {
-    // 注入 JavaScript 拦截代码
-    val jsCode = "(function() {" +
-            "originalOpen = XMLHttpRequest.prototype.open;" +
-            "originalSend = XMLHttpRequest.prototype.send;" +
-            "XMLHttpRequest.prototype.open = function(method, url) {" +
-            "    this._url = url;" +
-            "    this._method = method;" +
-            "    return originalOpen.apply(this, arguments);" +
-            "};" +
-            "XMLHttpRequest.prototype.send = function(data) {" +
-            "    var self = this;" +
-            "    this.addEventListener('load', function() {" +
-            "        var response = self.response;" +
-            "        if (typeof response === 'object') {" +
-            "            response = JSON.stringify(response);" +
-            "        }" +
-            "        Android.onXhrResponse(self._method, self._url, self.status, response);" +
-            "    });" +
-            "    return originalSend.apply(this, arguments);" +
-            "};" +
-            "})();"
-
-    liveView.evaluateJavascript(jsCode, null)
-    Log.d("AudienceAjax", "WebView hook injected")
-}
-
 @Composable
 private fun AnimatedMessageItem(message: LiveMessage) {
     // 动画状态
     var visible by remember { mutableStateOf(false) }
-    
+
     // 组件出现时触发动画
     LaunchedEffect(message.id) {
         visible = true
     }
-    
+
     // 添加进入动画
     AnimatedVisibility(
         visible = visible,
@@ -1004,7 +837,7 @@ private fun AnimatedMessageItem(message: LiveMessage) {
 @Composable
 private fun MessageItem(message: LiveMessage) {
     val isAIMessage = message.type == MessageType.AI_RESPONSE
-    
+
     // 不同消息类型的颜色和样式
     val backgroundColor = when (message.type) {
         MessageType.AI_RESPONSE -> MaterialTheme.colorScheme.primary // AI主播使用主色
@@ -1014,12 +847,12 @@ private fun MessageItem(message: LiveMessage) {
         MessageType.ENTER -> Color(0xFFE3F2FD)
         MessageType.SYSTEM -> Color(0xFFFFF3E0)
     }
-    
+
     val textColor = when (message.type) {
         MessageType.AI_RESPONSE -> MaterialTheme.colorScheme.onPrimary // AI消息使用白色文字
         else -> MaterialTheme.colorScheme.onSurface
     }
-    
+
     val iconColor = when (message.type) {
         MessageType.AI_RESPONSE -> MaterialTheme.colorScheme.onPrimary
         MessageType.COMMENT -> MaterialTheme.colorScheme.primary
@@ -1028,7 +861,7 @@ private fun MessageItem(message: LiveMessage) {
         MessageType.ENTER -> Color(0xFF2196F3)
         MessageType.SYSTEM -> Color(0xFFFF5722)
     }
-    
+
     val icon = when (message.type) {
         MessageType.COMMENT -> Icons.Default.ChatBubble
         MessageType.GIFT -> Icons.Default.CardGiftcard
@@ -1037,7 +870,7 @@ private fun MessageItem(message: LiveMessage) {
         MessageType.SYSTEM -> Icons.Default.Info
         MessageType.AI_RESPONSE -> Icons.Default.SmartToy
     }
-    
+
     // 整体容器，AI消息右对齐，其他消息左对齐
     Row(
         modifier = Modifier
@@ -1049,7 +882,7 @@ private fun MessageItem(message: LiveMessage) {
         if (isAIMessage) {
             Spacer(modifier = Modifier.weight(0.2f)) // 左侧留白20%宽度
         }
-        
+
         Card(
             modifier = Modifier
                 .wrapContentWidth()
@@ -1083,7 +916,7 @@ private fun MessageItem(message: LiveMessage) {
                 )
             }
         }
-        
+
         // 非AI消息在左侧，需要在右侧添加空白
         if (!isAIMessage) {
             Spacer(modifier = Modifier.weight(0.2f)) // 右侧留白20%宽度
@@ -1129,9 +962,9 @@ private fun AIMessageContent(
                 modifier = Modifier.size(16.dp)
             )
         }
-        
+
         Spacer(modifier = Modifier.height(4.dp))
-        
+
         // 消息内容
         Text(
             text = message.content,
@@ -1160,9 +993,9 @@ private fun RegularMessageContent(
             tint = iconColor,
             modifier = Modifier.size(16.dp)
         )
-        
+
         Spacer(modifier = Modifier.width(8.dp))
-        
+
         Column(
             modifier = Modifier.weight(1f),
             verticalArrangement = Arrangement.spacedBy(4.dp)
@@ -1185,7 +1018,7 @@ private fun RegularMessageContent(
                     color = textColor.copy(alpha = 0.7f)
                 )
             }
-            
+
             Text(
                 text = message.content,
                 fontSize = 14.sp,
@@ -1208,7 +1041,7 @@ private fun generateMockMessage() {
         Triple(MessageType.FOLLOW, "关注了主播", "新粉丝小王"),
         Triple(MessageType.ENTER, "进入了直播间", "观众小张"),
         Triple(MessageType.SYSTEM, "直播间在线人数达到了100人", null),
-        
+
         // AI主播回复消息（增加频率和多样性）
         Triple(MessageType.AI_RESPONSE, "谢谢大家的支持！接下来为大家带来更精彩的内容", "AI主播"),
         Triple(MessageType.AI_RESPONSE, "感谢送礼物的朋友们，你们的支持是我最大的动力", "AI主播"),
@@ -1218,7 +1051,7 @@ private fun generateMockMessage() {
         Triple(MessageType.AI_RESPONSE, "大家有什么问题都可以在评论区提出来哦", "AI主播"),
         Triple(MessageType.AI_RESPONSE, "感谢大家的陪伴，让我们一起度过愉快的时光", "AI主播")
     )
-    
+
     val randomMessage = mockMessages.random()
     LiveMessageManager.insertMessage(
         type = randomMessage.first,
@@ -1260,7 +1093,7 @@ fun UserMessagePreview() {
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
+
             // 观众评论消息
             MessageItem(
                 message = LiveMessage(
@@ -1271,7 +1104,7 @@ fun UserMessagePreview() {
                     userName = "学习达人小明"
                 )
             )
-            
+
             // 礼物消息
             MessageItem(
                 message = LiveMessage(
@@ -1282,7 +1115,7 @@ fun UserMessagePreview() {
                     userName = "土豪用户"
                 )
             )
-            
+
             // 关注消息
             MessageItem(
                 message = LiveMessage(
@@ -1293,7 +1126,7 @@ fun UserMessagePreview() {
                     userName = "新粉丝小王"
                 )
             )
-            
+
             // 进入直播间消息
             MessageItem(
                 message = LiveMessage(
@@ -1304,7 +1137,7 @@ fun UserMessagePreview() {
                     userName = "观众小张"
                 )
             )
-            
+
             // 系统消息
             MessageItem(
                 message = LiveMessage(
@@ -1335,7 +1168,7 @@ fun AIHostMessagePreview() {
                 style = MaterialTheme.typography.headlineSmall,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
-            
+
             // AI主播短消息
             MessageItem(
                 message = LiveMessage(
@@ -1346,7 +1179,7 @@ fun AIHostMessagePreview() {
                     userName = "AI主播"
                 )
             )
-            
+
             // AI主播中等长度消息
             MessageItem(
                 message = LiveMessage(
@@ -1357,7 +1190,7 @@ fun AIHostMessagePreview() {
                     userName = "AI主播"
                 )
             )
-            
+
             // AI主播长消息
             MessageItem(
                 message = LiveMessage(
@@ -1368,7 +1201,7 @@ fun AIHostMessagePreview() {
                     userName = "AI主播"
                 )
             )
-            
+
             // AI主播回复消息
             MessageItem(
                 message = LiveMessage(
@@ -1402,7 +1235,7 @@ fun MixedMessageFlowPreview() {
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
             }
-            
+
             // 模拟真实的消息流
             items(10) { index ->
                 val messages = listOf(
@@ -1412,75 +1245,10 @@ fun MixedMessageFlowPreview() {
                     LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 3)}", MessageType.AI_RESPONSE, "感谢送礼物的朋友！", "AI主播"),
                     LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 4)}", MessageType.ENTER, "进入了直播间", "新观众${index + 1}")
                 )
-                
+
                 AnimatedMessageItem(message = messages[index % messages.size])
             }
         }
     }
 }
 
-// 添加WebAppInterface类定义
-class WebAppInterface(private val context: android.content.Context) {
-    @JavascriptInterface    fun onXhrResponse(method: String?, url: String?, status: Int, response: String?) {
-//                Log.d("XHR", "Method: " + method)
-//                Log.d("XHR", "URL: " + url)
-//                Log.d("XHR", "Status: " + status)
-//                Log.d("XHR", "Response: " + response)
-        if (url?.indexOf("https://live.douyin.com/webcast/ranklist/audience") != -1) {
-            if (url != null && response != null) {
-//                        val currentTime = System.currentTimeMillis()/1000
-//                        if ((currentTime - lastUploadTime) < 60) {
-//                            Log.d("AudienceAjax", "请求过于频繁，跳过本次请求")
-//                            return
-//                        }
-//                        lastUploadTime = currentTime
-                val audienceUrl = url
-                Log.d("AudienceAjax", "audienceUrl: $audienceUrl")
-                try {
-                    val gson = Gson()
-                    val audienceData = gson.fromJson(response, JsonObject::class.java)
-                    Log.d("AudienceAjax", "Audience Data: $audienceData")
-                    val data = audienceData.getAsJsonObject("data")
-                    val ranks = data.getAsJsonArray("ranks")
-                    val resultMap = mutableMapOf<String, String>()
-
-                    for (rank in ranks) {
-                        val user = rank.asJsonObject.getAsJsonObject("user")
-                        val nickname = user.get("nickname").asString
-                        val webcastUid = user.get("webcast_uid").asString
-                        resultMap[webcastUid] = nickname
-                    }
-                    Log.d("AudienceAjax", "观众数据: $resultMap")
-                    try {
-                        // 获取当前用户信息和roomId
-                        val loginRepository = LoginRepository(context)
-                        val tokenManager = TokenManager(loginRepository)
-                        val serverApiUtils = ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository)
-                        
-                        CoroutineScope(Dispatchers.IO).launch {
-                            try {
-                                val currentUser = serverApiUtils.getCurrentUser()
-                                val douyinId = currentUser?.userProfile?.boundAccount?.userId ?: ""
-
-                                if (douyinId.isNotEmpty() && gRoomId.isNotEmpty()) {
-                                    val result = serverApiUtils.onlineUsers(douyinId, gRoomId, gson.toJson(resultMap))
-                                    if (!result.isSuccess) {
-                                        addLogMessage("上传观众数据失败: ${result.msg}")
-                                    }
-                                } else {
-                                    addLogMessage("上传观众数据失败: 用户未绑定抖音账号或roomId为空")
-                                }
-                            } catch (e: Exception) {
-                                addLogMessage("上传观众数据失败: ${e.message}")
-                            }
-                        }
-                    } catch (e: Exception) {
-                        addLogMessage("上传观众数据失败: ${e.message}")
-                    }
-                } catch (e: Exception) {
-                    addLogMessage("解析观众数据失败: ${e.message}")
-                }
-            }
-        }
-    }
-}
