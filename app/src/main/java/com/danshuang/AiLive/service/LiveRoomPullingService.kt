@@ -1033,6 +1033,7 @@ class WebAppInterface(private val context: android.content.Context) {
 
 fun addLogMessage(message: String) {
     Log.d("LiveRoomPullingService", message)
+    return
     LiveMessageManager.insertMessage(
         type = MessageType.COMMENT,
         content = message,

@@ -223,7 +223,17 @@ fun AILiveScreen(
         topBar = {
             AILiveTopBar(
                 onNavigateBack = { navController?.navigateUp() },
-                onWebDebugClick = { showWebView = !showWebView } // 切换WebView显示状态
+                onWebDebugClick = {
+                    showWebView = !showWebView
+                    if (showWebView) {
+                        // 当开启直播监控时，设置WebView的URL为userProfile.boundAccount.homeUrl
+                        userProfile.boundAccount?.homeUrl?.let { url ->
+                            if (url.isNotEmpty()) {
+                                liveUrl = url
+                            }
+                        }
+                    }
+                }
             )
         }
     ) { paddingValues ->
@@ -240,12 +250,6 @@ fun AILiveScreen(
                     liveMonitorEnabled = liveMonitorEnabled,
                     onLiveMonitorChanged = { enabled ->
                         if (enabled) {
-                            // 当开启直播监控时，设置WebView的URL为userProfile.boundAccount.homeUrl
-                            userProfile.boundAccount?.homeUrl?.let { url ->
-                                if (url.isNotEmpty()) {
-                                    liveUrl = url
-                                }
-                            }
                             LiveRoomPullingService.startService(
                                 context,
                                 wssUrl = "",
@@ -253,8 +257,6 @@ fun AILiveScreen(
                             )
                         } else {
                             LiveRoomPullingService.stopService(context)
-                            // 当关闭直播监控时，重置WebView的URL
-                            liveUrl = "about:blank"
                         }
                     },
                     aiLiveEnabled = aiLiveEnabled,
@@ -297,13 +299,13 @@ fun AILiveScreen(
                                 try {
                                     // 先用不带动画的方式快速滚动
                                     listState.scrollToItem(
-                                        index = LiveMessageManager.messages.size - 1,
+                                        index = LiveMessageManager.messages.size,
                                         scrollOffset = 0
                                     )
                                     // 等待一帧后再次确认位置
                                     delay(50)
                                     listState.animateScrollToItem(
-                                        index = LiveMessageManager.messages.size - 1,
+                                        index = LiveMessageManager.messages.size,
                                         scrollOffset = 0
                                     )
                                     // 滚动完成后重置强制滚动标记
@@ -312,7 +314,7 @@ fun AILiveScreen(
                                 } catch (e: Exception) {
                                     // 降级到普通滚动
                                     try {
-                                        listState.scrollToItem(LiveMessageManager.messages.size - 1)
+                                        listState.scrollToItem(LiveMessageManager.messages.size)
                                         delay(100)
                                         forceScrollToBottom = false
                                     } catch (e2: Exception) {
@@ -668,8 +670,11 @@ private fun WebViewControlSection(
                         }
                     },
                     update = { webView ->
+                        // 确保WebView的可见性与父组件同步
+                        webView.visibility = if (isVisible) android.view.View.VISIBLE else android.view.View.GONE
                         // 当URL变化时重新加载
-                        webView.loadUrl(url)
+                        if (isVisible)
+                            webView.loadUrl(url)
                     },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -693,9 +698,9 @@ private fun LiveMessageList(
     // 计算屏幕高度
     val screenHeightDp = configuration.screenHeightDp.dp
 
-    // 固定高度计算：屏幕高度 - TopAppBar(64dp) - SwitchControlSection(100dp) - 安全边距(40dp)
+    // 固定高度计算：屏幕高度 - TopAppBar(64dp) - SwitchControlSection(100dp) - 安全边距(60dp) // 40
     // 不再根据WebView状态调整，始终保持一屏高度
-    val listHeight = screenHeightDp - 204.dp
+    val listHeight = screenHeightDp - 224.dp // 64 + 100 + 60 = 224
 
     Column(
         modifier = Modifier
