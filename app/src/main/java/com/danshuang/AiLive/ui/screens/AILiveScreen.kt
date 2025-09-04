@@ -1,6 +1,7 @@
 package com.danshuang.AiLive.ui.screens
 
 import android.util.Log
+import android.view.ViewGroup
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
@@ -236,6 +237,17 @@ fun AILiveScreen(
                             if (url.isNotEmpty()) {
                                 liveUrl = url
                             }
+                        }
+                        
+                        // 滚动到WebView位置
+                        coroutineScope.launch {
+                            // 延迟一小段时间确保UI更新完成
+                            delay(1000)
+                            // 滚动到LazyColumn的最后一项（WebView位置）
+                            listState.animateScrollToItem(
+                                index = 2, // 0: SwitchControlSection, 1: LiveMessageList, 2: WebViewControlSection
+                                scrollOffset = 0
+                            )
                         }
                     }
                 }
@@ -672,7 +684,7 @@ private fun WebViewControlSection(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(800.dp)
+                .height(600.dp)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             elevation = CardDefaults.cardElevation(4.dp),
             colors = CardDefaults.cardColors(
@@ -750,6 +762,8 @@ private fun WebViewControlSection(
                     update = { webView ->
                         // 确保WebView的可见性与父组件同步
                         webView.visibility = if (isVisible) android.view.View.VISIBLE else android.view.View.GONE
+                        val layoutParams = ViewGroup.LayoutParams(1920, 720)
+                        webView.layoutParams = layoutParams
                         // 当URL变化时重新加载
                         if (isVisible)
                             webView.loadUrl(url)

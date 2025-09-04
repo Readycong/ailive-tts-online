@@ -687,11 +687,7 @@ class LiveRoomPullingService : Service() {
                                         return
                                     }
                                     // 添加安全检查
-                                    if (url?.startsWith(
-                                            "https://www.douyin.com/user/",
-                                            true
-                                        ) == true
-                                    ) {
+                                    if (url?.startsWith("https://www.douyin.com/user/", true) == true) {
                                         view.evaluateJavascript(Utils.script) { html ->
                                             addLogMessage("检测开播信息JSON：$html")
                                             // 添加空值检查，避免空指针异常
