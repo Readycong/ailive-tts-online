@@ -31,6 +31,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import android.webkit.WebView
+import androidx.compose.foundation.border
+import androidx.compose.ui.draw.shadow
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.navigation.NavigationState
 import com.danshuang.AiLive.service.LiveRoomPullingService
@@ -257,16 +259,16 @@ fun AILiveScreen(
             SnackbarHost(hostState = snackbarHostState)
         }
     ) { paddingValues ->
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
             LazyColumn(
                 modifier = Modifier
-                    .weight(1f)
+                    .fillMaxSize()
                     .background(MaterialTheme.colorScheme.background),
-                contentPadding = PaddingValues(bottom = 16.dp)
+                contentPadding = PaddingValues(bottom = if (aiLiveEnabled) 80.dp else 16.dp) // 根据MessageSendBar是否显示调整底部padding
             ) {
                 item {
                     // 上部：左右布局的两个Switch按钮
@@ -362,70 +364,79 @@ fun AILiveScreen(
             }
 
             // 消息发送控件 - 固定在底部
-            MessageSendBar(
-                sendMode = sendMode,
-                onSendModeChange = { sendMode = it },
-                messageText = messageText,
-                onMessageTextChange = { messageText = it },
-                isSendEnabled = isSendEnabled && !isSending,
-                isSending = isSending,
-                onSendClick = {
-                    coroutineScope.launch {
-                        // 获取当前绑定账户信息
-                        val douyinId = userProfile.boundAccount?.userId ?: ""
-                        // roomId 需要通过其他方式获取，暂时使用 userId 作为替代
-                        val roomId = userProfile.boundAccount?.userId ?: ""
-                        
-                        // 检查必要信息
-                        if (douyinId.isEmpty() || roomId.isEmpty()) {
-                            snackbarHostState.showSnackbar("请先绑定抖音账号并进入直播间")
-                            return@launch
-                        }
-                        
-                        if (messageText.isBlank()) {
-                            snackbarHostState.showSnackbar("请输入要发送的消息")
-                            return@launch
-                        }
-                        
-                        // 设置发送状态
-                        isSending = true
-                        
-                        try {
-                            // 调用API发送消息
-                            val type = if (sendMode == SendMode.TEXT) "text" else "chat"
-                            val result = serverApiUtils.addHostComment(
-                                douyinId = douyinId,
-                                roomId = roomId,
-                                type = type,
-                                content = messageText
-                            )
-                            
-                            if (result.isSuccess) {
-                                snackbarHostState.showSnackbar("消息发送成功")
+            // 只有当AI直播状态开启时才显示消息发送栏
+            if (aiLiveEnabled) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .fillMaxWidth()
+                ) {
+                    MessageSendBar(
+                        sendMode = sendMode,
+                        onSendModeChange = { sendMode = it },
+                        messageText = messageText,
+                        onMessageTextChange = { messageText = it },
+                        isSendEnabled = isSendEnabled && !isSending,
+                        isSending = isSending,
+                        onSendClick = {
+                            coroutineScope.launch {
+                                // 获取当前绑定账户信息
+                                val douyinId = userProfile.boundAccount?.userId ?: ""
+                                // roomId 需要通过其他方式获取，暂时使用 userId 作为替代
+                                val roomId = userProfile.boundAccount?.userId ?: ""
                                 
-                                // 将发送的消息添加到本地消息列表显示
-                                LiveMessageManager.insertMessage(
-                                    type = MessageType.AI_RESPONSE,
-                                    content = messageText,
-                                    userName = if (sendMode == SendMode.TEXT) "直接播音" else "AI转播"
-                                )
+                                // 检查必要信息
+                                if (douyinId.isEmpty() || roomId.isEmpty()) {
+                                    snackbarHostState.showSnackbar("请先绑定抖音账号并进入直播间")
+                                    return@launch
+                                }
+                                
+                                if (messageText.isBlank()) {
+                                    snackbarHostState.showSnackbar("请输入要发送的消息")
+                                    return@launch
+                                }
+                                
+                                // 设置发送状态
+                                isSending = true
+                                
+                                try {
+                                    // 调用API发送消息
+                                    val type = if (sendMode == SendMode.TEXT) "text" else "chat"
+                                    val result = serverApiUtils.addHostComment(
+                                        douyinId = douyinId,
+                                        roomId = roomId,
+                                        type = type,
+                                        content = messageText
+                                    )
+                                    
+                                    if (result.isSuccess) {
+                                        snackbarHostState.showSnackbar("消息发送成功")
+                                        
+                                        // 将发送的消息添加到本地消息列表显示
+                                        LiveMessageManager.insertMessage(
+                                            type = MessageType.AI_RESPONSE,
+                                            content = messageText,
+                                            userName = if (sendMode == SendMode.TEXT) "直接播音" else "AI转播"
+                                        )
 
-                                // 发送成功，清空输入框
-                                messageText = ""
-                            } else {
-                                // 发送失败，显示错误信息
-                                snackbarHostState.showSnackbar("发送失败: ${result.msg}")
+                                        // 发送成功，清空输入框
+                                        messageText = ""
+                                    } else {
+                                        // 发送失败，显示错误信息
+                                        snackbarHostState.showSnackbar("发送失败: ${result.msg}")
+                                    }
+                                } catch (e: Exception) {
+                                    // 网络或其他异常
+                                    snackbarHostState.showSnackbar("发送失败: ${e.message}")
+                                } finally {
+                                    // 重置发送状态
+                                    isSending = false
+                                }
                             }
-                        } catch (e: Exception) {
-                            // 网络或其他异常
-                            snackbarHostState.showSnackbar("发送失败: ${e.message}")
-                        } finally {
-                            // 重置发送状态
-                            isSending = false
                         }
-                    }
+                    )
                 }
-            )
+            }
         }
     }
 }
@@ -1131,15 +1142,16 @@ private fun MessageSendBar(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 8.dp),
-        shadowElevation = 4.dp,
+            .padding(horizontal = 0.dp, vertical = 0.dp) // 移除原有的padding
+            .border(0.5.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)) // 可选：添加细边框以增强视觉效果
+            .shadow(4.dp), // 保持阴影效果
         tonalElevation = 4.dp,
         color = MaterialTheme.colorScheme.surface
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(8.dp),
+                .padding(8.dp), // 保持内部padding以确保内容不贴边
             verticalAlignment = Alignment.CenterVertically
         ) {
             // 左侧图标按钮 - 切换发送模式
