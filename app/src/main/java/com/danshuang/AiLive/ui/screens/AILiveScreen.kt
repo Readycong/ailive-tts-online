@@ -600,17 +600,34 @@ private fun SwitchItem(
         modifier = modifier,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.primary,
-                checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                uncheckedThumbColor = MaterialTheme.colorScheme.outline, // unchecked拇指颜色
-                uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant, // unchecked轨道颜色
-                uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f) // 边框颜色
+        // 判断是否显示Loading状态：当开关开启但连接状态为CONNECTING时
+        val showLoading = connectionState == ConnectionState.CONNECTING
+        
+        if (showLoading) {
+            // 显示Loading动画
+            Box(
+                modifier = Modifier.size(48.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(48.dp),
+                    strokeWidth = 3.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+        } else {
+            Switch(
+                checked = checked,
+                onCheckedChange = onCheckedChange,
+                colors = SwitchDefaults.colors(
+                    checkedThumbColor = MaterialTheme.colorScheme.primary,
+                    checkedTrackColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                    uncheckedThumbColor = MaterialTheme.colorScheme.outline, // unchecked拇指颜色
+                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant, // unchecked轨道颜色
+                    uncheckedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f) // 边框颜色
+                )
             )
-        )
+        }
 
         Spacer(modifier = Modifier.height(8.dp))
 
@@ -633,8 +650,8 @@ private fun SwitchItem(
         )
 
         // 显示连接状态（仅对直播间监控显示）
-        if (false) {
-//        if (connectionState != null) {
+        if (false)
+        if (connectionState != null) {
             Spacer(modifier = Modifier.height(4.dp))
 
             val statusText = when (connectionState) {
@@ -802,8 +819,7 @@ private fun LiveMessageList(
     val screenHeightDp = configuration.screenHeightDp.dp
 
     // 固定高度计算：屏幕高度 - TopAppBar(64dp) - SwitchControlSection(100dp) - 安全边距(60dp) // 40
-    // 不再根据WebView状态调整，始终保持一屏高度
-    val listHeight = screenHeightDp - 224.dp // 64 + 100 + 60 = 224
+    val listHeight = screenHeightDp - 144.dp // 64 + 100 + 60 = 224
 
     Column(
         modifier = Modifier

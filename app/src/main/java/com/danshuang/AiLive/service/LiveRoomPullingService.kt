@@ -47,6 +47,7 @@ var gLiveRoomLoaded: Boolean = false
 var roomId = ""
 var pushId = ""
 var liveName = ""
+var lastAudiencePostTime: Long = 0
 /**
  * 直播间监控服务
  * 负责在后台运行WebSocket连接，监控直播间状态变化
@@ -97,6 +98,8 @@ class LiveRoomPullingService : Service() {
 
         // 创建WebView实例
         private lateinit var webView: WebView
+        private lateinit var audienceCall: Job
+
 
         /**
          * 启动服务
@@ -277,6 +280,8 @@ class LiveRoomPullingService : Service() {
     
     override fun onDestroy() {
         isServiceRunning.set(false)
+        connectionState = ConnectionState.DISCONNECTED
+        gLiveRoomLoaded = false
         Log.i(TAG, "LiveRoomPullingService destroyed")
         
         // 清除单实例引用
@@ -636,6 +641,7 @@ class LiveRoomPullingService : Service() {
     private fun loadBoundAccountHomeUrl() {
         serviceScope.launch {
             try {
+                connectionState = ConnectionState.CONNECTING
                 // 获取用户配置信息
                 val profile = loginRepository.userProfile;
                 var boundAccount = profile.first().boundAccount
@@ -690,6 +696,7 @@ class LiveRoomPullingService : Service() {
                                     }
                                     // 添加安全检查
                                     if (url?.startsWith("https://www.douyin.com/user/", true) == true) {
+                                        addLogMessage("正在尝试连接直播间...", false)
                                         view.evaluateJavascript(Utils.script) { html ->
                                             addLogMessage("检测开播信息JSON：$html")
                                             // 添加空值检查，避免空指针异常
@@ -728,6 +735,7 @@ class LiveRoomPullingService : Service() {
                                             )
                                         } catch (e: Exception) {
                                             addLogMessage("直播间连接异常")
+                                            connectionState = ConnectionState.ERROR
                                         }
                                     }
                                     // 页面加载完成后，延迟释放WebView资源
@@ -752,10 +760,12 @@ class LiveRoomPullingService : Service() {
                         }
                     } else {
                         Log.d(TAG, "No bound account or home URL is empty")
+                        connectionState = ConnectionState.ERROR
                     }
                 }
             } catch (e: Exception) {
                 Log.e(TAG, "Failed to load bound account home URL", e)
+                connectionState = ConnectionState.ERROR
             }
         }
     }
@@ -766,14 +776,17 @@ class LiveRoomPullingService : Service() {
     private fun stopMonitoring() {
         isServiceRunning.set(false)
         pullingState = PULLING_STATE_STOPPED
-        
+
         webSocketManager.disconnect()
         secondaryWebSocketManager.disconnect()
-        
+        connectionState = ConnectionState.DISCONNECTED
+
         serviceScope.launch {
             saveServiceState()
         }
-        
+        try {
+            audienceCall.cancel()
+        }catch (e: Exception){}
         Log.i(TAG, "Monitoring stopped")
     }
     
@@ -872,7 +885,6 @@ class LiveRoomPullingService : Service() {
     }
 
     private fun JoinLiveRoom(liveView: WebView) {
-        addLogMessage("正在尝试连接直播间...", true)
         // 不要重新设置webViewClient，这可能会导致循环或其他问题
         // 直接执行需要的操作，而不是重新设置webViewClient
 
@@ -957,6 +969,25 @@ class LiveRoomPullingService : Service() {
 
         liveView.evaluateJavascript(jsCode, null)
         Log.d("AudienceAjax", "WebView hook injected")
+
+        audienceCall = MainScope().launch {
+            while (true) {
+                try {
+                    // 每60秒执行一次
+                    delay(60000)
+                    liveView.evaluateJavascript("document.querySelector('.chatroom_close').click()") { html ->
+                        liveView.evaluateJavascript("setTimeout(()=>{document.querySelector('div.chat_room_fold').click()},1000)") { html ->
+//                            liveView.evaluateJavascript("setTimeout(()=>{document.querySelector('#chatroom > div.c9Poqbe4.unset-border > div.LyAdeVIF.sBRqUw32 > div.vYlYuXg3 > div.vuY0PPXy.LR4EQtPh > p').click()}, 1500)") { html ->
+//
+//                            }
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.w("AudienceAjax", "Failed to execute periodic task", e)
+                    delay(10000) // 出错时10秒后重试
+                }
+            }
+        }
     }
 }
 
@@ -970,12 +1001,12 @@ class WebAppInterface(private val context: android.content.Context) {
 //                Log.d("XHR", "Response: " + response)
         if (url?.indexOf("https://live.douyin.com/webcast/ranklist/audience") != -1) {
             if (url != null && response != null) {
-//                        val currentTime = System.currentTimeMillis()/1000
-//                        if ((currentTime - lastUploadTime) < 60) {
-//                            Log.d("AudienceAjax", "请求过于频繁，跳过本次请求")
-//                            return
-//                        }
-//                        lastUploadTime = currentTime
+                        val currentTime = System.currentTimeMillis()/1000
+                        if ((currentTime - lastAudiencePostTime) < 50) { // 执行有时间误差，50秒内只允许执行一次，实际是60秒一次或更多
+                            Log.d("AudienceAjax", "请求过于频繁，跳过本次请求")
+                            return
+                        }
+                lastAudiencePostTime = currentTime
                 val audienceUrl = url
                 Log.d("AudienceAjax", "audienceUrl: $audienceUrl")
                 try {
