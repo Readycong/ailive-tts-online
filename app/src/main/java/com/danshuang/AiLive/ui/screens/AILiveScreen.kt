@@ -162,11 +162,12 @@ fun AILiveScreen(
                     lastItemInfo?.let { item ->
                         val itemBottom = item.offset + item.size
                         val listBottom = layoutInfo.viewportEndOffset
-                        // 确保最后一项的底部在可视区域内
-                        itemBottom <= listBottom + 10 // 10dp容错
+                        // 确保最后一项的底部在可视区域内，增加容错范围到20dp
+                        itemBottom <= listBottom + 20 // 20dp容错
                     } ?: false
                 } else {
-                    false
+                    // 检查是否接近底部（在最后几条消息范围内）
+                    lastVisibleIndex >= totalItems - 3
                 }
             }
         }
@@ -181,13 +182,21 @@ fun AILiveScreen(
             lastScrollTime = System.currentTimeMillis()
         } else if (!listState.isScrollInProgress) {
             // 滚动停止后等待一段时间确保稳定
-            delay(500)
+            delay(3000) // 缩短延迟时间到300ms
             userScrolling = false
             forceScrollToBottom = false // 重置强制滚动标记
 
-            // 只有在用户滚动到底部时才重新开启自动滚动
-            if (isAtBottom) {
-                autoScrollEnabled = true
+            // 检查是否在底部附近，如果是则重新开启自动滚动
+            val layoutInfo = listState.layoutInfo
+            val visibleItems = layoutInfo.visibleItemsInfo
+            val totalItems = LiveMessageManager.messages.size
+
+            if (visibleItems.isNotEmpty() && totalItems > 0) {
+                val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: 0
+                // 如果用户滚动到了底部附近（最后5条消息范围内），重新开启自动滚动
+                if (lastVisibleIndex >= totalItems - 5) {
+                    autoScrollEnabled = true
+                }
             }
         }
     }
@@ -202,10 +211,28 @@ fun AILiveScreen(
             if (autoScrollEnabled && !userScrolling && !listState.isScrollInProgress) {
                 try {
                     coroutineScope.launch {
+                        // 滚动到最新消息位置
+                        val targetIndex = messageCount - 1
                         listState.animateScrollToItem(
-                            index = messageCount - 1,
+                            index = targetIndex,
                             scrollOffset = 0
                         )
+                        
+                        // 确保滚动完成后检查是否真的显示了最新消息
+                        delay(100)
+                        val layoutInfo = listState.layoutInfo
+                        val visibleItems = layoutInfo.visibleItemsInfo
+                        if (visibleItems.isNotEmpty()) {
+                            val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: 0
+                            // 如果最新消息没有完全显示，进行微调
+                            if (lastVisibleIndex < targetIndex) {
+                                delay(50)
+                                listState.animateScrollToItem(
+                                    index = targetIndex,
+                                    scrollOffset = 0
+                                )
+                            }
+                        }
                     }
                 } catch (e: Exception) {
                     // 忽略滚动异常
@@ -319,27 +346,71 @@ fun AILiveScreen(
                             userScrolling = false
                             forceScrollToBottom = true
 
-                            // 立即滚动到底部
+                            // 立即滚动到最新消息位置
                             if (LiveMessageManager.messages.isNotEmpty()) {
                                 coroutineScope.launch {
                                     try {
-                                        listState.scrollToItem(
-                                            index = LiveMessageManager.messages.size,
-                                            scrollOffset = 0
-                                        )
-                                        // 等待一帧后再次确认位置
+                                        // 确保列表已更新到最新消息
                                         delay(50)
+                                        
+                                        // 获取最新消息的索引
+                                        val targetIndex = LiveMessageManager.messages.size - 1
+                                        
+                                        // 先尝试滚动到目标位置
                                         listState.animateScrollToItem(
-                                            index = LiveMessageManager.messages.size,
+                                            index = targetIndex,
                                             scrollOffset = 0
                                         )
+                                        
+                                        // 等待滚动完成
+                                        delay(200)
+                                        
+                                        // 检查是否真的滚动到了目标位置
+                                        val layoutInfo = listState.layoutInfo
+                                        val visibleItems = layoutInfo.visibleItemsInfo
+                                        if (visibleItems.isNotEmpty()) {
+                                            val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: -1
+                                            // 如果没有滚动到正确位置，进行调整
+                                            if (lastVisibleIndex < targetIndex) {
+                                                // 计算需要额外滚动的偏移量
+                                                val lastItem = visibleItems.lastOrNull()
+                                                if (lastItem != null) {
+                                                    val itemBottom = lastItem.offset + lastItem.size
+                                                    val listBottom = layoutInfo.viewportEndOffset
+                                                    val extraOffset = itemBottom - listBottom
+                                                    
+                                                    // 如果最新消息没有完全显示，进行微调
+                                                    if (extraOffset > 0) {
+                                                        delay(50)
+                                                        listState.animateScrollToItem(
+                                                            index = targetIndex,
+                                                            scrollOffset = -extraOffset - 20 // 额外20dp的容错
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        
                                         // 滚动完成后重置强制滚动标记
                                         delay(100)
                                         forceScrollToBottom = false
                                     } catch (e: Exception) {
-                                        // 降级到普通滚动
+                                        // 如果动画滚动失败，使用普通滚动作为备选方案
                                         try {
-                                            listState.scrollToItem(LiveMessageManager.messages.size)
+                                            val targetIndex = LiveMessageManager.messages.size - 1
+                                            listState.scrollToItem(targetIndex)
+                                            
+                                            // 微调确保最新消息完全可见
+                                            delay(50)
+                                            val layoutInfo = listState.layoutInfo
+                                            val visibleItems = layoutInfo.visibleItemsInfo
+                                            if (visibleItems.isNotEmpty()) {
+                                                val lastVisibleIndex = visibleItems.lastOrNull()?.index ?: 0
+                                                if (lastVisibleIndex < targetIndex) {
+                                                    listState.scrollToItem(targetIndex)
+                                                }
+                                            }
+                                            
                                             delay(100)
                                             forceScrollToBottom = false
                                         } catch (e2: Exception) {
@@ -901,28 +972,32 @@ private fun LiveMessageList(
         Spacer(modifier = Modifier.height(8.dp))
 
         // 消息列表
-        LazyColumn(
-            state = listState,
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .weight(1f), // 占用剩余高度
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                bottom = 24.dp // 增加底部间距，确保最后一条消息完全可见
-            ),
-            verticalArrangement = Arrangement.spacedBy(8.dp), // 增加消息间距
-            // 添加平滑的滚动行为，禁用过度滚动
-            userScrollEnabled = true,
-            // 优化滚动性能
-            reverseLayout = false
+                .weight(1f)
         ) {
-            items(
-                items = LiveMessageManager.messages,
-                key = { it.id }
-            ) { message ->
-                // 添加动画效果
-                AnimatedMessageItem(message = message)
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = 32.dp // 增加底部间距到32dp，确保最后一条消息完全可见
+                ),
+                verticalArrangement = Arrangement.spacedBy(8.dp), // 增加消息间距
+                // 添加平滑的滚动行为，禁用过度滚动
+                userScrollEnabled = true,
+                // 优化滚动性能
+                reverseLayout = false
+            ) {
+                items(
+                    items = LiveMessageManager.messages,
+                    key = { it.id }
+                ) { message ->
+                    // 添加动画效果
+                    AnimatedMessageItem(message = message)
+                }
             }
         }
     }
