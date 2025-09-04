@@ -18,7 +18,7 @@ class Utils {
         val script = """
 (function() {
     var infoObj = document.querySelector("#user_detail_element")
-    var liveStatus = infoObj.querySelector("div > div:nth-child(2) > div").innerText == '直播中'
+    var liveStatus = infoObj.querySelector("div > div:nth-child(2) > div").innerText.trim() == '直播中'
     return {
             js: "user_detail_element", 
             "load": infoObj ? "FOUND" : "ERROR", 
