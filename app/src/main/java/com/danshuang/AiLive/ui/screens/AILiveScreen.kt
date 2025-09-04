@@ -633,7 +633,7 @@ private fun SwitchItem(
 
         // 根据chattingState显示不同的标题
         val displayTitle = if (chattingState != null && chattingState == LiveChattingService.CHATTING_STATE_PLAYING) {
-            "$title (播放中)"
+            title // "$title (播放中)"
         } else {
             title
         }
@@ -818,8 +818,22 @@ private fun LiveMessageList(
     // 计算屏幕高度
     val screenHeightDp = configuration.screenHeightDp.dp
 
-    // 固定高度计算：屏幕高度 - TopAppBar(64dp) - SwitchControlSection(100dp) - 安全边距(60dp) // 40
-    val listHeight = screenHeightDp - 144.dp // 64 + 100 + 60 = 224
+    // 根据实际UI元素高度计算：
+    // TopAppBar: 64dp (标准Material Design高度)
+    // SwitchControlSection: 
+    //   - Card的padding: 16.dp (上下各16dp)
+    //   - Row的padding: 16.dp (上下各8dp)
+    //   - SwitchItem高度: 约48dp (Switch: 48dp + 文字高度 + 间距)
+    //   - 总计约: 16*2 + 8*2 + 48 = 96dp
+    // MessageSendBar: 
+    //   - Surface的padding: 0.dp
+    //   - Row的padding: 8.dp (上下各4dp)
+    //   - IconButton高度: 48.dp
+    //   - 总计约: 0 + 4*2 + 48 = 56dp
+    val topAppBarHeight = 64.dp
+    val switchControlSectionHeight = 96.dp
+    val messageSendBarHeight = 56.dp
+    val listHeight = screenHeightDp - topAppBarHeight - switchControlSectionHeight - messageSendBarHeight
 
     Column(
         modifier = Modifier
