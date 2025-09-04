@@ -1062,7 +1062,7 @@ fun addLogMessage(message: String, showList: Boolean = false) {
     Log.d("LiveRoomPullingService", message)
     if (showList) {
         LiveMessageManager.insertMessage(
-            type = MessageType.COMMENT,
+            type = MessageType.SYSTEM,
             content = message,
             userName = "系统"
         )
