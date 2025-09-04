@@ -36,6 +36,10 @@ import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.api.service.DouyinApiService
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.config.AppConfig
+import com.danshuang.AiLive.service.LiveChattingService
+import com.danshuang.AiLive.service.LiveChattingService.Companion.CHATTING_STATE_PLAYING
+import com.danshuang.AiLive.service.LiveRoomPullingService
+import com.danshuang.AiLive.service.LiveRoomPullingService.Companion.PULLING_STATE_MONITORING
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.danshuang.AiLive.ui.theme.backgroundLight
@@ -52,7 +56,14 @@ fun HomeScreen(navController: NavigationState) {
     val scope = rememberCoroutineScope()
     
     val pagerState = rememberPagerState(pageCount = { 3 })
-    
+    val pullingState by LiveRoomPullingService.pullingStateFlow.collectAsState()
+    val liveChattingServiceRunning by LiveChattingService.isServiceRunning.collectAsState()
+    var aiLiveEnabled by remember { mutableStateOf(false) }
+
+    // 根据服务运行状态更新UI状态
+    LaunchedEffect(liveChattingServiceRunning) {
+        aiLiveEnabled = liveChattingServiceRunning
+    }
     // 登录时获取绑定信息
     LaunchedEffect(authToken) {
         authToken?.let { token ->
@@ -103,7 +114,7 @@ fun HomeScreen(navController: NavigationState) {
 
             // 快捷功能入口
         item {
-            QuickActionsSection(navController = navController, userProfile = userProfile)
+            QuickActionsSection(navController = navController, userProfile = userProfile, pullingState, aiLiveEnabled)
         }
 
             // 核心功能标题
@@ -225,7 +236,7 @@ private fun BannerSection(pagerState: androidx.compose.foundation.pager.PagerSta
 }
 
 @Composable
-private fun QuickActionsSection(navController: NavigationState, userProfile: com.danshuang.AiLive.data.model.UserProfile) {
+private fun QuickActionsSection(navController: NavigationState, userProfile: com.danshuang.AiLive.data.model.UserProfile, pullingState : Int, aiLiveEnabled : Boolean) {
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
@@ -236,12 +247,12 @@ private fun QuickActionsSection(navController: NavigationState, userProfile: com
             modifier = Modifier.padding(bottom = 12.dp)
         )
 
-        LiveAccountItem(navController = navController, userProfile = userProfile)
+        LiveAccountItem(navController = navController, userProfile = userProfile, pullingState = pullingState, aiLiveEnabled = aiLiveEnabled)
     }
 }
 
 @Composable
-private fun LiveAccountItem(navController: NavigationState, userProfile: com.danshuang.AiLive.data.model.UserProfile) {
+private fun LiveAccountItem(navController: NavigationState, userProfile: com.danshuang.AiLive.data.model.UserProfile, pullingState : Int, aiLiveEnabled : Boolean) {
     val boundAccount = userProfile.boundAccount
     
     Row(
@@ -292,20 +303,23 @@ private fun LiveAccountItem(navController: NavigationState, userProfile: com.dan
                 fontSize = 20.sp
             )
             Spacer(modifier = Modifier.height(4.dp))
+            val color = if (aiLiveEnabled == true) Color(0xFF4CAF50) else if (pullingState == PULLING_STATE_MONITORING) Color(0xFF2196F3) else Color.Gray
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
                         .size(8.dp)
                         .clip(CircleShape)
                         .background(
-                            if (boundAccount?.isLive == true) Color(0xFF4CAF50) else Color.Gray
+                            color
                         )
                 )
                 Spacer(modifier = Modifier.width(4.dp))
+                var text = if (aiLiveEnabled == true) "AI运行中" else "AI未开启"
+                text = if (pullingState == PULLING_STATE_MONITORING) "$text / 直播中" else "$text / 直播间未连接"
                 Text(
-                    text = if (boundAccount?.isLive == true) "在线" else if (boundAccount != null) "离线" else "未绑定",
+                    text = text,
                     fontSize = 12.sp,
-                    color = if (boundAccount?.isLive == true) Color(0xFF4CAF50) else Color.Gray
+                    color = color
                 )
             }
         }
