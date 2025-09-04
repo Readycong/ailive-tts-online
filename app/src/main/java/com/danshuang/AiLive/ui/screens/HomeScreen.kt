@@ -3,6 +3,7 @@ package com.danshuang.AiLive.ui.screens
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import com.danshuang.AiLive.R
 import com.danshuang.AiLive.navigation.NavigationState
+import com.danshuang.AiLive.navigation.Screen
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.api.service.DouyinApiService
@@ -131,6 +133,7 @@ fun HomeScreen(navController: NavigationState) {
                                 if (index < noteCards.size) {
                                     NoteCardItem(
                                         card = noteCards[index],
+                                        navController = navController,
                                         modifier = Modifier
                                             .weight(1f)
                                     )
@@ -357,12 +360,23 @@ private val noteCards = listOf(
 
 // 3. 卡片组件
 @Composable
-fun NoteCardItem(card: NoteCard, modifier: Modifier = Modifier) {
+fun NoteCardItem(card: NoteCard, navController: NavigationState, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier
             .width(0.dp)
             .aspectRatio(1f)
-            .padding(8.dp),
+            .padding(8.dp)
+            .clickable {
+                // 根据卡片标题导航到相应页面
+                when (card.title) {
+                    "门店大模型" -> navController.navigateTo(Screen.Model)
+                    "知识库" -> navController.navigateTo(Screen.Knowledge)
+                    "语音克隆" -> navController.navigateToVoiceCloning()
+                    "直播参数" -> navController.navigateTo(Screen.Model)
+                    "直播回顾" -> navController.navigateTo(Screen.AILive)  // 可以在AILiveScreen中查看历史消息
+                    "卡密续费" -> navController.navigateToCardActivation()
+                }
+            },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(2.dp),
         colors = CardDefaults.cardColors(
