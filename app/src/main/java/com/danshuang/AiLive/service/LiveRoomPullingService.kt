@@ -390,7 +390,9 @@ class LiveRoomPullingService : Service() {
                 if (wssUrl != null && cookieString != null) {
                     // 使用传入的URL和Cookie连接主WebSocket
                     connectWebSocket(wssUrl, cookieString)
+                    addLogMessage("直播间连接成功", true)
                 } else {
+                    addLogMessage("直播连接失败", true)
                     Log.d(TAG, "Failed to initialize pulling WebSocket connection: wssUrl=%s, cookieString=%s".format(wssUrl, cookieString))
                 }
                 
@@ -706,8 +708,6 @@ class LiveRoomPullingService : Service() {
                                                             ) {
                                                                 addLogMessage("直播间未开播", true)
                                                             } else {
-                                                                addLogMessage("直播间连接成功", true)
-
                                                                 // 检查URL是否与当前URL相同，避免重复加载
                                                                 if (view.url != liveUrl) {
                                                                     // 设置标记以防止无限循环
@@ -872,7 +872,7 @@ class LiveRoomPullingService : Service() {
     }
 
     private fun JoinLiveRoom(liveView: WebView) {
-        addLogMessage("正在尝试连接直播WSS...")
+        addLogMessage("正在尝试连接直播间...", true)
         // 不要重新设置webViewClient，这可能会导致循环或其他问题
         // 直接执行需要的操作，而不是重新设置webViewClient
 
