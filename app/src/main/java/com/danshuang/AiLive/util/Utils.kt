@@ -19,11 +19,12 @@ class Utils {
 (function() {
     var infoObj = document.querySelector("#user_detail_element")
     var liveStatus = infoObj.querySelector("div > div:nth-child(2) > div").innerText.trim() == '直播中'
+    var liveUrl = document.querySelector("#user_detail_element > div > div > div:nth-child(1) > div > a")
     return {
             js: "user_detail_element", 
             "load": infoObj ? "FOUND" : "ERROR", 
             status: liveStatus?'PLAYING':'NO', 
-            url:infoObj.querySelector("a").href
+            url: liveUrl ? liveUrl.href : ''
             }
 })()
 """.trimIndent()

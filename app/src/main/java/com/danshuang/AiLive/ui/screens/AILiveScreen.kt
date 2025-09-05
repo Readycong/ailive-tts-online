@@ -41,6 +41,7 @@ import com.danshuang.AiLive.data.model.ConnectionState
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.api.ServerApiUtilsV2
+import com.danshuang.AiLive.service.LiveRoomPullingService.Companion.PULLING_STATE_RECONNECT
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -170,6 +171,19 @@ fun AILiveScreen(
                     lastVisibleIndex >= totalItems - 3
                 }
             }
+        }
+    }
+
+    LaunchedEffect(pullingState) {
+        // 当服务停止时，关闭监控开关
+        if (pullingState == LiveRoomPullingService.PULLING_STATE_RECONNECT) {
+            liveMonitorEnabled = false
+
+            LiveRoomPullingService.startService(
+                context,
+                wssUrl = "",
+                cookieString = ""
+            )
         }
     }
 

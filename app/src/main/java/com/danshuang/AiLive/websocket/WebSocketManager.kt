@@ -107,6 +107,7 @@ class WebSocketManager {
                     isConnectedFlag.set(false)
                     stopHeartbeat()
                     handleConnectionFailure(t)
+                    stateCallback(ConnectionState.DISCONNECTED)
                 }
                 
                 override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
