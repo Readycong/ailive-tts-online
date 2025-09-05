@@ -100,12 +100,6 @@ class LiveRoomPullingService : Service() {
         private val _errorMessageFlow = MutableStateFlow<String?>(null)
         val errorMessageFlow: StateFlow<String?> = _errorMessageFlow.asStateFlow()
 
-        // 创建WebView实例
-        private lateinit var webView: WebView
-        private lateinit var audienceCall: Job
-        private lateinit var checkLiveRoomJob: Job
-
-
         /**
          * 启动服务
          */
@@ -152,17 +146,17 @@ class LiveRoomPullingService : Service() {
         /**
          * 获取当前监控状态
          */
-        fun getCurrentPullingState(): Int = _pullingStateFlow.value
+        fun getCurrentPullingState(): Int = instance?.serviceState ?: PULLING_STATE_STOPPED
         
         /**
          * 获取当前连接状态
          */
-        fun getCurrentConnectionState(): ConnectionState = _connectionStateFlow.value
+        fun getCurrentConnectionState(): ConnectionState = instance?.connectionState ?: ConnectionState.DISCONNECTED
         
         /**
          * 获取第二个WebSocket连接状态
          */
-        fun getSecondaryConnectionState(): ConnectionState = _secondaryConnectionStateFlow.value
+        fun getSecondaryConnectionState(): ConnectionState = instance?.secondaryConnectionState ?: ConnectionState.DISCONNECTED
         
         /**
          * 获取服务实例
@@ -178,11 +172,18 @@ class LiveRoomPullingService : Service() {
     private lateinit var apiService: LiveRoomApiService
     private lateinit var loginRepository: LoginRepository
     
+    // 添加WebView实例
+    private var webView: WebView? = null
+    
+    // 添加协程任务变量
+    private var audienceCall: Job? = null
+    private var checkLiveRoomJob: Job? = null
+    
     // 协程作用域
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     
-    // 服务状态
-    private var pullingState = PULLING_STATE_STOPPED
+    // 服务状态 - 使用单一状态变量
+    private var serviceState = PULLING_STATE_STOPPED
         set(value) {
             field = value
             _pullingStateFlow.value = value
@@ -203,6 +204,7 @@ class LiveRoomPullingService : Service() {
     
     // 控制标志
     private val isServiceRunning = AtomicBoolean(false)
+    private var isServiceStopped = AtomicBoolean(false) // 防止重复停止服务
     private var heartbeatJob: Job? = null
     private var secondaryHeartbeatJob: Job? = null
     private var configCheckJob: Job? = null
@@ -231,6 +233,9 @@ class LiveRoomPullingService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         Log.i(TAG, "LiveRoomPullingService started with action: ${intent?.getStringExtra(EXTRA_ACTION)}, isServiceRunning: ${isServiceRunning.get()}")
         
+        // 重置服务停止标志
+        isServiceStopped.set(false)
+        
         when (intent?.getStringExtra(EXTRA_ACTION)) {
             ACTION_START -> {
                 // 获取传入的WebSocket URL和Cookie参数
@@ -239,6 +244,7 @@ class LiveRoomPullingService : Service() {
                 val secondaryWssUrl = intent.getStringExtra(EXTRA_SECONDARY_WEBSOCKET_URL) ?: currentSecondaryWebSocketUrl
                 
                 if (!isServiceRunning.get()) {
+                    isServiceRunning.set(true)
                     startForegroundService()
                     // 加载绑定账户的主页URL
                     loadBoundAccountHomeUrl()
@@ -262,10 +268,7 @@ class LiveRoomPullingService : Service() {
                 secondaryWssUrl?.let { connectSecondaryWebSocket(it) }
             }
             ACTION_STOP -> {
-                isServiceRunning.set(false)
-
-                // 停止服务
-                stopSelf()
+                stopServiceInternal()
             }
             else -> {
                 // 默认行为
@@ -284,10 +287,26 @@ class LiveRoomPullingService : Service() {
     }
     
     override fun onDestroy() {
+        Log.i(TAG, "LiveRoomPullingService destroyed")
+        stopServiceInternal()
+        super.onDestroy()
+    }
+    
+    /**
+     * 统一服务停止方法
+     */
+    private fun stopServiceInternal() {
+        // 防止重复停止服务
+        if (isServiceStopped.getAndSet(true)) {
+            return
+        }
+        
         isServiceRunning.set(false)
+        serviceState = PULLING_STATE_STOPPED
         connectionState = ConnectionState.DISCONNECTED
         gLiveRoomLoaded = false
-        Log.i(TAG, "LiveRoomPullingService destroyed")
+        
+        Log.i(TAG, "LiveRoomPullingService stopped")
         
         // 清除单实例引用
         instance = null
@@ -296,11 +315,27 @@ class LiveRoomPullingService : Service() {
         cleanupResources()
 
         try {
-            checkLiveRoomJob.cancel()
-        }catch (e: Exception){}
+            audienceCall?.cancel()
+            checkLiveRoomJob?.cancel()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error cancelling audienceCall or checkLiveRoomJob", e)
+        }
 
-        webView.destroy()
-        super.onDestroy()
+        // 安全地销毁WebView
+        webView?.let { view ->
+            try {
+                view.destroy()
+            } catch (e: Exception) {
+                Log.w(TAG, "Error destroying WebView", e)
+            }
+        }
+        webView = null
+        
+        // 移除通知
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.cancel(NOTIFICATION_ID)
+        
+        stopSelf()
     }
     
     override fun onBind(intent: Intent?): IBinder? {
@@ -332,7 +367,7 @@ class LiveRoomPullingService : Service() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to forward binary message to platform websocket", e)
                         addLogMessage("直播消息处理失败->P", true)
-                        stopSelf()
+                        stopServiceInternal()
                     }
                 }
             }
@@ -372,7 +407,7 @@ class LiveRoomPullingService : Service() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to process platform websocket message", e)
                         addLogMessage("直播消息处理失败P->A_W", true)
-                        stopSelf()
+                        stopServiceInternal()
                     }
                 }
             }
@@ -389,7 +424,7 @@ class LiveRoomPullingService : Service() {
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to forward binary message to primary WebSocket", e)
                         addLogMessage("直播消息处理失败P->D", true)
-                        stopSelf()
+                        stopServiceInternal()
                     }
                 }
             }
@@ -399,7 +434,7 @@ class LiveRoomPullingService : Service() {
             Log.e(TAG, "Failed to initialize components", e)
             _errorMessageFlow.value = "初始化失败: ${e.message}"
             addLogMessage("初始化失败直播消息处理器", true)
-            stopSelf()
+            stopServiceInternal()
         }
     }
     
@@ -418,7 +453,7 @@ class LiveRoomPullingService : Service() {
                 } else {
                     addLogMessage("直播连接失败D", true)
                     Log.d(TAG, "Failed to initialize pulling WebSocket connection: wssUrl=%s, cookieString=%s".format(wssUrl, cookieString))
-                    stopSelf()
+                    // 不再直接调用stopSelf()，而是通过状态管理
                 }
                 
                 // 连接第二个WebSocket
@@ -433,7 +468,7 @@ class LiveRoomPullingService : Service() {
                 Log.e(TAG, "Failed to initialize WebSocket connections", e)
                 handleConnectionError(e)
                 addLogMessage("直播间连接失败P", true)
-                stopSelf()
+                // 不再直接调用stopSelf()，而是通过状态管理
             }
         }
     }
@@ -483,21 +518,19 @@ class LiveRoomPullingService : Service() {
                 }
                 ConnectionState.CONNECTED -> {
                     Log.i(TAG, "Pulling WebSocket connected successfully")
-                    pullingState = PULLING_STATE_MONITORING
+                    serviceState = PULLING_STATE_MONITORING
                     _errorMessageFlow.value = null
                 }
                 ConnectionState.DISCONNECTED -> {
                     Log.w(TAG, "Pulling WebSocket disconnected")
-                    pullingState = PULLING_STATE_STOPPED
-//                    stopHeartbeat()
-                    stopSelf()
+                    serviceState = PULLING_STATE_STOPPED
+                    // 不再直接调用stopSelf()，而是通过状态管理
                 }
                 ConnectionState.ERROR -> {
                     Log.e(TAG, "Pulling WebSocket connection error")
-                    pullingState = PULLING_STATE_STOPPED
+                    serviceState = PULLING_STATE_STOPPED
                     _errorMessageFlow.value = "主连接失败，正在重试..."
-//                    stopHeartbeat()
-                    stopSelf()
+                    // 不再直接调用stopSelf()，而是通过状态管理
                 }
             }
             
@@ -540,13 +573,9 @@ class LiveRoomPullingService : Service() {
                 }
                 ConnectionState.DISCONNECTED -> {
                     Log.w(TAG, "Secondary WebSocket disconnected")
-//                    stopSecondaryHeartbeat()
-                    stopSelf()
                 }
                 ConnectionState.ERROR -> {
                     Log.e(TAG, "Secondary WebSocket connection error")
-//                    stopSecondaryHeartbeat()
-                    stopSelf()
                 }
             }
             
@@ -609,12 +638,14 @@ class LiveRoomPullingService : Service() {
     private fun handleConnectionError(error: Throwable) {
         Log.e(TAG, "Connection error occurred", error)
         
-        pullingState = PULLING_STATE_STOPPED
+        serviceState = PULLING_STATE_STOPPED
         _errorMessageFlow.value = "连接错误: ${error.message}"
         
         serviceScope.launch {
             saveServiceState()
         }
+        
+        // 不再直接调用stopSelf()，而是通过状态管理
     }
     
     /**
@@ -648,7 +679,7 @@ class LiveRoomPullingService : Service() {
     private suspend fun saveServiceState() {
         try {
             val state = ServiceState(
-                pullingState = pullingState,
+                pullingState = serviceState,
                 lastWebSocketUrl = currentWebSocketUrl,
                 lastConnectTime = if (connectionState == ConnectionState.CONNECTED) System.currentTimeMillis() else null,
                 lastDisconnectTime = if (connectionState == ConnectionState.DISCONNECTED) System.currentTimeMillis() else null,
@@ -669,44 +700,56 @@ class LiveRoomPullingService : Service() {
             try {
                 connectionState = ConnectionState.CONNECTING
                 // 获取用户配置信息
-                val profile = loginRepository.userProfile;
-                var boundAccount = profile.first().boundAccount
+                val profile = loginRepository.userProfile
+                val boundAccount = profile.first().boundAccount
                 withContext(Dispatchers.Main) {
                     // 检查是否有绑定账户且有主页URL
                     if (boundAccount != null && boundAccount.homeUrl.isNotEmpty()) {
                         Log.i(TAG, "Loading bound account home URL: ${boundAccount.homeUrl}")
+                        
+                        // 安全地销毁现有的WebView（如果存在）
+                        webView?.let { view ->
+                            try {
+                                view.destroy()
+                            } catch (e: Exception) {
+                                Log.w(TAG, "Error destroying existing WebView", e)
+                            }
+                        }
+                        
+                        // 创建新的WebView实例
                         webView = WebView(this@LiveRoomPullingService)
+                        
                         // 在主线程中创建和配置WebView
                         withContext(Dispatchers.Main) {
                             // 设置WebView尺寸为1920px * 720px
                             val layoutParams = ViewGroup.LayoutParams(1920, 720)
-                            webView.layoutParams = layoutParams
+                            webView?.layoutParams = layoutParams
 
                             // 配置WebView设置
-                            val settings = webView.settings
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            settings.databaseEnabled = true
-                            settings.useWideViewPort = true
-                            settings.loadWithOverviewMode = true
-                            settings.setSupportZoom(true)
-                            settings.setGeolocationEnabled(true)
-                            settings.builtInZoomControls = false
-                            settings.displayZoomControls = false
-                            settings.allowContentAccess = true
-                            settings.allowFileAccess = true
+                            val settings = webView?.settings
+                            settings?.javaScriptEnabled = true
+                            settings?.domStorageEnabled = true
+                            settings?.databaseEnabled = true
+                            settings?.useWideViewPort = true
+                            settings?.loadWithOverviewMode = true
+                            settings?.setSupportZoom(true)
+                            settings?.setGeolocationEnabled(true)
+                            settings?.builtInZoomControls = false
+                            settings?.displayZoomControls = false
+                            settings?.allowContentAccess = true
+                            settings?.allowFileAccess = true
 
                             // 设置PC模式User-Agent
                             val pcUserAgent =
                                 "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
-                            settings.userAgentString = pcUserAgent
+                            settings?.userAgentString = pcUserAgent
 
-                            webView.addJavascriptInterface(
+                            webView?.addJavascriptInterface(
                                 WebAppInterface(this@LiveRoomPullingService),
                                 "Android"
                             )
                             // 设置WebViewClient以处理页面加载
-                            webView.webViewClient = object : WebViewClient() {
+                            webView?.webViewClient = object : WebViewClient() {
                                 override fun onReceivedHttpError(
                                     view: WebView?,
                                     request: WebResourceRequest?,
@@ -715,9 +758,11 @@ class LiveRoomPullingService : Service() {
                                     super.onReceivedHttpError(view, request, errorResponse)
                                     Log.d("Webview", errorResponse.toString())
                                 }
+                                
                                 override fun onPageFinished(view: WebView?, url: String?) {
                                     super.onPageFinished(view, url)
                                     Log.d("WebView", "Page finished loading: $url")
+                                    
                                     // 添加空值检查，避免空指针异常
                                     if (view == null || gLiveRoomLoaded) return
 
@@ -726,73 +771,68 @@ class LiveRoomPullingService : Service() {
                                         view.tag = false
                                         return
                                     }
+                                    
                                     // 添加安全检查
                                     if (url?.startsWith("https://www.douyin.com/user/", true) == true) {
                                         addLogMessage("正在尝试连接直播间...", false)
-                                        view.evaluateJavascript(Utils.script) { html ->
-                                            addLogMessage("检测开播信息JSON：$html")
-                                            // 添加空值检查，避免空指针异常
-                                            if (html.isNotEmpty()) {
-                                                if (html == "null") {
-                                                    addLogMessage("用户主页处理失败", true)
-                                                    stopSelf()
-                                                } else if (html.contains("user_detail_element", true)) {
-                                                    addLogMessage("检测到主页信息，开始解析直播间信息...")
-                                                    var gson = Gson()
-                                                    gson.fromJson(html, Map::class.java)
-                                                        ?.let { jsonMap ->
-                                                            val liveUrl = jsonMap["url"]?.toString()
-                                                            // 修复空指针异常：检查liveUrl是否为null，避免使用!!操作符
-                                                            if (jsonMap["status"]?.toString() != "PLAYING" ||
-                                                                (liveUrl == null || liveUrl.indexOf(
-                                                                    "https://live.douyin.com/"
-                                                                ) < 0)
-                                                            ) {
-                                                                addLogMessage("直播间未开播", true)
-                                                                stopSelf()
-                                                            } else {
-                                                                // 检查URL是否与当前URL相同，避免重复加载
-                                                                if (view.url != liveUrl) {
-                                                                    // 设置标记以防止无限循环
-                                                                    view.tag = true
-                                                                    view.loadUrl(liveUrl)
+                                        // 确保WebView操作在主线程中执行
+                                        serviceScope.launch(Dispatchers.Main) {
+                                            view.evaluateJavascript(Utils.script) { html ->
+                                                addLogMessage("检测开播信息JSON：$html")
+                                                // 添加空值检查，避免空指针异常
+                                                if (!html.isNullOrEmpty()) {
+                                                    if (html == "null") {
+                                                        addLogMessage("用户主页处理失败", true)
+                                                        stopServiceInternal()
+                                                    } else if (html.contains(
+                                                            "user_detail_element",
+                                                            true
+                                                        )
+                                                    ) {
+                                                        addLogMessage("检测到主页信息，开始解析直播间信息...")
+                                                        var gson = Gson()
+                                                        gson.fromJson(html, Map::class.java)
+                                                            ?.let { jsonMap ->
+                                                                val liveUrl =
+                                                                    jsonMap["url"]?.toString()
+                                                                // 修复空指针异常：检查liveUrl是否为null，避免使用!!操作符
+                                                                if (jsonMap["status"]?.toString() != "PLAYING" ||
+                                                                    (liveUrl == null || liveUrl.indexOf(
+                                                                        "https://live.douyin.com/"
+                                                                    ) < 0)
+                                                                ) {
+                                                                    addLogMessage(
+                                                                        "直播间未开播",
+                                                                        true
+                                                                    )
+                                                                    stopServiceInternal()
+                                                                } else {
+                                                                    // 检查URL是否与当前URL相同，避免重复加载
+                                                                    if (view.url != liveUrl) {
+                                                                        // 设置标记以防止无限循环
+                                                                        view.tag = true
+                                                                        view.loadUrl(liveUrl)
+                                                                    }
                                                                 }
                                                             }
-                                                        }
+                                                    }
                                                 }
                                             }
                                         }
                                     } else if (url?.startsWith("https://live.douyin.com/") == true) {
                                         try {
                                             view.tag = true
-//                                            if (view?.isNotEmpty() == true)
-                                            JoinLiveRoom(
-                                                view
-                                            )
+                                            JoinLiveRoom(view)
                                         } catch (e: Exception) {
                                             addLogMessage("直播间连接异常")
                                             connectionState = ConnectionState.ERROR
                                         }
                                     }
-                                    // 页面加载完成后，延迟释放WebView资源
-//                                    serviceScope.launch {
-//                                        delay(10000) // 等待10秒确保页面完全加载
-//                                        withContext(Dispatchers.Main) {
-//                                            view?.destroy()
-//                                        }
-//                                    }
                                 }
-
-//                                override fun onReceivedError(view: WebView?, errorCode: Int, description: String?, failingUrl: String?) {
-//                                    super.onReceivedError(view, errorCode, description, failingUrl)
-//                                    Log.e(TAG, "Failed to load bound account home URL: $failingUrl, error: $description")
-//                                    // 出错时释放WebView资源
-//                                    view?.destroy()
-//                                }
                             }
 
                             // 在后台加载URL
-                            webView.loadUrl(boundAccount.homeUrl)
+                            webView?.loadUrl(boundAccount.homeUrl)
                         }
                     } else {
                         Log.d(TAG, "No bound account or home URL is empty")
@@ -811,7 +851,7 @@ class LiveRoomPullingService : Service() {
      */
     private fun stopMonitoring() {
         isServiceRunning.set(false)
-        pullingState = PULLING_STATE_STOPPED
+        serviceState = PULLING_STATE_STOPPED
 
         webSocketManager.disconnect()
         secondaryWebSocketManager.disconnect()
@@ -820,9 +860,13 @@ class LiveRoomPullingService : Service() {
         serviceScope.launch {
             saveServiceState()
         }
+        
         try {
-            audienceCall.cancel()
-        }catch (e: Exception){}
+            audienceCall?.cancel()
+            checkLiveRoomJob?.cancel()
+        } catch (e: Exception) {
+            Log.w(TAG, "Error cancelling audienceCall or checkLiveRoomJob", e)
+        }
 
         Log.i(TAG, "Monitoring stopped")
     }
@@ -832,6 +876,8 @@ class LiveRoomPullingService : Service() {
      */
     private fun cleanupResources() {
         configCheckJob?.cancel()
+        audienceCall?.cancel()
+        checkLiveRoomJob?.cancel()
         serviceScope.cancel()
         messageProcessor.cleanup()
         
@@ -880,7 +926,7 @@ class LiveRoomPullingService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         
-        val statusText = when (pullingState) {
+        val statusText = when (serviceState) {
             PULLING_STATE_MONITORING -> "正在监控直播间动态..."
             else -> "直播间监控已停止"
         }
@@ -929,49 +975,56 @@ class LiveRoomPullingService : Service() {
         Log.d("JoinLiveRoom", "URL: $url")
 
         // 你可以在这里处理cookie，比如显示到TextView
-        liveView.evaluateJavascript(
-            "(function() { return document.documentElement.outerHTML; })();"
-        ) { html ->
-            val cleanHtml = html?.removeSurrounding("\"")?.replace("\\u003C", "<")
-                ?.replace("""\\\"""", "\"")
-            Log.d("JoinLiveRoom", cleanHtml ?: "null")
+        // 确保WebView操作在主线程中执行
+        serviceScope.launch(Dispatchers.Main) {
+            liveView.evaluateJavascript(
+                "(function() { return document.documentElement.outerHTML; })();"
+            ) { html ->
+                val cleanHtml = html?.removeSurrounding("\"")?.replace("\\u003C", "<")
+                    ?.replace("""\\\"""", "\"")
+                Log.d("JoinLiveRoom", cleanHtml ?: "null")
 
-            val docHtml = cleanHtml ?: "null"
-            var utilObj = DouyinHackUtil(docHtml)
+                val docHtml = cleanHtml ?: "null"
+                var utilObj = DouyinHackUtil(docHtml)
 
-            try {
-                // 添加空值检查，避免空指针异常
-                roomId = utilObj.getRoomId()?.toString() ?: ""
-                pushId = utilObj.getPushID()?.toString() ?: ""
-                liveName = utilObj.getLiveName()?.toString() ?: ""
-
-                // 添加空值检查，避免空指针异常
-                if (roomId.isNotEmpty() && roomId != "null") {
-                    addLogMessage("Room ID: $roomId")
-                    addLogMessage("Push ID: $pushId")
-                    addLogMessage("Live Name: $liveName")
-
-                    //@TODO bindDouyinLive
-                    addLogMessage("已绑定抖音账号与直播间: $liveName $roomId")
+                try {
+                    // 添加空值检查，避免空指针异常
+                    val roomIdValue = utilObj.getRoomId()?.toString() ?: ""
+                    val pushIdValue = utilObj.getPushID()?.toString() ?: ""
+                    val liveNameValue = utilObj.getLiveName()?.toString() ?: ""
 
                     // 添加空值检查，避免空指针异常
-                    val userAgent = liveView.settings?.userAgentString
-                    var wsUri = ""
-                    if (userAgent != null) {
-                        wsUri = utilObj.getWssURL(userAgent, roomId, pushId)
-                        Log.d("DouyinHackUtil", "WebSocket URI: $wsUri")
+                    if (roomIdValue.isNotEmpty() && roomIdValue != "null") {
+                        // 更新全局变量
+                        roomId = roomIdValue
+                        pushId = pushIdValue
+                        liveName = liveNameValue
 
-                        val cookie = android.webkit.CookieManager.getInstance().getCookie(url)
-                        // 连接WebSocket wsUri，并传入cookie
-                        // 启动LiveRoomPullingService服务，传入websocket地址及cookie参数
-                        val context = liveView.context
-                        // 使用更新连接的方式，确保单实例模式下能更新连接参数
+                        addLogMessage("Room ID: $roomId")
+                        addLogMessage("Push ID: $pushId")
+                        addLogMessage("Live Name: $liveName")
 
-                        addLogMessage("已更新直播间监控服务连接")
-                        gLiveRoomLoaded = true
-                        isServiceRunning.set(true)
-                        initializeWebSocketConnection(wsUri, cookie)
-                        hookWebView(liveView)
+                        //@TODO bindDouyinLive
+                        addLogMessage("已绑定抖音账号与直播间: $liveName $roomId")
+
+                        // 添加空值检查，避免空指针异常
+                        val userAgent = liveView.settings?.userAgentString
+                        var wsUri = ""
+                        if (userAgent != null) {
+                            wsUri = utilObj.getWssURL(userAgent, roomId, pushId)
+                            Log.d("DouyinHackUtil", "WebSocket URI: $wsUri")
+
+                            val cookie = android.webkit.CookieManager.getInstance().getCookie(url)
+                            // 连接WebSocket wsUri，并传入cookie
+                            // 启动LiveRoomPullingService服务，传入websocket地址及cookie参数
+                            val context = liveView.context
+                            // 使用更新连接的方式，确保单实例模式下能更新连接参数
+
+                            addLogMessage("已更新直播间监控服务连接")
+                            gLiveRoomLoaded = true
+                            isServiceRunning.set(true)
+                            initializeWebSocketConnection(wsUri, cookie)
+                            hookWebView(liveView)
 //
 //                        // 通过收到消息间隔判断直播间是否卡停
 //                        checkLiveRoomJob = MainScope().launch {
@@ -992,11 +1045,12 @@ class LiveRoomPullingService : Service() {
 //                            }
 //                            stopSelf()
 //                        }
+                        }
                     }
+                } catch (e: Exception) {
+                    addLogMessage("直播间连接失败，请重新启动直播连接状态检测。")
+                    return@evaluateJavascript
                 }
-            } catch (e: Exception) {
-                addLogMessage("直播间连接失败，请重新启动直播连接状态检测。")
-                return@evaluateJavascript
             }
         }
     }
@@ -1024,19 +1078,35 @@ class LiveRoomPullingService : Service() {
                 "};" +
                 "})();"
 
-        liveView.evaluateJavascript(jsCode, null)
-        Log.d("AudienceAjax", "WebView hook injected")
+        // 确保WebView操作在主线程中执行
+        serviceScope.launch(Dispatchers.Main) {
+            liveView.evaluateJavascript(jsCode, null)
+            Log.d("AudienceAjax", "WebView hook injected")
+        }
 
-        audienceCall = MainScope().launch {
-            while (true) {
+        // 先取消现有的audienceCall（如果存在）
+        audienceCall?.cancel()
+        
+        audienceCall = serviceScope.launch {
+            while (isActive) {
                 try {
                     // 每60秒执行一次
                     delay(60000)
-                    liveView.evaluateJavascript("document.querySelector('.chatroom_close').click()") { html ->
-                        liveView.evaluateJavascript("setTimeout(()=>{document.querySelector('div.chat_room_fold').click()},1000)") { html ->
-//                            liveView.evaluateJavascript("setTimeout(()=>{document.querySelector('#chatroom > div.c9Poqbe4.unset-border > div.LyAdeVIF.sBRqUw32 > div.vYlYuXg3 > div.vuY0PPXy.LR4EQtPh > p').click()}, 1500)") { html ->
+                    // 确保WebView操作在主线程中执行
+                    serviceScope.launch(Dispatchers.Main) {
+                        liveView.evaluateJavascript("document.querySelector('div.pip-anchor').outerText.trim()") { html ->
+                            if (html != null && html.indexOf("直播已结束") >= 0) {
+                                addLogMessage("直播间已结束，停止直播间监控")
+                                stopServiceInternal()
+                                return@evaluateJavascript
+                            }
+                            liveView.evaluateJavascript("document.querySelector('.chatroom_close').click()") { html ->
+                                liveView.evaluateJavascript("setTimeout(()=>{document.querySelector('div.chat_room_fold').click()},1000)") { html ->
+//                                    liveView.evaluateJavascript("setTimeout(()=>{document.querySelector('#chatroom > div.c9Poqbe4.unset-border > div.LyAdeVIF.sBRqUw32 > div.vYlYuXg3 > div.vuY0PPXy.LR4EQtPh > p').click()}, 1500)") { html ->
 //
-//                            }
+//                                    }
+                                }
+                            }
                         }
                     }
                 } catch (e: Exception) {
@@ -1092,8 +1162,11 @@ class WebAppInterface(private val context: android.content.Context) {
                                 val currentUser = serverApiUtils.getCurrentUser()
                                 val douyinId = currentUser?.userProfile?.boundAccount?.userId ?: ""
 
-                                if (douyinId.isNotEmpty() && roomId.isNotEmpty()) {
-                                    val result = serverApiUtils.onlineUsers(douyinId, roomId, gson.toJson(resultMap))
+                                // 使用局部变量确保获取最新的roomId值
+                                val currentRoomId = roomId
+
+                                if (douyinId.isNotEmpty() && currentRoomId.isNotEmpty()) {
+                                    val result = serverApiUtils.onlineUsers(douyinId, currentRoomId, gson.toJson(resultMap))
                                     if (!result.isSuccess) {
                                         addLogMessage("上传观众数据失败: ${result.msg}")
                                     }

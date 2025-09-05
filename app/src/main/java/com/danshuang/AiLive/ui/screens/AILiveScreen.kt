@@ -691,7 +691,8 @@ private fun SwitchItem(
         if (showLoading) {
             // 显示Loading动画
             Box(
-                modifier = Modifier.size(48.dp),
+                modifier = Modifier
+                    .size(48.dp),
                 contentAlignment = Alignment.Center
             ) {
                 CircularProgressIndicator(
