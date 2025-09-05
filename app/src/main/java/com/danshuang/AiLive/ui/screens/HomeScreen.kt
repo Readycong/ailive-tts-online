@@ -326,7 +326,6 @@ private fun LiveAccountItem(navController: NavigationState, userProfile: com.dan
                 )
             }
         }
-        
         // 修改按钮
         Button(
             onClick = { navController.navigateToAccountBinding() },
@@ -343,6 +342,7 @@ private fun LiveAccountItem(navController: NavigationState, userProfile: com.dan
 
 // 1. 数据类
 data class NoteCard(
+    val tag: String,
     val title: String,
     val subtitle: String,
     val url: String
@@ -350,12 +350,12 @@ data class NoteCard(
 
 // 2. 示例数据
 private val noteCards = listOf(
-    NoteCard("门店大模型", "智能对话，贴心服务", "https://www.huichuang100.com/android/v2/z/ai-model.png"),
-    NoteCard("知识库", "专用解答，行业知识驱动", "https://www.huichuang100.com/android/v2/z/kb-lib.png"),
-    NoteCard("语音克隆", "让客户记住您的声音，提升辨识度", "https://www.huichuang100.com/android/v2/z/voice-cloning.png"),
-    NoteCard("直播参数", "对话过程控制优化", "https://www.huichuang100.com/android/v2/z/live-params.png"),
-    NoteCard("直播回顾", "回看每场AI对话，同步优化", "https://www.huichuang100.com/android/v2/z/ai-review.png"),
-    NoteCard("卡密续费", "卡密兑换，账户续费", "https://www.huichuang100.com/android/v2/z/account-rights.png")
+    NoteCard("model", "门店大模型", "智能对话，贴心服务", "https://www.huichuang100.com/android/v2/z/ai-model.png"),
+    NoteCard("knowledge", "知识库", "专用解答，行业知识驱动", "https://www.huichuang100.com/android/v2/z/kb-lib.png"),
+    NoteCard("voice_cloning", "语音克隆", "让客户记住您的声音，提升辨识度", "https://www.huichuang100.com/android/v2/z/voice-cloning.png"),
+    NoteCard("live_params", "直播参数", "对话过程控制优化", "https://www.huichuang100.com/android/v2/z/live-params.png"),
+    NoteCard("live_review", "直播回顾", "回看每场AI对话，同步优化", "https://www.huichuang100.com/android/v2/z/ai-review.png"),
+    NoteCard("card_activation", "卡密续费", "卡密兑换，账户续费", "https://www.huichuang100.com/android/v2/z/account-rights.png")
 )
 
 // 3. 卡片组件
@@ -367,14 +367,15 @@ fun NoteCardItem(card: NoteCard, navController: NavigationState, modifier: Modif
             .aspectRatio(1f)
             .padding(8.dp)
             .clickable {
-                // 根据卡片标题导航到相应页面
-                when (card.title) {
-                    "门店大模型" -> navController.navigateTo(Screen.Model)
-                    "知识库" -> navController.navigateTo(Screen.Knowledge)
-                    "语音克隆" -> navController.navigateToVoiceCloning()
-                    "直播参数" -> navController.navigateTo(Screen.Model)
-                    "直播回顾" -> navController.navigateTo(Screen.AILive)  // 可以在AILiveScreen中查看历史消息
-                    "卡密续费" -> navController.navigateToCardActivation()
+                // 根据卡片tag导航到相应页面
+                when (card.tag) {
+                    "model" -> navController.navigateTo(Screen.Model)
+                    "knowledge" -> navController.navigateTo(Screen.Knowledge)
+                    "voice_cloning" -> navController.navigateToVoiceCloning()
+                    "live_params" -> navController.navigateTo(Screen.Model)
+                    "live_review" -> navController.navigateTo(Screen.AILive)  // 可以在AILiveScreen中查看历史消息
+                    "card_activation" -> navController.navigateToCardActivation()
+                    else -> {} // 默认情况不执行任何操作
                 }
             },
         shape = RoundedCornerShape(16.dp),
