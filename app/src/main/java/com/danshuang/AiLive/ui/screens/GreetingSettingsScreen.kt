@@ -283,7 +283,7 @@ fun GreetingSettingsScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
-                        text = "响应延迟",
+                        text = "评论响应延迟（秒）",
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                     )
@@ -303,7 +303,7 @@ fun GreetingSettingsScreen(
                             if (responseDelayError) {
                                 Text("请输入0-20之间的数字")
                             } else {
-                                Text("0为不延迟")
+                                Text("0为不延迟，为同一用户分多条发送评论间隔")
                             }
                         }
                     )
@@ -318,16 +318,9 @@ fun GreetingSettingsScreen(
 @Composable
 fun GreetingSettingsScreenPreview() {
     // 注意：Preview中无法使用真实的API调用
-    // 在实际集成中，需要通过依赖注入或工厂方法传入真实的serverApiUtils和douyinId
     AiLiveTheme {
-        // Preview模式下使用模拟数据
-        // GreetingSettingsScreen(
-        //     navController = NavigationState(),
-        //     serverApiUtils = mockServerApiUtils,
-        //     douyinId = "preview_douyin_id"
-        // )
-        
-        // 暂时注释掉，因为需要真实的依赖
-        Text("GreetingSettingsScreen Preview")
+         GreetingSettingsScreen(
+             navController = NavigationState(),
+         )
     }
 }

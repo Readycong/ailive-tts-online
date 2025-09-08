@@ -472,7 +472,7 @@ fun AILiveScreen(
                                 
                                 // 检查必要信息
                                 if (douyinId.isEmpty() || roomId.isEmpty()) {
-                                    snackbarHostState.showSnackbar("请先绑定抖音账号并进入直播间")
+                                    snackbarHostState.showSnackbar("请先绑定抖音账号,并开启监控")
                                     return@launch
                                 }
                                 
@@ -499,9 +499,9 @@ fun AILiveScreen(
                                         
                                         // 将发送的消息添加到本地消息列表显示
                                         LiveMessageManager.insertMessage(
-                                            type = MessageType.AI_RESPONSE,
+                                            type = MessageType.ENTER,
                                             content = messageText,
-                                            userName = if (sendMode == SendMode.TEXT) "直接播音" else "AI转播"
+                                            userName = if (sendMode == SendMode.TEXT) "直接播音" else "AI问答"
                                         )
 
                                         // 发送成功，清空输入框
