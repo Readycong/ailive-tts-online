@@ -28,6 +28,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.danshuang.AiLive.ui.screens.LiveMessageManager
 import com.danshuang.AiLive.ui.screens.MessageType
@@ -52,6 +53,7 @@ class LiveChattingService : Service() {
     // 依赖组件
     private lateinit var serverApiUtils: ServerApiUtilsV2
     private lateinit var fileDownloader: FileDownloader
+    private lateinit var loginRepository: LoginRepository
     
     // 媒体播放器和音频管理器
     private var mediaPlayer: MediaPlayer? = null
@@ -127,9 +129,10 @@ class LiveChattingService : Service() {
         initializeAudioFocus()
         
         // 初始化依赖组件
-        val tokenManager = TokenManager(LoginRepository(this))
+        loginRepository = LoginRepository(this)
+        val tokenManager = TokenManager(loginRepository)
         serverApiUtils = ServerApiUtilsV2.createFromContext(
-            this, tokenManager, LoginRepository(this)
+            this, tokenManager, loginRepository
         )
         fileDownloader = FileDownloader(this)
     }
@@ -199,9 +202,10 @@ class LiveChattingService : Service() {
         // 播放阶段循环
         val stages = listOf("WELCOME", "ROOM", "PRODUCT", "KEEP", "ORDER", "THANKS")
         var currentStageIndex = 0
-        val roomId = "default_room_id" // 需要从实际场景中获取
         
         while (isServiceRunning) {
+            // 从DataStore中读取roomId，如果为空则使用默认值
+            val roomId = loginRepository.liveRoomId.first() ?: "default_room_id"
             // 检查网络状态
             checkNetworkStatus()
             

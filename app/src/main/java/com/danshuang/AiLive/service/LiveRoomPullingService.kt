@@ -999,12 +999,22 @@ class LiveRoomPullingService : Service() {
                         roomId = roomIdValue
                         pushId = pushIdValue
                         liveName = liveNameValue
+                        
+                        // 保存roomId到DataStore
+                        serviceScope.launch {
+                            try {
+                                loginRepository.saveLiveRoomId(roomId)
+                                Log.d(TAG, "Saved roomId to DataStore: $roomId")
+                            } catch (e: Exception) {
+                                Log.e(TAG, "Failed to save roomId to DataStore", e)
+                            }
+                        }
 
                         addLogMessage("Room ID: $roomId")
                         addLogMessage("Push ID: $pushId")
                         addLogMessage("Live Name: $liveName")
 
-                        //@TODO bindDouyinLive
+
                         addLogMessage("已绑定抖音账号与直播间: $liveName $roomId")
 
                         // 添加空值检查，避免空指针异常
@@ -1019,6 +1029,41 @@ class LiveRoomPullingService : Service() {
                             // 启动LiveRoomPullingService服务，传入websocket地址及cookie参数
                             val context = liveView.context
                             // 使用更新连接的方式，确保单实例模式下能更新连接参数
+
+                            // 调用bindDouyinLive方法绑定直播间信息到服务器
+                            serviceScope.launch {
+                                try {
+                                    val tokenManager = TokenManager(loginRepository)
+                                    val serverApiUtils = ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository)
+                                    
+                                    // 获取当前用户信息
+                                    val currentUser = serverApiUtils.getCurrentUser()
+                                    val boundAccount = currentUser?.userProfile?.boundAccount
+                                    
+                                    if (boundAccount != null && boundAccount.userId.isNotEmpty()) {
+                                        // 调用bindDouyinLive方法绑定直播间信息
+                                        val bindResult = serverApiUtils.bindDouyinLive(
+                                            token = currentUser.token,
+                                            douyinId = boundAccount.userId,
+                                            nickname = boundAccount.nickname,
+                                            avatar = boundAccount.avatar,
+                                            roomId = roomId,
+                                            userHomeUrl = boundAccount.homeUrl
+                                        )
+                                        
+                                        if (bindResult.isSuccess) {
+                                            addLogMessage("直播间信息绑定成功")
+                                        } else {
+                                            addLogMessage("直播间信息绑定失败: ${bindResult.msg}")
+                                        }
+                                    } else {
+                                        addLogMessage("绑定账户信息不完整，无法绑定直播间信息")
+                                    }
+                                } catch (e: Exception) {
+                                    Log.e(TAG, "Failed to bind douyin live room", e)
+                                    addLogMessage("绑定直播间信息时发生错误: ${e.message}")
+                                }
+                            }
 
                             addLogMessage("已更新直播间监控服务连接")
                             gLiveRoomLoaded = true

@@ -1583,11 +1583,11 @@ fun MixedMessageFlowPreview() {
             // 模拟真实的消息流
             items(10) { index ->
                 val messages = listOf(
-                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5)}", MessageType.COMMENT, "这个内容真的很棒！", "用户${index + 1}"),
-                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 1)}", MessageType.AI_RESPONSE, "谢谢大家的支持，接下来为大家带来更精彩的内容！", "AI主播"),
-                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 2)}", MessageType.GIFT, "送出了鲜花", "粉丝${index + 1}"),
-                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 3)}", MessageType.AI_RESPONSE, "感谢送礼物的朋友！", "AI主播"),
-                    LiveMessage(index.toLong(), "14:30:${String.format("%02d", index * 5 + 4)}", MessageType.ENTER, "进入了直播间", "新观众${index + 1}")
+                    LiveMessage(index.toLong() * 10 + 1, "14:30:${String.format("%02d", index * 5)}", MessageType.COMMENT, "这个内容真的很棒！", "用户${index + 1}"),
+                    LiveMessage(index.toLong() * 10 + 2, "14:30:${String.format("%02d", index * 5 + 1)}", MessageType.AI_RESPONSE, "谢谢大家的支持，接下来为大家带来更精彩的内容！", "AI主播"),
+                    LiveMessage(index.toLong() * 10 + 3, "14:30:${String.format("%02d", index * 5 + 2)}", MessageType.GIFT, "送出了鲜花", "粉丝${index + 1}"),
+                    LiveMessage(index.toLong() * 10 + 4, "14:30:${String.format("%02d", index * 5 + 3)}", MessageType.AI_RESPONSE, "感谢送礼物的朋友！", "AI主播"),
+                    LiveMessage(index.toLong() * 10 + 5, "14:30:${String.format("%02d", index * 5 + 4)}", MessageType.ENTER, "进入了直播间", "新观众${index + 1}")
                 )
 
                 AnimatedMessageItem(message = messages[index % messages.size])

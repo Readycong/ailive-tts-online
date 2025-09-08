@@ -17,19 +17,19 @@ private val Context.dataStore by preferencesDataStore(name = "login_prefs")
 
 class LoginRepository(private val context: Context) {
     private val gson = Gson()
-    
+
     // 基础登录信息
     private val TOKEN_KEY = stringPreferencesKey("auth_token")
     private val USER_PHONE_KEY = stringPreferencesKey("user_phone")
     private val EXPIRES_TIME_KEY = longPreferencesKey("expires_time")
-    
+
     // 用户个人信息
     private val USER_NICKNAME_KEY = stringPreferencesKey("user_nickname")
     private val USER_HEADIMG_KEY = stringPreferencesKey("user_headimg")
     private val USER_BALANCE_KEY = stringPreferencesKey("user_balance")
     private val USER_POINT_KEY = stringPreferencesKey("user_point")
     private val USER_AILIVE_EXPIRE_TIME_KEY = longPreferencesKey("user_ailive_expire_time")
-    
+
     // 绑定账户信息
     private val BOUND_ACCOUNT_PLATFORM_KEY = stringPreferencesKey("bound_account_platform")
     private val BOUND_ACCOUNT_AVATAR_KEY = stringPreferencesKey("bound_account_avatar")
@@ -38,6 +38,9 @@ class LoginRepository(private val context: Context) {
     private val BOUND_ACCOUNT_HOME_URL_KEY = stringPreferencesKey("bound_account_home_url")
     private val BOUND_ACCOUNT_IS_LIVE_KEY = stringPreferencesKey("bound_account_is_live")
     private val BOUND_ACCOUNT_BIND_TIME_KEY = longPreferencesKey("bound_account_bind_time")
+
+    // 直播间信息
+    private val LIVE_ROOM_ID_KEY = stringPreferencesKey("live_room_id")
 
     val authToken: Flow<String?> = context.dataStore.data
         .map { preferences ->
@@ -48,12 +51,18 @@ class LoginRepository(private val context: Context) {
         .map { preferences ->
             preferences[USER_PHONE_KEY]
         }
-    
+
     val expiresTime: Flow<Long?> = context.dataStore.data
         .map { preferences ->
             preferences[EXPIRES_TIME_KEY]
         }
-    
+
+    // 直播间ID
+    val liveRoomId: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[LIVE_ROOM_ID_KEY]
+        }
+
     val userProfile: Flow<UserProfile> = context.dataStore.data
         .map { preferences ->
             val boundAccount = if (preferences[BOUND_ACCOUNT_PLATFORM_KEY] != null) {
@@ -64,12 +73,13 @@ class LoginRepository(private val context: Context) {
                     userId = preferences[BOUND_ACCOUNT_USER_ID_KEY] ?: "",
                     homeUrl = preferences[BOUND_ACCOUNT_HOME_URL_KEY] ?: "",
                     isLive = preferences[BOUND_ACCOUNT_IS_LIVE_KEY]?.toBoolean() ?: false,
-                    bindTime = preferences[BOUND_ACCOUNT_BIND_TIME_KEY] ?: System.currentTimeMillis()
+                    bindTime = preferences[BOUND_ACCOUNT_BIND_TIME_KEY]
+                        ?: System.currentTimeMillis()
                 )
             } else {
                 null
             }
-            
+
             UserProfile(
                 nickname = preferences[USER_NICKNAME_KEY] ?: "",
                 headimg = preferences[USER_HEADIMG_KEY] ?: "",
@@ -79,7 +89,7 @@ class LoginRepository(private val context: Context) {
                 boundAccount = boundAccount
             )
         }
-    
+
     val loggedInUser: Flow<LoggedInUser?> = combine(
         authToken,
         userPhone,
@@ -99,8 +109,8 @@ class LoginRepository(private val context: Context) {
     }
 
     suspend fun saveLoginInfo(
-        token: String, 
-        phone: String, 
+        token: String,
+        phone: String,
         expiresTime: UInt = 0u
     ) {
         context.dataStore.edit { preferences ->
@@ -109,7 +119,7 @@ class LoginRepository(private val context: Context) {
             preferences[EXPIRES_TIME_KEY] = expiresTime.toLong()
         }
     }
-    
+
     suspend fun saveLoggedInUser(user: LoggedInUser) {
         context.dataStore.edit { preferences ->
             preferences[TOKEN_KEY] = user.token
@@ -120,7 +130,7 @@ class LoginRepository(private val context: Context) {
             preferences[USER_BALANCE_KEY] = user.userProfile.balance
             preferences[USER_POINT_KEY] = user.userProfile.point
             preferences[USER_AILIVE_EXPIRE_TIME_KEY] = user.userProfile.ailiveExpireTime
-            
+
             // 保存绑定账户信息
             user.userProfile.boundAccount?.let { boundAccount ->
                 preferences[BOUND_ACCOUNT_PLATFORM_KEY] = boundAccount.platform
@@ -133,7 +143,7 @@ class LoginRepository(private val context: Context) {
             }
         }
     }
-    
+
     suspend fun updateUserProfile(profile: UserProfile) {
         context.dataStore.edit { preferences ->
             preferences[USER_NICKNAME_KEY] = profile.nickname
@@ -141,7 +151,7 @@ class LoginRepository(private val context: Context) {
             preferences[USER_BALANCE_KEY] = profile.balance
             preferences[USER_POINT_KEY] = profile.point
             preferences[USER_AILIVE_EXPIRE_TIME_KEY] = profile.ailiveExpireTime
-            
+
             // 更新绑定账户信息
             profile.boundAccount?.let { boundAccount ->
                 preferences[BOUND_ACCOUNT_PLATFORM_KEY] = boundAccount.platform
@@ -182,9 +192,11 @@ class LoginRepository(private val context: Context) {
             preferences.remove(BOUND_ACCOUNT_HOME_URL_KEY)
             preferences.remove(BOUND_ACCOUNT_IS_LIVE_KEY)
             preferences.remove(BOUND_ACCOUNT_BIND_TIME_KEY)
+            // 清除直播间ID
+            preferences.remove(LIVE_ROOM_ID_KEY)
         }
     }
-    
+
     suspend fun saveBoundAccountInfo(boundAccount: BoundAccountInfo) {
         context.dataStore.edit { preferences ->
             preferences[BOUND_ACCOUNT_PLATFORM_KEY] = boundAccount.platform
@@ -196,7 +208,7 @@ class LoginRepository(private val context: Context) {
             preferences[BOUND_ACCOUNT_BIND_TIME_KEY] = boundAccount.bindTime
         }
     }
-    
+
     suspend fun clearBoundAccountInfo() {
         context.dataStore.edit { preferences ->
             preferences.remove(BOUND_ACCOUNT_PLATFORM_KEY)
@@ -209,7 +221,25 @@ class LoginRepository(private val context: Context) {
         }
     }
 
-    
+    /**
+     * 保存直播间ID
+     */
+    suspend fun saveLiveRoomId(roomId: String) {
+        context.dataStore.edit { preferences ->
+            preferences[LIVE_ROOM_ID_KEY] = roomId
+        }
+    }
+
+    /**
+     * 清除直播间ID
+     */
+    suspend fun clearLiveRoomId() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(LIVE_ROOM_ID_KEY)
+        }
+    }
+
+
     /**
      * 从get-binding接口数据更新绑定账户信息
      */
@@ -219,7 +249,7 @@ class LoginRepository(private val context: Context) {
             val nickname = bindingData["nickname"] as? String ?: ""
             val avatar = bindingData["avatar"] as? String ?: ""
             val userHomeUrl = bindingData["user_home_url"] as? String ?: ""
-            
+
             if (douyinId.isNotEmpty()) {
                 // 更新绑定账户信息
                 preferences[BOUND_ACCOUNT_PLATFORM_KEY] = "douyin"
@@ -229,7 +259,7 @@ class LoginRepository(private val context: Context) {
                 preferences[BOUND_ACCOUNT_HOME_URL_KEY] = userHomeUrl
                 preferences[BOUND_ACCOUNT_IS_LIVE_KEY] = "false" // 默认设置为离线状态
                 preferences[BOUND_ACCOUNT_BIND_TIME_KEY] = System.currentTimeMillis()
-                
+
                 // 同时更新用户头像
                 if (avatar.isNotEmpty()) {
                     preferences[USER_HEADIMG_KEY] = avatar
@@ -252,7 +282,7 @@ class LoginRepository(private val context: Context) {
             token != null && expires != null && System.currentTimeMillis() / 1000 < expires
         }
     }
-    
+
     fun isTokenValidFlow(): Flow<Boolean> {
         return expiresTime.map { expires ->
             expires != null && System.currentTimeMillis() / 1000 < expires
