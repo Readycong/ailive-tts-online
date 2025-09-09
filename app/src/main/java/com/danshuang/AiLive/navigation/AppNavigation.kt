@@ -1,5 +1,9 @@
 package com.danshuang.AiLive.navigation
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
@@ -25,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.activity.compose.BackHandler
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -34,6 +39,7 @@ import com.danshuang.AiLive.ui.components.BaseScreen
 import com.danshuang.AiLive.ui.screens.LoginScreen
 import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.ui.theme.backgroundLight
+import com.danshuang.AiLive.util.GlobalEventManager
 
 sealed class BottomNavItem(
     val title: String,
@@ -49,8 +55,36 @@ sealed class BottomNavItem(
 
 @Composable
 fun AppNavigation() {
+    val context = LocalContext.current
     val baseScreenManager = rememberBaseScreenManager()
     val isLoggedIn by baseScreenManager.getLoginStatusFlow().collectAsState(initial = false)
+    
+    // 注册全局事件接收器
+    val unauthorizedErrorReceiver = remember {
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == GlobalEventManager.ACTION_UNAUTHORIZED_ERROR) {
+                    // 收到未授权错误事件，清除登录状态并跳转到登录页
+                    CoroutineScope(Dispatchers.Main).launch {
+                        baseScreenManager.logout()
+                    }
+                }
+            }
+        }
+    }
+    
+    // 注册和注销广播接收器
+    LaunchedEffect(Unit) {
+        val filter = IntentFilter(GlobalEventManager.ACTION_UNAUTHORIZED_ERROR)
+        LocalBroadcastManager.getInstance(context).registerReceiver(unauthorizedErrorReceiver, filter)
+    }
+    
+    // 在组件销毁时注销接收器
+    androidx.compose.runtime.DisposableEffect(Unit) {
+        onDispose {
+            LocalBroadcastManager.getInstance(context).unregisterReceiver(unauthorizedErrorReceiver)
+        }
+    }
     
     BaseScreen(
         requireLogin = true,

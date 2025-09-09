@@ -1,16 +1,26 @@
 package com.danshuang.AiLive.ui.components
 
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import com.danshuang.AiLive.service.BaseScreenManager
 import com.danshuang.AiLive.service.LoginCheckResult
 import com.danshuang.AiLive.service.rememberBaseScreenManager
 import com.danshuang.AiLive.service.rememberLoginState
 import com.danshuang.AiLive.ui.screens.LoginScreen
+import com.danshuang.AiLive.util.GlobalEventManager
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 /**
  * BaseScreen组件，为所有需要登录保护的界面提供统一的登录状态管理
@@ -33,6 +43,35 @@ fun BaseScreen(
         // 不需要登录验证，直接显示内容
         content()
         return
+    }
+    
+    val context = LocalContext.current
+    val baseScreenManager = rememberBaseScreenManager()
+    
+    // 注册全局事件接收器，监听未授权错误事件
+    val unauthorizedErrorReceiver = remember {
+        object : BroadcastReceiver() {
+            override fun onReceive(context: Context?, intent: Intent?) {
+                if (intent?.action == GlobalEventManager.ACTION_UNAUTHORIZED_ERROR) {
+                    // 收到未授权错误事件，清除登录状态并跳转到登录页
+                    CoroutineScope(Dispatchers.Main).launch {
+                        baseScreenManager.logout()
+                        // 跳转到登录页
+                        GlobalEventManager.getInstance().navigateToLoginPage(context!!)
+                    }
+                }
+            }
+        }
+    }
+    
+    // 注册和注销广播接收器
+    DisposableEffect(Unit) {
+        val filter = IntentFilter(GlobalEventManager.ACTION_UNAUTHORIZED_ERROR)
+        LocalBroadcastManager.getInstance(context).registerReceiver(unauthorizedErrorReceiver, filter)
+        
+        onDispose {
+            LocalBroadcastManager.getInstance(context).unregisterReceiver(unauthorizedErrorReceiver)
+        }
     }
     
     val loginState by rememberLoginState(

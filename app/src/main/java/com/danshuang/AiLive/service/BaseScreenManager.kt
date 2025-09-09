@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
 import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.util.UnauthorizedErrorHandler
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -54,6 +55,14 @@ class BaseScreenManager private constructor(
      */
     suspend fun logout() {
         loginRepository.clearLoginInfo()
+    }
+    
+    /**
+     * 处理未授权错误（401）
+     * 停止所有服务，清除登录状态
+     */
+    fun handleUnauthorizedError() {
+        UnauthorizedErrorHandler.getInstance().handleUnauthorizedError(context)
     }
     
     /**

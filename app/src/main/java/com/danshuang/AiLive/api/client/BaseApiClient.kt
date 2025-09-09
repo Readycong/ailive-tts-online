@@ -8,6 +8,7 @@ import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import com.danshuang.AiLive.api.handler.ApiResponseHandler
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.config.AppConfig
+import com.danshuang.AiLive.util.GlobalEventManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
@@ -88,7 +89,13 @@ open class BaseApiClient(
      * 执行HTTP请求
      */
     protected suspend fun executeRequest(request: Request) = withContext(Dispatchers.IO) {
-        client.newCall(request).execute()
+        val response = client.newCall(request).execute()
+        // 检查是否是401错误
+        if (response.code == 401) {
+            // 发送未授权错误事件通知UI跳转到登录页
+            GlobalEventManager.getInstance().sendUnauthorizedErrorEvent(context)
+        }
+        response
     }
     
     /**

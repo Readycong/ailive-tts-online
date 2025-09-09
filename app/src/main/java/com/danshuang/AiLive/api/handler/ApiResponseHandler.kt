@@ -2,6 +2,7 @@ package com.danshuang.AiLive.api.handler
 
 import android.util.Log
 import com.danshuang.AiLive.data.model.ServerResponse
+import com.danshuang.AiLive.util.GlobalEventManager
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import okhttp3.Response
