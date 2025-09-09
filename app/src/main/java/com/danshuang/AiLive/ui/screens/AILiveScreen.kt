@@ -178,12 +178,13 @@ fun AILiveScreen(
         // 当服务停止时，关闭监控开关
         if (pullingState == LiveRoomPullingService.PULLING_STATE_RECONNECT) {
             liveMonitorEnabled = false
+            LiveRoomPullingService.stopService(context)
 
-            LiveRoomPullingService.startService(
-                context,
-                wssUrl = "",
-                cookieString = ""
-            )
+//            LiveRoomPullingService.startService(
+//                context,
+//                wssUrl = "",
+//                cookieString = ""
+//            )
         }
     }
 

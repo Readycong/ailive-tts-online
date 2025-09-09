@@ -33,6 +33,7 @@ import android.util.Log
 import android.webkit.JavascriptInterface
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
+import androidx.core.view.isEmpty
 import com.danshuang.AiLive.api.ServerApiUtilsV2
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.service.LiveRoomPullingService
@@ -242,7 +243,7 @@ class LiveRoomPullingService : Service() {
                 val wssUrl = intent.getStringExtra(EXTRA_WEBSOCKET_URL)
                 val cookieString = intent.getStringExtra(EXTRA_COOKIE_STRING)
                 val secondaryWssUrl = intent.getStringExtra(EXTRA_SECONDARY_WEBSOCKET_URL) ?: currentSecondaryWebSocketUrl
-                
+
                 if (!isServiceRunning.get()) {
                     isServiceRunning.set(true)
                     startForegroundService()
@@ -252,7 +253,9 @@ class LiveRoomPullingService : Service() {
                 } else if (wssUrl != null && cookieString != null) {
                     // 如果服务已经在运行，但传入了新的URL和Cookie，则重新连接
                     connectWebSocket(wssUrl, cookieString)
-                    secondaryWssUrl?.let { connectSecondaryWebSocket(it) }
+                    if (connectionState == ConnectionState.CONNECTED) {
+                        secondaryWssUrl?.let { connectSecondaryWebSocket(it) }
+                    }
                 }
             }
             ACTION_UPDATE_CONNECTION -> {
@@ -263,9 +266,10 @@ class LiveRoomPullingService : Service() {
                 
                 if (wssUrl != null && cookieString != null) {
                     connectWebSocket(wssUrl, cookieString)
+                    if (connectionState == ConnectionState.CONNECTED) {
+                        secondaryWssUrl?.let { connectSecondaryWebSocket(it) }
+                    }
                 }
-                
-                secondaryWssUrl?.let { connectSecondaryWebSocket(it) }
             }
             ACTION_STOP -> {
                 stopServiceInternal()
@@ -305,6 +309,7 @@ class LiveRoomPullingService : Service() {
         serviceState = PULLING_STATE_STOPPED
         connectionState = ConnectionState.DISCONNECTED
         gLiveRoomLoaded = false
+        webView?.tag = false
         
         Log.i(TAG, "LiveRoomPullingService stopped")
         
@@ -322,14 +327,14 @@ class LiveRoomPullingService : Service() {
         }
 
         // 安全地销毁WebView
-        webView?.let { view ->
-            try {
-                view.destroy()
-            } catch (e: Exception) {
-                Log.w(TAG, "Error destroying WebView", e)
-            }
-        }
-        webView = null
+//        webView?.let { view ->
+//            try {
+//                view.destroy()
+//            } catch (e: Exception) {
+//                Log.w(TAG, "Error destroying WebView", e)
+//            }
+//        }
+//        webView = null
         
         // 移除通知
         val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -477,6 +482,26 @@ class LiveRoomPullingService : Service() {
      * 连接主WebSocket
      */
     private fun connectWebSocket(url: String, cookieString: String? = null) {
+        // 添加URL有效性检查
+        if (url.isBlank()) {
+            Log.e(TAG, "WebSocket URL is empty or blank")
+            addLogMessage("直播间连接失败：URL为空", true)
+            serviceState = PULLING_STATE_STOPPED
+            connectionState = ConnectionState.ERROR
+            _errorMessageFlow.value = "连接URL为空"
+            return
+        }
+        
+        // 检查URL格式是否正确
+        if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("ws://") && !url.startsWith("wss://")) {
+            Log.e(TAG, "Invalid WebSocket URL scheme: $url")
+            addLogMessage("直播间连接失败：URL格式不正确", true)
+            serviceState = PULLING_STATE_STOPPED
+            connectionState = ConnectionState.ERROR
+            _errorMessageFlow.value = "连接URL格式不正确"
+            return
+        }
+        
         if (currentWebSocketUrl == url && webSocketManager.isConnected()) {
             Log.d(TAG, "Already connected to the same pulling URL: $url")
             return
@@ -525,6 +550,8 @@ class LiveRoomPullingService : Service() {
                     Log.w(TAG, "Pulling WebSocket disconnected")
                     serviceState = PULLING_STATE_STOPPED
                     // 不再直接调用stopSelf()，而是通过状态管理
+                    isServiceRunning.set(false)
+                    isServiceStopped.set(true)
                 }
                 ConnectionState.ERROR -> {
                     Log.e(TAG, "Pulling WebSocket connection error")
@@ -544,6 +571,22 @@ class LiveRoomPullingService : Service() {
      * 连接第二个WebSocket
      */
     private fun connectSecondaryWebSocket(url: String) {
+        // 添加URL有效性检查
+        if (url.isBlank()) {
+            Log.e(TAG, "Secondary WebSocket URL is empty or blank")
+            addLogMessage("副连接失败：URL为空", true)
+            secondaryConnectionState = ConnectionState.ERROR
+            return
+        }
+        
+        // 检查URL格式是否正确
+        if (!url.startsWith("http://") && !url.startsWith("https://") && !url.startsWith("ws://") && !url.startsWith("wss://")) {
+            Log.e(TAG, "Invalid secondary WebSocket URL scheme: $url")
+            addLogMessage("副连接失败：URL格式不正确", true)
+            secondaryConnectionState = ConnectionState.ERROR
+            return
+        }
+        
         if (currentSecondaryWebSocketUrl == url && secondaryWebSocketManager.isConnected()) {
             Log.d(TAG, "Already connected to the same secondary URL: $url")
             return
@@ -708,16 +751,20 @@ class LiveRoomPullingService : Service() {
                         Log.i(TAG, "Loading bound account home URL: ${boundAccount.homeUrl}")
                         
                         // 安全地销毁现有的WebView（如果存在）
-                        webView?.let { view ->
-                            try {
-                                view.destroy()
-                            } catch (e: Exception) {
-                                Log.w(TAG, "Error destroying existing WebView", e)
-                            }
-                        }
-                        
+//                        webView?.let { view ->
+//                            try {
+//                                view.destroy()
+//                            } catch (e: Exception) {
+//                                Log.w(TAG, "Error destroying existing WebView", e)
+//                            }
+//                        }
+
                         // 创建新的WebView实例
-                        webView = WebView(this@LiveRoomPullingService)
+                        if (webView == null)
+                            webView = WebView(this@LiveRoomPullingService)
+
+                        gLiveRoomLoaded = false
+                        webView?.tag = false
                         
                         // 在主线程中创建和配置WebView
                         withContext(Dispatchers.Main) {
