@@ -2,6 +2,8 @@
 
 ## 概述
 
+> **注意**: 本文档主要介绍API URL配置，与直播语音播放服务相关的配置请参考 [直播语音播放服务优化版API文档](live_voice_playback_optimized_api.md) 和 [直播语音播放服务使用示例](live_voice_playback_usage_example.md)。
+
 根据项目规范要求，API基础URL现在统一配置在 `strings.xml` 中，所有相关代码都已更新以支持从配置文件读取。
 
 ## 配置结构

@@ -29,32 +29,32 @@ class VoiceApiService {
                 // 模拟API响应
                 val result = when (stage.lowercase()) {
                     "welcome" -> listOf(
-                        VoiceFileInfo("welcome_1", "欢迎来到直播间", "https://example.com/voice/welcome_1.mp3", false),
-                        VoiceFileInfo("welcome_2", "欢迎新进直播间的朋友们", "https://example.com/voice/welcome_2.mp3", false)
+                        VoiceFileInfo("welcome_1", "欢迎来到直播间", "https://example.com/voice/welcome_1.mp3", false, 3000L),
+                        VoiceFileInfo("welcome_2", "欢迎新进直播间的朋友们", "https://example.com/voice/welcome_2.mp3", false, 4000L)
                     )
                     "room" -> listOf(
-                        VoiceFileInfo("room_1", "现在是直播时间", "https://example.com/voice/room_1.mp3", false),
-                        VoiceFileInfo("room_2", "请大家关注主播", "https://example.com/voice/room_2.mp3", false)
+                        VoiceFileInfo("room_1", "现在是直播时间", "https://example.com/voice/room_1.mp3", false, 2500L),
+                        VoiceFileInfo("room_2", "请大家关注主播", "https://example.com/voice/room_2.mp3", false, 3500L)
                     )
                     "product" -> listOf(
-                        VoiceFileInfo("product_1", "今天的产品非常优惠", "https://example.com/voice/product_1.mp3", false),
-                        VoiceFileInfo("product_2", "不要错过这个机会", "https://example.com/voice/product_2.mp3", false)
+                        VoiceFileInfo("product_1", "今天的产品非常优惠", "https://example.com/voice/product_1.mp3", false, 4500L),
+                        VoiceFileInfo("product_2", "不要错过这个机会", "https://example.com/voice/product_2.mp3", false, 3000L)
                     )
                     "keep" -> listOf(
-                        VoiceFileInfo("keep_1", "请大家不要离开", "https://example.com/voice/keep_1.mp3", false),
-                        VoiceFileInfo("keep_2", "稍后还有更多惊喜", "https://example.com/voice/keep_2.mp3", false)
+                        VoiceFileInfo("keep_1", "请大家不要离开", "https://example.com/voice/keep_1.mp3", false, 2000L),
+                        VoiceFileInfo("keep_2", "稍后还有更多惊喜", "https://example.com/voice/keep_2.mp3", false, 3500L)
                     )
                     "order" -> listOf(
-                        VoiceFileInfo("order_1", "现在下单享受折扣", "https://example.com/voice/order_1.mp3", false),
-                        VoiceFileInfo("order_2", "限时优惠不要错过", "https://example.com/voice/order_2.mp3", false)
+                        VoiceFileInfo("order_1", "现在下单享受折扣", "https://example.com/voice/order_1.mp3", false, 4000L),
+                        VoiceFileInfo("order_2", "限时优惠不要错过", "https://example.com/voice/order_2.mp3", false, 3000L)
                     )
                     "thanks" -> listOf(
-                        VoiceFileInfo("thanks_1", "感谢大家的支持", "https://example.com/voice/thanks_1.mp3", false),
-                        VoiceFileInfo("thanks_2", "我们下次再见", "https://example.com/voice/thanks_2.mp3", false)
+                        VoiceFileInfo("thanks_1", "感谢大家的支持", "https://example.com/voice/thanks_1.mp3", false, 3500L),
+                        VoiceFileInfo("thanks_2", "我们下次再见", "https://example.com/voice/thanks_2.mp3", false, 2500L)
                     )
                     "comment" -> listOf(
-                        VoiceFileInfo("comment_1", "用户发了评论", "https://example.com/voice/comment_1.mp3", false),
-                        VoiceFileInfo("comment_2", "主播回复评论", "https://example.com/voice/comment_2.mp3", false)
+                        VoiceFileInfo("comment_1", "用户发了评论", "https://example.com/voice/comment_1.mp3", false, 2000L),
+                        VoiceFileInfo("comment_2", "主播回复评论", "https://example.com/voice/comment_2.mp3", false, 2500L)
                     )
                     else -> emptyList()
                 }

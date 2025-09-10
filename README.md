@@ -2,6 +2,18 @@
 
 这是一个使用Material 3 Design和Jetpack Compose构建的Android示例应用。
 
+## 目录
+- [功能特性](#功能特性)
+- [项目结构](#项目结构)
+- [使用的技术栈](#使用的技术栈)
+- [主要组件展示](#主要组件展示)
+- [开始使用](#开始使用)
+- [自定义主题](#自定义主题)
+- [添加新组件](#添加新组件)
+- [最佳实践](#最佳实践)
+- [参考资源](#参考资源)
+- [服务组件](#服务组件)
+
 ## 功能特性
 
 - ✅ **Material 3 Design**: 使用最新的Material Design 3规范
@@ -126,3 +138,25 @@ val Typography = Typography(
 - [Material 3 Design Guidelines](https://m3.material.io/)
 - [Jetpack Compose Documentation](https://developer.android.com/jetpack/compose)
 - [Material 3 Compose Components](https://developer.android.com/reference/kotlin/androidx/compose/material3/package-summary)
+
+## 服务组件
+
+### LiveChattingService
+原有的直播语音播放服务，基于MediaPlayer实现。
+
+### LiveChattingServiceOptimized
+新的直播语音播放服务，基于SoundPool实现，具有以下优势：
+
+- 更好的性能表现
+- 支持音量、音调、速度的随机化设置
+- 更流畅的音频播放体验
+- 更低的资源消耗
+
+使用方式：
+```kotlin
+// 启动优化版服务
+LiveChattingServiceOptimized.startService(context)
+
+// 停止服务
+LiveChattingServiceOptimized.stopService(context)
+```

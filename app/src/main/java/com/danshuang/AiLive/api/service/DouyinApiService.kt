@@ -162,7 +162,8 @@ class DouyinApiService(
                     id = map["id"].toString(),
                     text = map["text"] as? String ?: "",
                     url = map["url"] as? String ?: "",
-                    cache = map["cache"] as? Boolean ?: false
+                    cache = map["cache"] as? Boolean ?: false,
+                    duration = map["duration"] as? Long ?: map["duration"]?.toString()?.toLongOrNull()
                 )
             }
             
@@ -206,7 +207,8 @@ class DouyinApiService(
                         id = commentMap["id"].toString(),
                         text = commentMap["text"] as? String ?: "",
                         url = commentMap["url"] as? String ?: "",
-                        cache = commentMap["cache"] as? Boolean ?: false
+                        cache = commentMap["cache"] as? Boolean ?: false,
+                        duration = commentMap["duration"] as? Long ?: commentMap["duration"]?.toString()?.toLongOrNull()
                     )
                 } catch (e: Exception) {
                     null // 跳过解析失败的条目

@@ -51,6 +51,13 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="mediaPlayback" />
+            
+        <!-- AI直播语音播放服务（优化版） -->
+<!--        <service-->
+<!--            android:name=".service.LiveChattingServiceOptimized"-->
+<!--            android:enabled="true"-->
+<!--            android:exported="false"-->
+<!--            android:foregroundServiceType="mediaPlayback" />-->
     </application>
 
 </manifest>
