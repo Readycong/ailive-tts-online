@@ -36,7 +36,7 @@ fun RangeSelectorCard(
     description: String,
     onValueChange: (RangeValue) -> Unit
 ) {
-    val options = remember { RangeValue.generateOptions(minRange, maxRange) }
+    val options = remember { RangeValue.generateOptions(minRange, maxRange+0.1f) }
     
     var minExpanded by remember { mutableStateOf(false) }
     var maxExpanded by remember { mutableStateOf(false) }

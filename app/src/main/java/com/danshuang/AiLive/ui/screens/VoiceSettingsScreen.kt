@@ -150,10 +150,10 @@ fun VoiceSettingsScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             RangeSelectorCard(
-                title = "音量放大范围",
+                title = "音量大小范围",
                 rangeValue = volumeRange,
                 minRange = 0.5f,
-                maxRange = 2.0f,
+                maxRange = 1.0f,
                 description = "每句话播放时，将在这个区间随机一个音量",
                 onValueChange = { volumeRange = it }
             )

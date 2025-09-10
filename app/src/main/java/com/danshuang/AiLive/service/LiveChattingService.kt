@@ -9,6 +9,7 @@ import android.media.MediaPlayer
 import android.media.AudioManager
 import android.media.AudioAttributes
 import android.media.AudioFocusRequest
+import android.media.PlaybackParams
 import android.os.IBinder
 import android.util.Log
 import android.app.NotificationChannel
@@ -68,6 +69,9 @@ class LiveChattingService : Service() {
     
     // 语音设置
     private var currentVoiceSettings: VoiceSettingsData? = null
+    
+    // 添加音频参数数据类
+    data class AudioParameters(val volume: Float, val pitch: Float, val speed: Float)
     
     // 广播接收器
     private lateinit var settingsUpdateReceiver: BroadcastReceiver
@@ -390,8 +394,19 @@ class LiveChattingService : Service() {
                     chattingState = CHATTING_STATE_STOPPED
                     _chattingStateFlow.value = CHATTING_STATE_STOPPED
                     
-                    isPlaybackFinished = true
-                    lock.notify()
+                    // 添加随机静音延迟
+                    val silenceTime = generateRandomSilenceTime()
+                    Log.d(TAG, "随机静音时间: ${silenceTime}ms")
+                    
+                    // 在锁外执行延迟，避免阻塞锁
+                    serviceScope.launch {
+                        kotlinx.coroutines.delay(silenceTime)
+                        Log.d(TAG, "静音延迟完成: ${silenceTime}ms")
+                        synchronized(lock) {
+                            isPlaybackFinished = true
+                            lock.notify()
+                        }
+                    }
                 }
             }
             
@@ -421,6 +436,29 @@ class LiveChattingService : Service() {
                 Log.d(TAG, "音频状态 - 是否有音频焦点: $hasAudioFocus")
                 
                 try {
+                    // 生成随机音频参数
+                    val audioParams = generateRandomParameters()
+                    Log.d(TAG, "生成随机音频参数: 音量=${audioParams.volume}, 音调=${audioParams.pitch}, 速度=${audioParams.speed}")
+                    
+                    // 应用随机参数到MediaPlayer（需要API 23+）
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        try {
+                            val playbackParams = PlaybackParams()
+                            playbackParams.setSpeed(audioParams.speed)
+                            playbackParams.setPitch(audioParams.pitch)
+                            mp.playbackParams = playbackParams
+                            Log.d(TAG, "成功应用播放参数: 速度=${audioParams.speed}, 音调=${audioParams.pitch}")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "设置播放参数失败", e)
+                        }
+                    } else {
+                        Log.d(TAG, "Android版本低于API 23，无法设置播放参数")
+                    }
+                    
+                    // 设置音量
+                    mp.setVolume(audioParams.volume, audioParams.volume)
+                    Log.d(TAG, "设置音量: ${audioParams.volume}")
+                    
                     // 检查音频焦点
                     if (!hasAudioFocus) {
                         Log.w(TAG, "警告：没有音频焦点，尝试重新获取")
@@ -714,6 +752,45 @@ class LiveChattingService : Service() {
             
             hasAudioFocus = false
             Log.d(TAG, "释放音频焦点结果: $result")
+        }
+    }
+
+    /**
+     * 根据设置的范围生成随机参数
+     */
+    private fun generateRandomParameters(): AudioParameters {
+        val voiceSettings = currentVoiceSettings ?: return AudioParameters(1.0f, 1.0f, 1.0f)
+        
+        val random = Random()
+        val volume = voiceSettings.volumeRange.min + 
+            random.nextFloat() * (voiceSettings.volumeRange.max - voiceSettings.volumeRange.min)
+            
+        val pitch = voiceSettings.pitchRange.min + 
+            random.nextFloat() * (voiceSettings.pitchRange.max - voiceSettings.pitchRange.min)
+            
+        val speed = voiceSettings.speedRange.min + 
+            random.nextFloat() * (voiceSettings.speedRange.max - voiceSettings.speedRange.min)
+            
+        // 限制参数范围，确保在合理范围内
+        val clampedVolume = volume.coerceIn(0.0f, 1.0f)
+        val clampedPitch = pitch.coerceIn(0.5f, 2.0f)
+        val clampedSpeed = speed.coerceIn(0.5f, 2.0f)
+        
+        return AudioParameters(clampedVolume, clampedPitch, clampedSpeed)
+    }
+
+    /**
+     * 生成随机静音时间
+     */
+    private fun generateRandomSilenceTime(): Long {
+        val voiceSettings = currentVoiceSettings
+        return if (voiceSettings != null) {
+            val random = Random()
+            val silenceTime = voiceSettings.silenceRange.min + 
+                random.nextFloat() * (voiceSettings.silenceRange.max - voiceSettings.silenceRange.min)
+            (silenceTime * 1000).toLong() // 转换为毫秒
+        } else {
+            1000L // 默认1秒静音
         }
     }
 
