@@ -1,5 +1,6 @@
 package com.danshuang.AiLive.api.handler
 
+import android.content.Context
 import android.util.Log
 import com.danshuang.AiLive.data.model.ServerResponse
 import com.danshuang.AiLive.util.GlobalEventManager
@@ -22,11 +23,16 @@ class ApiResponseHandler {
      */
     inline fun <reified T> handleResponse(
         response: Response,
-        apiName: String = "Unknown"
+        apiName: String = "Unknown",
+        context: Context
     ): ServerResponse<T> {
         return try {
             if (!response.isSuccessful) {
                 Log.w(tag, "$apiName: HTTP ${response.code} - ${response.message}")
+                // 检查HTTP状态码是否为401
+                if (response.code == 401) {
+                    GlobalEventManager.getInstance().sendUnauthorizedErrorEvent(context)
+                }
                 return createErrorResponse("HTTP错误: ${response.code} ${response.message}")
             }
             
@@ -43,6 +49,11 @@ class ApiResponseHandler {
             val code = (jsonMap["code"] as? Double)?.toInt() ?: 0
             val msg = jsonMap["msg"] as? String ?: "未知错误"
             val data = jsonMap["data"]
+            
+            // 检查响应体中的code是否为401
+            if (code == 401) {
+                GlobalEventManager.getInstance().sendUnauthorizedErrorEvent(context)
+            }
             
             // 根据业务逻辑判断是否成功
             if (code == 1 && data != null) {
@@ -82,9 +93,10 @@ class ApiResponseHandler {
      */
     fun handleSimpleResponse(
         response: Response,
-        apiName: String = "Unknown"
+        apiName: String = "Unknown",
+        context: Context
     ): ServerResponse<Any> {
-        return handleResponse<Any>(response, apiName)
+        return handleResponse<Any>(response, apiName, context)
     }
     
     /**
@@ -92,9 +104,10 @@ class ApiResponseHandler {
      */
     fun handleBooleanResponse(
         response: Response,
-        apiName: String = "Unknown"
+        apiName: String = "Unknown",
+        context: Context
     ): Boolean {
-        val result = handleSimpleResponse(response, apiName)
+        val result = handleSimpleResponse(response, apiName, context)
         return result.isSuccess
     }
     
@@ -103,9 +116,10 @@ class ApiResponseHandler {
      */
     fun handleMapResponse(
         response: Response,
-        apiName: String = "Unknown"
+        apiName: String = "Unknown",
+        context: Context
     ): Map<String, Any>? {
-        val result = handleResponse<Map<String, Any>>(response, apiName)
+        val result = handleResponse<Map<String, Any>>(response, apiName, context)
         return if (result.isSuccess) result.data else null
     }
     
@@ -114,9 +128,10 @@ class ApiResponseHandler {
      */
     fun handleListResponse(
         response: Response,
-        apiName: String = "Unknown"
+        apiName: String = "Unknown",
+        context: Context
     ): List<Any>? {
-        val result = handleResponse<List<Any>>(response, apiName)
+        val result = handleResponse<List<Any>>(response, apiName, context)
         return if (result.isSuccess) result.data else null
     }
     

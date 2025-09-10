@@ -50,8 +50,8 @@ class DouyinApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -72,18 +72,8 @@ class DouyinApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleMapResponse(response, apiName)?.let { data ->
-                ServerResponse(
-                    code = 1,
-                    msg = "获取成功",
-                    data = data
-                )
-            } ?: ServerResponse(
-                code = 0,
-                msg = "获取绑定信息失败",
-                data = emptyMap<String, Any>()
-            )
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Map<String, Any>>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -104,8 +94,8 @@ class DouyinApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            val serverResponse = responseHandler.handleResponse<List<Map<String, Any>>>(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            val serverResponse = responseHandler.handleResponse<List<Map<String, Any>>>(response, apiName, context)
             
             if (serverResponse.isSuccess && serverResponse.data != null) {
                 val accounts = serverResponse.data.mapNotNull { accountMap ->
@@ -164,10 +154,10 @@ class DouyinApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            val dataMap = responseHandler.handleMapResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName, context)
             
-            dataMap?.let { map ->
+            serverResponse.data?.let { map ->
                 VoiceFileInfo(
                     id = map["id"].toString(),
                     text = map["text"] as? String ?: "",
@@ -206,10 +196,10 @@ class DouyinApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            val dataList = responseHandler.handleListResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            val serverResponse = responseHandler.handleResponse<List<Map<String, Any>>>(response, apiName, context)
             
-            dataList?.mapNotNull { item ->
+            serverResponse.data?.mapNotNull { item ->
                 try {
                     val commentMap = item as Map<String, Any>
                     VoiceFileInfo(
@@ -256,8 +246,8 @@ class DouyinApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -290,8 +280,8 @@ class DouyinApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)

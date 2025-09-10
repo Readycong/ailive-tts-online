@@ -31,14 +31,9 @@ class AuthApiService(
             responseHandler.logApiCall(apiName, url, "GET")
             
             val request = createGetRequest(url, includeToken = false).build()
-            val response = executeRequest(request)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName, context)
             
-            if (!response.isSuccessful) {
-                responseHandler.handleSimpleResponse(response, apiName)
-                return LoginResult.Error(IOException("登录失败: ${response.code}"))
-            }
-            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName)
-
             if (serverResponse.isSuccess && serverResponse.data != null) {
                 val dataMap = serverResponse.data
 
@@ -74,8 +69,8 @@ class AuthApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName, context)
             
             if (serverResponse.isSuccess && serverResponse.data != null) {
                 val data = serverResponse.data
@@ -119,7 +114,7 @@ class AuthApiService(
                 .build()
             
             val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            responseHandler.handleSimpleResponse(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -149,7 +144,7 @@ class AuthApiService(
                 .build()
             
             val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            responseHandler.handleSimpleResponse(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)

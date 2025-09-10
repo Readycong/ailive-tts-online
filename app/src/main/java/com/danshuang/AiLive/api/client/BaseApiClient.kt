@@ -19,7 +19,7 @@ import java.util.concurrent.TimeUnit
  */
 open class BaseApiClient(
     private val tokenManager: TokenManager,
-    private val context: Context
+    protected val context: Context
 ) {
     
     protected val client = OkHttpClient.Builder().apply {
@@ -96,6 +96,23 @@ open class BaseApiClient(
             GlobalEventManager.getInstance().sendUnauthorizedErrorEvent(context)
         }
         response
+    }
+    
+    /**
+     * 执行HTTP请求并处理响应（带context参数）
+     */
+    protected suspend fun executeRequestAndHandleResponse(
+        request: Request,
+        apiName: String = "Unknown"
+    ): okhttp3.Response {
+        val response = withContext(Dispatchers.IO) {
+            client.newCall(request).execute()
+        }
+        // 检查HTTP状态码是否为401
+        if (response.code == 401) {
+            GlobalEventManager.getInstance().sendUnauthorizedErrorEvent(context)
+        }
+        return response
     }
     
     /**

@@ -44,8 +44,8 @@ class KnowledgeApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            val serverResponse = responseHandler.handleResponse<List<Map<String, Any>>>(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            val serverResponse = responseHandler.handleResponse<List<Map<String, Any>>>(response, apiName, context)
             
             if (serverResponse.isSuccess && serverResponse.data != null) {
                 val items = serverResponse.data.mapNotNull { itemMap ->
@@ -134,8 +134,8 @@ class KnowledgeApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -164,8 +164,8 @@ class KnowledgeApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -198,8 +198,8 @@ class KnowledgeApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)

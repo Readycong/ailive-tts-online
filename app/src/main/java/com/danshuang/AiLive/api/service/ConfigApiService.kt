@@ -48,8 +48,8 @@ class ConfigApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            val serverResponse = responseHandler.handleResponse<String>(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            val serverResponse = responseHandler.handleResponse<String>(response, apiName, context)
             
             if (serverResponse.isSuccess && serverResponse.data != null) {
                 val configItem = ConfigItem(
@@ -101,8 +101,8 @@ class ConfigApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -131,8 +131,8 @@ class ConfigApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName, context)
             
             if (serverResponse.isSuccess && serverResponse.data != null) {
                 val data = serverResponse.data
@@ -187,8 +187,8 @@ class ConfigApiService(
                 .addTokenHeader(token)
                 .build()
             
-            val response = executeRequest(request)
-            responseHandler.handleSimpleResponse(response, apiName)
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
@@ -238,10 +238,8 @@ class ConfigApiService(
                 .removeHeader("Content-Type") // MultipartBody会自动设置Content-Type
                 .build()
             
-            val response = executeRequest(request)
-            val serverResponse = responseHandler.handleResponse<Map<String, Any>>(response, apiName)
-            
-            serverResponse
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Map<String, Any>>(response, apiName, context)
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
