@@ -4,18 +4,21 @@ import android.content.Context
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import com.danshuang.AiLive.data.model.LoggedInUser
 import com.danshuang.AiLive.data.model.UserProfile
 import com.danshuang.AiLive.data.model.BoundAccountInfo
+import com.danshuang.AiLive.data.model.VoiceSettingsData
 import com.google.gson.Gson
 
 private val Context.dataStore by preferencesDataStore(name = "login_prefs")
 
-class LoginRepository(private val context: Context) {
+class LoginRepository(val context: Context) {
     private val gson = Gson()
 
     // 基础登录信息
@@ -41,6 +44,16 @@ class LoginRepository(private val context: Context) {
 
     // 直播间信息
     private val LIVE_ROOM_ID_KEY = stringPreferencesKey("live_room_id")
+    
+    // 语音设置信息
+    private val VOLUME_RANGE_MIN_KEY = floatPreferencesKey("volume_range_min")
+    private val VOLUME_RANGE_MAX_KEY = floatPreferencesKey("volume_range_max")
+    private val PITCH_RANGE_MIN_KEY = floatPreferencesKey("pitch_range_min")
+    private val PITCH_RANGE_MAX_KEY = floatPreferencesKey("pitch_range_max")
+    private val SPEED_RANGE_MIN_KEY = floatPreferencesKey("speed_range_min")
+    private val SPEED_RANGE_MAX_KEY = floatPreferencesKey("speed_range_max")
+    private val SILENCE_RANGE_MIN_KEY = floatPreferencesKey("silence_range_min")
+    private val SILENCE_RANGE_MAX_KEY = floatPreferencesKey("silence_range_max")
 
     val authToken: Flow<String?> = context.dataStore.data
         .map { preferences ->
@@ -221,6 +234,7 @@ class LoginRepository(private val context: Context) {
         }
     }
 
+
     /**
      * 保存直播间ID
      */
@@ -275,6 +289,72 @@ class LoginRepository(private val context: Context) {
                 preferences.remove(BOUND_ACCOUNT_BIND_TIME_KEY)
             }
         }
+    }
+
+    /**
+     * 保存语音设置
+     */
+    suspend fun saveVoiceSettings(settings: VoiceSettingsData) {
+        context.dataStore.edit { preferences ->
+            preferences[VOLUME_RANGE_MIN_KEY] = settings.volumeRange.min
+            preferences[VOLUME_RANGE_MAX_KEY] = settings.volumeRange.max
+            preferences[PITCH_RANGE_MIN_KEY] = settings.pitchRange.min
+            preferences[PITCH_RANGE_MAX_KEY] = settings.pitchRange.max
+            preferences[SPEED_RANGE_MIN_KEY] = settings.speedRange.min
+            preferences[SPEED_RANGE_MAX_KEY] = settings.speedRange.max
+            preferences[SILENCE_RANGE_MIN_KEY] = settings.silenceRange.min
+            preferences[SILENCE_RANGE_MAX_KEY] = settings.silenceRange.max
+        }
+    }
+
+    /**
+     * 获取语音设置
+     */
+    fun getVoiceSettingsFlow(): Flow<VoiceSettingsData> = context.dataStore.data
+        .map { preferences ->
+            VoiceSettingsData(
+                volumeRange = RangeValue(
+                    min = preferences[VOLUME_RANGE_MIN_KEY] ?: 1.0f,
+                    max = preferences[VOLUME_RANGE_MAX_KEY] ?: 1.0f
+                ),
+                pitchRange = RangeValue(
+                    min = preferences[PITCH_RANGE_MIN_KEY] ?: 1.0f,
+                    max = preferences[PITCH_RANGE_MAX_KEY] ?: 1.0f
+                ),
+                speedRange = RangeValue(
+                    min = preferences[SPEED_RANGE_MIN_KEY] ?: 1.0f,
+                    max = preferences[SPEED_RANGE_MAX_KEY] ?: 1.0f
+                ),
+                silenceRange = RangeValue(
+                    min = preferences[SILENCE_RANGE_MIN_KEY] ?: 0f,
+                    max = preferences[SILENCE_RANGE_MAX_KEY] ?: 2.0f
+                )
+            )
+        }
+
+    /**
+     * 获取语音设置（一次性获取）
+     */
+    suspend fun getVoiceSettings(): VoiceSettingsData {
+        val preferences = context.dataStore.data.first()
+        return VoiceSettingsData(
+            volumeRange = RangeValue(
+                min = preferences[VOLUME_RANGE_MIN_KEY] ?: 1.0f,
+                max = preferences[VOLUME_RANGE_MAX_KEY] ?: 1.0f
+            ),
+            pitchRange = RangeValue(
+                min = preferences[PITCH_RANGE_MIN_KEY] ?: 1.0f,
+                max = preferences[PITCH_RANGE_MAX_KEY] ?: 1.0f
+            ),
+            speedRange = RangeValue(
+                min = preferences[SPEED_RANGE_MIN_KEY] ?: 1.0f,
+                max = preferences[SPEED_RANGE_MAX_KEY] ?: 1.0f
+            ),
+            silenceRange = RangeValue(
+                min = preferences[SILENCE_RANGE_MIN_KEY] ?: 0f,
+                max = preferences[SILENCE_RANGE_MAX_KEY] ?: 2.0f
+            )
+        )
     }
 
     fun isLoggedInFlow(): Flow<Boolean> {

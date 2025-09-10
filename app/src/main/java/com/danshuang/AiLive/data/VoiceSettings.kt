@@ -25,9 +25,9 @@ object VoiceSettings {
     var silenceRange by mutableStateOf(RangeValue(0f, 2.0f))
 
     fun resetToDefaults() {
-        volumeRange = RangeValue(0.5f, 2.0f)
-        pitchRange = RangeValue(0.5f, 2.0f)
-        speedRange = RangeValue(0.5f, 2.0f)
+        volumeRange = RangeValue(1.0f, 1.0f)
+        pitchRange = RangeValue(1.0f, 1.0f)
+        speedRange = RangeValue(1.0f, 1.0f)
         silenceRange = RangeValue(0f, 2.0f)
     }
 

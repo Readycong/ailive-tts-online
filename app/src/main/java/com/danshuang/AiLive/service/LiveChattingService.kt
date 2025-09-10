@@ -1,8 +1,10 @@
 package com.danshuang.AiLive.service
 
 import android.app.Service
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.media.MediaPlayer
 import android.media.AudioManager
 import android.media.AudioAttributes
@@ -14,11 +16,13 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.os.Build
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.danshuang.AiLive.api.ServerApiUtilsV2
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.model.VoiceFileInfo
 import com.danshuang.AiLive.data.model.ConnectionState
+import com.danshuang.AiLive.data.model.VoiceSettingsData
 import com.danshuang.AiLive.service.FileDownloader
 import com.danshuang.AiLive.MainActivity
 import com.danshuang.AiLive.R
@@ -33,6 +37,7 @@ import kotlinx.coroutines.launch
 import com.danshuang.AiLive.ui.screens.LiveMessageManager
 import com.danshuang.AiLive.ui.screens.MessageType
 import java.io.File
+import java.util.Random
 
 /**
  * 直播语音播放服务
@@ -60,6 +65,12 @@ class LiveChattingService : Service() {
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var hasAudioFocus = false
+    
+    // 语音设置
+    private var currentVoiceSettings: VoiceSettingsData? = null
+    
+    // 广播接收器
+    private lateinit var settingsUpdateReceiver: BroadcastReceiver
     
     // 前台服务通知相关
     private val NOTIFICATION_ID = 1001
@@ -135,6 +146,12 @@ class LiveChattingService : Service() {
             this, tokenManager, loginRepository
         )
         fileDownloader = FileDownloader(this)
+        
+        // 初始化语音设置
+        initVoiceSettings()
+        
+        // 注册广播接收器
+        registerSettingsUpdateReceiver()
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -700,4 +717,49 @@ class LiveChattingService : Service() {
         }
     }
 
+    // 注册广播接收器
+    private fun registerSettingsUpdateReceiver() {
+        settingsUpdateReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == "com.danshuang.AiLive.VOICE_SETTINGS_CHANGED") {
+                    // 重新加载参数
+                    reloadVoiceSettings()
+                }
+            }
+        }
+        
+        val filter = IntentFilter("com.danshuang.AiLive.VOICE_SETTINGS_CHANGED")
+        // 根据Android版本使用适当的registerReceiver方法
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.registerReceiver(this, settingsUpdateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        } else {
+            ContextCompat.registerReceiver(this, settingsUpdateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        }
+    }
+    
+    // 初始化语音设置
+    private fun initVoiceSettings() {
+        serviceScope.launch {
+            try {
+                currentVoiceSettings = loginRepository.getVoiceSettings()
+                Log.d(TAG, "语音设置初始化完成")
+            } catch (e: Exception) {
+                Log.e(TAG, "初始化语音设置时出错", e)
+            }
+        }
+    }
+    
+    // 重新加载语音设置
+    private fun reloadVoiceSettings() {
+        serviceScope.launch {
+            try {
+                // 从DataStore读取最新参数
+                currentVoiceSettings = loginRepository.getVoiceSettings()
+                
+                Log.d(TAG, "语音设置已更新")
+            } catch (e: Exception) {
+                Log.e(TAG, "重新加载语音设置时出错", e)
+            }
+        }
+    }
 }
