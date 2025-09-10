@@ -323,18 +323,18 @@ fun KnowledgeScreen(
                     .padding(innerPadding)
             ) {
                 // 分类标签（仅显示"我的知识库"）
-                SecondaryTabRow(
-                    selectedTabIndex = selectedTabIndex,
-                    containerColor = MaterialTheme.colorScheme.surface
-                ) {
-                    categories.forEachIndexed { index, category ->
-                        Tab(
-                            selected = selectedTabIndex == index,
-                            onClick = { /* 固定选中，无需切换 */ },
-                            text = { Text(category) }
-                        )
-                    }
-                }
+                // SecondaryTabRow(
+                //     selectedTabIndex = selectedTabIndex,
+                //     containerColor = MaterialTheme.colorScheme.surface
+                // ) {
+                //     categories.forEachIndexed { index, category ->
+                //         Tab(
+                //             selected = selectedTabIndex == index,
+                //             onClick = { /* 固定选中，无需切换 */ },
+                //             text = { Text(category) }
+                //         )
+                //     }
+                // }
 
                 // 知识条目列表
                 val listState = rememberLazyListState()
