@@ -450,7 +450,7 @@ class LiveChattingService : Service() {
             synchronized(lock) {
                 while (!isPlaybackFinished) {
                     try {
-                        lock.wait(30000) // 最多等待30秒
+                        lock.wait(600000) // 最多等待10分钟=600秒，即音频超过10分钟会提前结束播放
                         if (!isPlaybackFinished) {
                             Log.w(TAG, "播放超时，停止播放: ${voiceFile.id}")
                             player.stop()

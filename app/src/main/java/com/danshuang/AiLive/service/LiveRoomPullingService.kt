@@ -552,7 +552,9 @@ class LiveRoomPullingService : Service() {
                     // 不再直接调用stopSelf()，而是通过状态管理
                     isServiceRunning.set(false)
                     isServiceStopped.set(true)
-                    webView?.loadUrl("about:blank")
+                    serviceScope.launch(Dispatchers.Main) {
+                        webView?.loadUrl("about:blank")
+                    }
                 }
                 ConnectionState.ERROR -> {
                     Log.e(TAG, "Pulling WebSocket connection error")
