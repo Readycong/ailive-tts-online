@@ -240,16 +240,23 @@ class ServerApiUtilsV2(
         val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
         return configApiService.updateConfig(token, douyinId, keyName, value)
     }
-    
+
+    /**
+     * 获取已上传录音生成的克隆语音文件
+     */
+    suspend fun getMyVoice(): ServerResponse<Map<String, Any>> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
+        return configApiService.getMyAudio(token)
+    }
+
     /**
      * 上传音频文件
      */
     suspend fun uploadAudio(
-        douyinId: String,
         filePath: String
-    ): ServerResponse<Map<String, Any>> {
-        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
-        return configApiService.uploadAudioWithValidation(token, douyinId, filePath)
+    ): ServerResponse<Boolean> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = false)
+        return configApiService.uploadAudioWithValidation(token, filePath)
     }
     
     /**

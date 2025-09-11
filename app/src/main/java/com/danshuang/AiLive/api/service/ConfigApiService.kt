@@ -201,31 +201,28 @@ class ConfigApiService(
      */
     suspend fun uploadAudio(
         token: String,
-        douyinId: String,
         filePath: String
-    ): ServerResponse<Map<String, Any>> = withContext(Dispatchers.IO) {
+    ): ServerResponse<Boolean> = withContext(Dispatchers.IO) {
         val apiName = "UploadAudio"
         return@withContext try {
             val url = "${baseUrl}/dscrm/dylive-android/upload-audio"
             val file = File(filePath)
             
             if (!file.exists()) {
-                return@withContext ServerResponse<Map<String, Any>>(
+                return@withContext ServerResponse<Boolean>(
                     code = 0,
                     msg = "文件不存在: $filePath",
-                    data = null
+                    data = false
                 )
             }
             
             responseHandler.logApiCall(apiName, url, "POST", mapOf(
-                "douyin_id" to douyinId,
                 "file_path" to filePath,
                 "file_size" to file.length()
             ))
             
             val requestBody = MultipartBody.Builder()
                 .setType(MultipartBody.FORM)
-                .addFormDataPart("douyin_id", douyinId)
                 .addFormDataPart(
                     "audio",
                     file.name,
@@ -239,14 +236,55 @@ class ConfigApiService(
                 .build()
             
             val response = executeRequestAndHandleResponse(request, apiName)
-            responseHandler.handleResponse<Map<String, Any>>(response, apiName, context)
+            val serverResponse = responseHandler.handleResponse<Boolean>(response, apiName, context)
+            
+            // 如果服务器返回成功但data为null，我们将其设置为true
+            if (serverResponse.isSuccess && serverResponse.data == null) {
+                ServerResponse(
+                    code = serverResponse.code,
+                    msg = serverResponse.msg,
+                    data = true
+                )
+            } else {
+                ServerResponse(
+                    code = serverResponse.code,
+                    msg = serverResponse.msg,
+                    data = serverResponse.data ?: false
+                )
+            }
             
         } catch (e: Exception) {
             responseHandler.logApiError(apiName, e)
-            ServerResponse(code = 0, msg = "文件上传失败: ${e.message}", data = null)
+            ServerResponse(code = 0, msg = "文件上传失败: ${e.message}", data = false)
         }
     }
-    
+
+    /**
+     * 上传音频文件
+     */
+    suspend fun getMyAudio(
+        token: String
+    ): ServerResponse<Map<String, Any>> = withContext(Dispatchers.IO) {
+        val apiName = "GetMyAudio"
+        return@withContext try {
+            val url = "${baseUrl}/dscrm/dylive-android/get-clone-audio"
+
+            responseHandler.logApiCall(apiName, url, "GET", null)
+
+            val request = createGetRequest(url, true)
+                .addTokenHeader(token)
+                .removeHeader("Content-Type") // MultipartBody会自动设置Content-Type
+                .build()
+
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Map<String, Any>>(response, apiName, context)
+
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "获取克隆信息失败: ${e.message}", data = null)
+        }
+    }
+
     /**
      * 批量获取配置项
      */
@@ -299,7 +337,9 @@ class ConfigApiService(
         if (file.length() > maxSizeMB * 1024 * 1024) {
             return "文件过大，请选择小于${maxSizeMB}MB的文件"
         }
-        
+        return null
+        // 文件格式不检查，交给服务器处理
+
         // 检查文件扩展名
         val allowedExtensions = listOf("wav", "mp3", "m4a", "aac")
         val extension = file.extension.lowercase()
@@ -309,20 +349,19 @@ class ConfigApiService(
         
         return null // 验证通过
     }
-    
+
     /**
      * 安全的文件上传（带验证）
      */
     suspend fun uploadAudioWithValidation(
         token: String,
-        douyinId: String,
         filePath: String
-    ): ServerResponse<Map<String, Any>> {
+    ): ServerResponse<Boolean> {
         val validationError = validateAudioFile(filePath)
         if (validationError != null) {
-            return ServerResponse(code = 0, msg = validationError, data = null)
+            return ServerResponse(code = 0, msg = validationError, data = false)
         }
-        
-        return uploadAudio(token, douyinId, filePath)
+
+        return uploadAudio(token, filePath)
     }
 }

@@ -283,8 +283,14 @@ fun ScreenNavigation(
             screenName = "VoiceCloning",
             onLogout = onLogout
         ) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            val loginRepository = androidx.compose.runtime.remember { com.danshuang.AiLive.data.LoginRepository(context) }
+            val tokenManager = androidx.compose.runtime.remember { com.danshuang.AiLive.data.manager.TokenManager(loginRepository) }
+            val serverApiUtils = androidx.compose.runtime.remember { com.danshuang.AiLive.api.ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository) }
+            
             com.danshuang.AiLive.ui.screens.VoiceCloningScreen(
-                navController = navigationState
+                navController = navigationState,
+                serverApiUtils = serverApiUtils
             )
         }
         is Screen.AccountBinding -> WithLoginProtection(
