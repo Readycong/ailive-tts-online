@@ -191,7 +191,7 @@ fun VoiceCloningScreen(
                 isLoading = isLoading,
                 onPlayClick = { url ->
                     // 播放音频
-                    playAudio(context, { mediaPlayer = it }, url) { isPlaying = it }
+                    playAudio(context, { mediaPlayer = it }, url, { isPlaying = it })
                 }
             )
             
@@ -231,17 +231,23 @@ fun VoiceCloningScreen(
                 // 播放按钮
                 Button(
                     onClick = {
-                        tempRecordingFile?.let { filePath ->
-                            // 检查文件是否存在
-                            val file = java.io.File(filePath)
-                            if (file.exists()) {
-                                playAudio(context, { mediaPlayer = it }, filePath) { isPlaying = it }
-                            } else {
-                                // 文件不存在，显示错误信息
-                                errorMessage = "录音文件不存在，请先录制音频"
+                        if (isPlaying) {
+                            // 当前正在播放，需要暂停
+                            pauseAudio(mediaPlayer) { isPlaying = it }
+                        } else {
+                            // 当前未播放，需要开始播放
+                            tempRecordingFile?.let { filePath ->
+                                // 检查文件是否存在
+                                val file = java.io.File(filePath)
+                                if (file.exists()) {
+                                    playAudio(context, { mediaPlayer = it }, filePath, { isPlaying = it }, mediaPlayer)
+                                } else {
+                                    // 文件不存在，显示错误信息
+                                    errorMessage = "录音文件不存在，请先录制音频"
+                                }
+                            } ?: run {
+                                errorMessage = "未录制音频文件"
                             }
-                        } ?: run {
-                            errorMessage = "未录制音频文件"
                         }
                     },
                     enabled = hasRecordedAudio && !isRecording,
@@ -500,9 +506,17 @@ fun playAudio(
     context: android.content.Context,
     setMediaPlayer: (android.media.MediaPlayer?) -> Unit,
     filePath: String,
-    onPlayStateChange: (Boolean) -> Unit
+    onPlayStateChange: (Boolean) -> Unit,
+    mediaPlayer: android.media.MediaPlayer? = null  // 可选参数，用于传递已存在的MediaPlayer实例
 ) {
     try {
+        // 如果传入了MediaPlayer实例且处于暂停状态，则恢复播放
+        if (mediaPlayer != null && !mediaPlayer.isPlaying) {
+            mediaPlayer.start()
+            onPlayStateChange(true)
+            return
+        }
+        
         // 检查是否为网络URL
         val isNetworkUrl = filePath.startsWith("http://") || filePath.startsWith("https://")
         
@@ -564,6 +578,24 @@ fun playAudio(
         // 处理播放错误
         android.util.Log.e("VoiceCloningScreen", "Error playing audio: ${e.message}", e)
         setMediaPlayer(null)
+        onPlayStateChange(false)
+    }
+}
+
+// 暂停音频
+fun pauseAudio(
+    mediaPlayer: android.media.MediaPlayer?,
+    onPlayStateChange: (Boolean) -> Unit
+) {
+    try {
+        mediaPlayer?.let { player ->
+            if (player.isPlaying) {
+                player.pause()
+                onPlayStateChange(false)
+            }
+        }
+    } catch (e: Exception) {
+        android.util.Log.e("VoiceCloningScreen", "Error pausing audio: ${e.message}", e)
         onPlayStateChange(false)
     }
 }
