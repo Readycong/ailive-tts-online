@@ -56,10 +56,12 @@ fun VoiceCloningScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     
     // 状态变量
-    var isRecording by remember { mutableStateOf(false) }
     var hasRecordedAudio by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
     // 新增状态变量
+    var recordingStartTime by remember { mutableStateOf<Long>(0) }
+    var recordedDuration by remember { mutableStateOf<Long>(0) }
+    var isRecording by remember { mutableStateOf(false) }
     var voiceFileInfo by remember { mutableStateOf<VoiceFileInfo?>(null) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -94,7 +96,20 @@ fun VoiceCloningScreen(
             isLoading = false
         }
     }
-    
+
+
+    // 录音时长计时器协程
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            recordingStartTime = System.currentTimeMillis()
+            recordedDuration = 0
+            while (isRecording) {
+                kotlinx.coroutines.delay(1000) // 每秒更新一次
+                recordedDuration = System.currentTimeMillis() - recordingStartTime
+            }
+        }
+    }
+
     // 显示权限请求对话框
     if (showPermissionDialog) {
         AlertDialog(
@@ -185,6 +200,7 @@ fun VoiceCloningScreen(
             // 录音按钮
             RecordingButton(
                 isRecording = isRecording,
+                recordedDuration = recordedDuration,
                 onRecordingStateChange = { recording ->
                     isRecording = recording
                 },
@@ -355,6 +371,7 @@ fun ClonedVoiceCard(
 @Composable
 fun RecordingButton(
     isRecording: Boolean,
+    recordedDuration: Long,
     onRecordingStateChange: (Boolean) -> Unit,
     onStartRecording: () -> Unit,
     onStopRecording: () -> Unit
@@ -384,12 +401,23 @@ fun RecordingButton(
                 },
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = Icons.Default.Mic,
-                contentDescription = "录音",
-                tint = backgroundColor,
-                modifier = Modifier.size(48.dp)
-            )
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(2.dp)
+            ) {
+                Text(
+                    text = formatDuration(recordedDuration),
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.Medium,
+                )
+
+                Icon(
+                    imageVector = Icons.Default.Mic,
+                    contentDescription = "录音",
+                    tint = backgroundColor,
+                    modifier = Modifier.size(48.dp)
+                )
+            }
         }
         
         Text(
@@ -587,6 +615,13 @@ fun requestAudioPermission(activity: android.app.Activity) {
             1001 // 请求码
         )
     }
+}
+
+// 格式化时长
+fun formatDuration(duration: Long): String {
+    val seconds = (duration / 1000) % 60
+    val minutes = (duration / (1000 * 60)) % 60
+    return String.format("%02d:%02d", minutes, seconds)
 }
 
 @Preview(showBackground = true)
