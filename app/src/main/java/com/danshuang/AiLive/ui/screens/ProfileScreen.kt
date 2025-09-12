@@ -40,6 +40,7 @@ import coil.compose.AsyncImage
 data class MenuItem(
     val icon: androidx.compose.ui.graphics.vector.ImageVector,
     val title: String,
+    val dynamicTitle: (() -> String)? = null, // 动态标题生成函数
     val onClick: () -> Unit
 )
 
@@ -49,7 +50,9 @@ fun ProfileScreen(
     onLogout: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToHelp: () -> Unit = {},
-    onNavigateToCardActivation: () -> Unit = {}
+    onNavigateToCardActivation: () -> Unit = {},
+    onNavigateToDouyinAccountBinding: () -> Unit = {},
+    onNavigateToLkAccountBinding: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val loginRepository = remember { LoginRepository(context) }
@@ -62,6 +65,10 @@ fun ProfileScreen(
     // 从登录仓库获取用户数据
     val loggedInUser by loginRepository.loggedInUser.collectAsState(initial = null)
     val userProfile = loggedInUser?.userProfile
+    
+    // 获取抖音和来客账户信息
+    val douyinAccount by loginRepository.getDouyinAccountFlow().collectAsState(initial = null)
+    val lkAccount by loginRepository.getLkAccountFlow().collectAsState(initial = null)
     
     var showNicknameDialog by remember { mutableStateOf(false) }
     var newNickname by remember { mutableStateOf("") }
@@ -90,6 +97,34 @@ fun ProfileScreen(
                 icon = Icons.Filled.Refresh,
                 title = "清理缓存",
                 onClick = { showCacheDialog = true }
+            ),
+            MenuItem(
+                icon = Icons.Filled.VideoLibrary,
+                title = "登录抖音",
+                dynamicTitle = { 
+                    if (douyinAccount != null) {
+                        "抖音：${douyinAccount?.nickname}已登录"
+                    } else {
+                        "登录抖音"
+                    }
+                },
+                onClick = { 
+                    onNavigateToDouyinAccountBinding()
+                }
+            ),
+            MenuItem(
+                icon = Icons.Filled.Store,
+                title = "登录来客",
+                dynamicTitle = { 
+                    if (lkAccount != null) {
+                        "来客：${lkAccount?.nickname}已登录"
+                    } else {
+                        "登录来客"
+                    }
+                },
+                onClick = { 
+                    onNavigateToLkAccountBinding()
+                }
             )
         )
     }
@@ -262,7 +297,7 @@ fun ProfileScreen(
                             tint = MaterialTheme.colorScheme.primary
                         )
                         Text(
-                            text = item.title,
+                            text = item.dynamicTitle?.invoke() ?: item.title,
                             style = MaterialTheme.typography.bodyLarge
                         )
                     }

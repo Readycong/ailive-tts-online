@@ -32,6 +32,12 @@ sealed class Screen(val route: String) {
     data object AccountBinding : Screen("account_binding") {
         fun createRoute() = "account_binding"
     }
+    data object DouyinAccountBinding : Screen("douyin_account_binding") {
+        fun createRoute() = "douyin_account_binding"
+    }
+    data object LkAccountBinding : Screen("lk_account_binding") {
+        fun createRoute() = "lk_account_binding"
+    }
     data object ContentEdit : Screen("content_edit/{contentKey}") {
         fun createRoute(contentKey: String) = "content_edit/$contentKey"
     }
@@ -109,6 +115,14 @@ class NavigationState {
         currentScreen = Screen.AccountBinding
     }
 
+    fun navigateToDouyinAccountBinding() {
+        currentScreen = Screen.DouyinAccountBinding
+    }
+
+    fun navigateToLkAccountBinding() {
+        currentScreen = Screen.LkAccountBinding
+    }
+
     fun navigateToCardActivation() {
         currentScreen = Screen.CardActivation
     }
@@ -145,7 +159,13 @@ class NavigationState {
                 currentScreen = Screen.Profile
             }
             is Screen.AccountBinding -> {
-                currentScreen = Screen.Home
+                currentScreen = Screen.Profile
+            }
+            is Screen.DouyinAccountBinding -> {
+                currentScreen = Screen.Profile
+            }
+            is Screen.LkAccountBinding -> {
+                currentScreen = Screen.Profile
             }
             is Screen.CardActivation -> {
                 currentScreen = Screen.Profile
@@ -200,7 +220,9 @@ fun ScreenNavigation(
                 onLogout = onLogout,
                 onNavigateToChangePassword = { navigationState.navigateToChangePassword() },
                 onNavigateToHelp = { navigationState.navigateToHelp() },
-                onNavigateToCardActivation = { navigationState.navigateToCardActivation() }
+                onNavigateToCardActivation = { navigationState.navigateToCardActivation() },
+                onNavigateToDouyinAccountBinding = { navigationState.navigateToDouyinAccountBinding() },
+                onNavigateToLkAccountBinding = { navigationState.navigateToLkAccountBinding() }
             )
         }
         is Screen.ChangePassword -> WithLoginProtection(
@@ -298,6 +320,22 @@ fun ScreenNavigation(
             onLogout = onLogout
         ) {
             com.danshuang.AiLive.ui.screens.AccountBindingScreen(
+                navController = navigationState
+            )
+        }
+        is Screen.DouyinAccountBinding -> WithLoginProtection(
+            screenName = "DouyinAccountBinding",
+            onLogout = onLogout
+        ) {
+            com.danshuang.AiLive.ui.screens.DouyinAccountBindingScreen(
+                navController = navigationState
+            )
+        }
+        is Screen.LkAccountBinding -> WithLoginProtection(
+            screenName = "LkAccountBinding",
+            onLogout = onLogout
+        ) {
+            com.danshuang.AiLive.ui.screens.LkAccountBindingScreen(
                 navController = navigationState
             )
         }

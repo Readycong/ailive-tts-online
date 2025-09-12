@@ -14,6 +14,7 @@ import com.danshuang.AiLive.data.model.LoggedInUser
 import com.danshuang.AiLive.data.model.UserProfile
 import com.danshuang.AiLive.data.model.BoundAccountInfo
 import com.danshuang.AiLive.data.model.VoiceSettingsData
+import com.danshuang.AiLive.data.model.PlatformType
 import com.google.gson.Gson
 
 private val Context.dataStore by preferencesDataStore(name = "login_prefs")
@@ -41,6 +42,24 @@ class LoginRepository(val context: Context) {
     private val BOUND_ACCOUNT_HOME_URL_KEY = stringPreferencesKey("bound_account_home_url")
     private val BOUND_ACCOUNT_IS_LIVE_KEY = stringPreferencesKey("bound_account_is_live")
     private val BOUND_ACCOUNT_BIND_TIME_KEY = longPreferencesKey("bound_account_bind_time")
+
+    // 抖音账户信息存储键
+    private val DOUYIN_ACCOUNT_PLATFORM_KEY = stringPreferencesKey("douyin_account_platform")
+    private val DOUYIN_ACCOUNT_AVATAR_KEY = stringPreferencesKey("douyin_account_avatar")
+    private val DOUYIN_ACCOUNT_NICKNAME_KEY = stringPreferencesKey("douyin_account_nickname")
+    private val DOUYIN_ACCOUNT_USER_ID_KEY = stringPreferencesKey("douyin_account_user_id")
+    private val DOUYIN_ACCOUNT_HOME_URL_KEY = stringPreferencesKey("douyin_account_home_url")
+    private val DOUYIN_ACCOUNT_IS_LIVE_KEY = stringPreferencesKey("douyin_account_is_live")
+    private val DOUYIN_ACCOUNT_BIND_TIME_KEY = longPreferencesKey("douyin_account_bind_time")
+
+    // 来客账户信息存储键
+    private val LK_ACCOUNT_PLATFORM_KEY = stringPreferencesKey("lk_account_platform")
+    private val LK_ACCOUNT_AVATAR_KEY = stringPreferencesKey("lk_account_avatar")
+    private val LK_ACCOUNT_NICKNAME_KEY = stringPreferencesKey("lk_account_nickname")
+    private val LK_ACCOUNT_USER_ID_KEY = stringPreferencesKey("lk_account_user_id")
+    private val LK_ACCOUNT_HOME_URL_KEY = stringPreferencesKey("lk_account_home_url")
+    private val LK_ACCOUNT_IS_LIVE_KEY = stringPreferencesKey("lk_account_is_live")
+    private val LK_ACCOUNT_BIND_TIME_KEY = longPreferencesKey("lk_account_bind_time")
 
     // 直播间信息
     private val LIVE_ROOM_ID_KEY = stringPreferencesKey("live_room_id")
@@ -366,6 +385,130 @@ class LoginRepository(val context: Context) {
     fun isTokenValidFlow(): Flow<Boolean> {
         return expiresTime.map { expires ->
             expires != null && System.currentTimeMillis() / 1000 < expires
+        }
+    }
+
+    // 抖音账户信息获取（挂起函数）
+    suspend fun getDouyinAccount(): BoundAccountInfo? {
+        val preferences = context.dataStore.data.first()
+        return if (preferences[DOUYIN_ACCOUNT_PLATFORM_KEY] != null) {
+            BoundAccountInfo(
+                platform = PlatformType.DOUYIN,
+                avatar = preferences[DOUYIN_ACCOUNT_AVATAR_KEY] ?: "",
+                nickname = preferences[DOUYIN_ACCOUNT_NICKNAME_KEY] ?: "",
+                userId = preferences[DOUYIN_ACCOUNT_USER_ID_KEY] ?: "",
+                homeUrl = preferences[DOUYIN_ACCOUNT_HOME_URL_KEY] ?: "",
+                isLive = preferences[DOUYIN_ACCOUNT_IS_LIVE_KEY]?.toBoolean() ?: false,
+                bindTime = preferences[DOUYIN_ACCOUNT_BIND_TIME_KEY] ?: System.currentTimeMillis()
+            )
+        } else {
+            null
+        }
+    }
+    
+    // 抖音账户信息流
+    fun getDouyinAccountFlow(): Flow<BoundAccountInfo?> = context.dataStore.data
+        .map { preferences ->
+            if (preferences[DOUYIN_ACCOUNT_PLATFORM_KEY] != null) {
+                BoundAccountInfo(
+                    platform = PlatformType.DOUYIN,
+                    avatar = preferences[DOUYIN_ACCOUNT_AVATAR_KEY] ?: "",
+                    nickname = preferences[DOUYIN_ACCOUNT_NICKNAME_KEY] ?: "",
+                    userId = preferences[DOUYIN_ACCOUNT_USER_ID_KEY] ?: "",
+                    homeUrl = preferences[DOUYIN_ACCOUNT_HOME_URL_KEY] ?: "",
+                    isLive = preferences[DOUYIN_ACCOUNT_IS_LIVE_KEY]?.toBoolean() ?: false,
+                    bindTime = preferences[DOUYIN_ACCOUNT_BIND_TIME_KEY] ?: System.currentTimeMillis()
+                )
+            } else {
+                null
+            }
+        }
+    
+    // 来客账户信息获取（挂起函数）
+    suspend fun getLkAccount(): BoundAccountInfo? {
+        val preferences = context.dataStore.data.first()
+        return if (preferences[LK_ACCOUNT_PLATFORM_KEY] != null) {
+            BoundAccountInfo(
+                platform = PlatformType.LK,
+                avatar = preferences[LK_ACCOUNT_AVATAR_KEY] ?: "",
+                nickname = preferences[LK_ACCOUNT_NICKNAME_KEY] ?: "",
+                userId = preferences[LK_ACCOUNT_USER_ID_KEY] ?: "",
+                homeUrl = preferences[LK_ACCOUNT_HOME_URL_KEY] ?: "",
+                isLive = preferences[LK_ACCOUNT_IS_LIVE_KEY]?.toBoolean() ?: false,
+                bindTime = preferences[LK_ACCOUNT_BIND_TIME_KEY] ?: System.currentTimeMillis()
+            )
+        } else {
+            null
+        }
+    }
+    
+    // 来客账户信息流
+    fun getLkAccountFlow(): Flow<BoundAccountInfo?> = context.dataStore.data
+        .map { preferences ->
+            if (preferences[LK_ACCOUNT_PLATFORM_KEY] != null) {
+                BoundAccountInfo(
+                    platform = PlatformType.LK,
+                    avatar = preferences[LK_ACCOUNT_AVATAR_KEY] ?: "",
+                    nickname = preferences[LK_ACCOUNT_NICKNAME_KEY] ?: "",
+                    userId = preferences[LK_ACCOUNT_USER_ID_KEY] ?: "",
+                    homeUrl = preferences[LK_ACCOUNT_HOME_URL_KEY] ?: "",
+                    isLive = preferences[LK_ACCOUNT_IS_LIVE_KEY]?.toBoolean() ?: false,
+                    bindTime = preferences[LK_ACCOUNT_BIND_TIME_KEY] ?: System.currentTimeMillis()
+                )
+            } else {
+                null
+            }
+        }
+    
+    // 保存抖音账户信息
+    suspend fun saveDouyinAccount(account: BoundAccountInfo) {
+        context.dataStore.edit { preferences ->
+            preferences[DOUYIN_ACCOUNT_PLATFORM_KEY] = account.platform
+            preferences[DOUYIN_ACCOUNT_AVATAR_KEY] = account.avatar
+            preferences[DOUYIN_ACCOUNT_NICKNAME_KEY] = account.nickname
+            preferences[DOUYIN_ACCOUNT_USER_ID_KEY] = account.userId
+            preferences[DOUYIN_ACCOUNT_HOME_URL_KEY] = account.homeUrl
+            preferences[DOUYIN_ACCOUNT_IS_LIVE_KEY] = account.isLive.toString()
+            preferences[DOUYIN_ACCOUNT_BIND_TIME_KEY] = account.bindTime
+        }
+    }
+    
+    // 保存来客账户信息
+    suspend fun saveLkAccount(account: BoundAccountInfo) {
+        context.dataStore.edit { preferences ->
+            preferences[LK_ACCOUNT_PLATFORM_KEY] = account.platform
+            preferences[LK_ACCOUNT_AVATAR_KEY] = account.avatar
+            preferences[LK_ACCOUNT_NICKNAME_KEY] = account.nickname
+            preferences[LK_ACCOUNT_USER_ID_KEY] = account.userId
+            preferences[LK_ACCOUNT_HOME_URL_KEY] = account.homeUrl
+            preferences[LK_ACCOUNT_IS_LIVE_KEY] = account.isLive.toString()
+            preferences[LK_ACCOUNT_BIND_TIME_KEY] = account.bindTime
+        }
+    }
+    
+    // 清除抖音账户信息
+    suspend fun clearDouyinAccount() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(DOUYIN_ACCOUNT_PLATFORM_KEY)
+            preferences.remove(DOUYIN_ACCOUNT_AVATAR_KEY)
+            preferences.remove(DOUYIN_ACCOUNT_NICKNAME_KEY)
+            preferences.remove(DOUYIN_ACCOUNT_USER_ID_KEY)
+            preferences.remove(DOUYIN_ACCOUNT_HOME_URL_KEY)
+            preferences.remove(DOUYIN_ACCOUNT_IS_LIVE_KEY)
+            preferences.remove(DOUYIN_ACCOUNT_BIND_TIME_KEY)
+        }
+    }
+    
+    // 清除来客账户信息
+    suspend fun clearLkAccount() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(LK_ACCOUNT_PLATFORM_KEY)
+            preferences.remove(LK_ACCOUNT_AVATAR_KEY)
+            preferences.remove(LK_ACCOUNT_NICKNAME_KEY)
+            preferences.remove(LK_ACCOUNT_USER_ID_KEY)
+            preferences.remove(LK_ACCOUNT_HOME_URL_KEY)
+            preferences.remove(LK_ACCOUNT_IS_LIVE_KEY)
+            preferences.remove(LK_ACCOUNT_BIND_TIME_KEY)
         }
     }
 }
