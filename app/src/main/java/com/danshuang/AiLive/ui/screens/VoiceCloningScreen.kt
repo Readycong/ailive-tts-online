@@ -62,6 +62,7 @@ fun VoiceCloningScreen(
     // 状态变量
     var hasRecordedAudio by remember { mutableStateOf(false) }
     var isPlaying by remember { mutableStateOf(false) }
+    var isClonedVoicePlaying by remember { mutableStateOf(false) } // 新增状态变量
     // 新增状态变量
     var recordingStartTime by remember { mutableStateOf<Long>(0) }
     var recordedDuration by remember { mutableStateOf<Long>(0) }
@@ -71,6 +72,7 @@ fun VoiceCloningScreen(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var tempRecordingFile by remember { mutableStateOf<String?>(null) }
     var mediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) }
+    var clonedVoiceMediaPlayer by remember { mutableStateOf<MediaPlayer?>(null) } // 新增MediaPlayer实例
     var mediaRecorder by remember { mutableStateOf<MediaRecorder?>(null) }
     var isUploading by remember { mutableStateOf(false) }
     var uploadMessage by remember { mutableStateOf<String?>(null) }
@@ -196,9 +198,16 @@ fun VoiceCloningScreen(
             ClonedVoiceCard(
                 voiceFileInfo = voiceFileInfo,
                 isLoading = isLoading,
+                isPlaying = isClonedVoicePlaying,
                 onPlayClick = { url ->
+                    // 停止可能正在播放的音频
+                    stopAudio(clonedVoiceMediaPlayer, { clonedVoiceMediaPlayer = it }, { isClonedVoicePlaying = it })
                     // 播放音频
-                    playAudio(context, { mediaPlayer = it }, url, { isPlaying = it })
+                    playAudio(context, { clonedVoiceMediaPlayer = it }, url, { isClonedVoicePlaying = it })
+                },
+                onStopClick = {
+                    // 停止播放
+                    stopAudio(clonedVoiceMediaPlayer, { clonedVoiceMediaPlayer = it }, { isClonedVoicePlaying = it })
                 }
             )
             
@@ -321,7 +330,9 @@ fun VoiceCloningScreen(
 fun ClonedVoiceCard(
     voiceFileInfo: VoiceFileInfo?,
     isLoading: Boolean,
-    onPlayClick: (String) -> Unit
+    isPlaying: Boolean,
+    onPlayClick: (String) -> Unit,
+    onStopClick: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -359,7 +370,13 @@ fun ClonedVoiceCard(
                         )
                         
                         IconButton(
-                            onClick = { onPlayClick(fileInfo.url) }, // 点击播放音频
+                            onClick = { 
+                                if (isPlaying) {
+                                    onStopClick()
+                                } else {
+                                    onPlayClick(fileInfo.url)
+                                }
+                            }, // 点击播放/停止音频
                             modifier = Modifier
                                 .size(40.dp)
                                 .border(
@@ -369,8 +386,8 @@ fun ClonedVoiceCard(
                                 )
                         ) {
                             Icon(
-                                imageVector = Icons.Default.PlayArrow,
-                                contentDescription = "播放",
+                                imageVector = if (isPlaying) Icons.Default.Close else Icons.Default.PlayArrow,
+                                contentDescription = if (isPlaying) "停止" else "播放",
                                 tint = MaterialTheme.colorScheme.primary
                             )
                         }
@@ -604,6 +621,28 @@ fun pauseAudio(
     } catch (e: Exception) {
         android.util.Log.e("VoiceCloningScreen", "Error pausing audio: ${e.message}", e)
         onPlayStateChange(false)
+    }
+}
+
+// 停止音频
+fun stopAudio(
+    mediaPlayer: android.media.MediaPlayer?,
+    setMediaPlayer: (android.media.MediaPlayer?) -> Unit,
+    onPlayStateChange: (Boolean) -> Unit
+) {
+    mediaPlayer?.let { player ->
+        try {
+            if (player.isPlaying) {
+                player.stop()
+            }
+            player.release()
+            setMediaPlayer(null)
+            onPlayStateChange(false)
+        } catch (e: Exception) {
+            android.util.Log.e("VoiceCloningScreen", "Error stopping audio: ${e.message}", e)
+            setMediaPlayer(null)
+            onPlayStateChange(false)
+        }
     }
 }
 
