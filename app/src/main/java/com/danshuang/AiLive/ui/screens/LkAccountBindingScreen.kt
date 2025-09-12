@@ -39,8 +39,8 @@ import com.danshuang.AiLive.data.model.BoundAccountInfo
 import com.danshuang.AiLive.data.model.PlatformType
 import com.danshuang.AiLive.data.model.BindingStep
 import com.danshuang.AiLive.data.model.ExtractionStatus
-import com.danshuang.AiLive.data.model.UserAccountInfo
 import com.danshuang.AiLive.data.model.BindingResult
+import com.danshuang.AiLive.data.model.UserAccountInfo
 import android.content.Context
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -71,15 +71,15 @@ fun LkAccountBindingScreen(
 
     var accountUrl by remember { mutableStateOf(TextFieldValue("https://www.laik.live/user/MS4wLjABAAAAEpM-VSWnKAiy3wJvdZOXxor9Zo7Ts-buI0VW2jrtIxA?from_tab_name=live")) }
     var isLoading by remember { mutableStateOf(false) }
-    var bindingResult by remember { mutableStateOf<BindingResult?>(null) }
+    var bindingResult by remember { mutableStateOf<com.danshuang.AiLive.data.model.BindingResult?>(null) }
     var bindingTrigger by remember { mutableStateOf(false) }
-    var currentStep by remember { mutableStateOf(BindingStep.URL_INPUT) }
-    var accountInfo by remember { mutableStateOf<UserAccountInfo?>(null) }
+    var currentStep by remember { mutableStateOf(com.danshuang.AiLive.data.model.BindingStep.URL_INPUT) }
+    var accountInfo by remember { mutableStateOf<com.danshuang.AiLive.data.model.UserAccountInfo?>(null) }
     var showWebView by remember { mutableStateOf(false) }
     var showDropdownMenu by remember { mutableStateOf(false) }
     var userHomeUrl by remember { mutableStateOf("") }
     var userRealHomeUrl by remember { mutableStateOf("") }
-    var extractionStatus by remember { mutableStateOf(ExtractionStatus.IDLE) }
+    var extractionStatus by remember { mutableStateOf(com.danshuang.AiLive.data.model.ExtractionStatus.IDLE) }
     var canBindAccount by remember { mutableStateOf(false) }
     var countdownSeconds by remember { mutableStateOf(0) }
     var isCountingDown by remember { mutableStateOf(false) }
@@ -91,11 +91,11 @@ fun LkAccountBindingScreen(
     }
     
     // 保存账户信息到本地存储
-    suspend fun saveAccountToLocal(accountInfo: UserAccountInfo, url: String) {
+    suspend fun saveAccountToLocal(accountInfo: com.danshuang.AiLive.data.model.UserAccountInfo, url: String) {
         try {
             // 使用LoginRepository中的公共方法来保存绑定账户信息
-            val boundAccount = BoundAccountInfo(
-                platform = PlatformType.LK,
+            val boundAccount = com.danshuang.AiLive.data.model.BoundAccountInfo(
+                platform = com.danshuang.AiLive.data.model.PlatformType.LK,
                 avatar = accountInfo.avatar,
                 nickname = accountInfo.nickname,
                 userId = accountInfo.userId,
@@ -110,13 +110,13 @@ fun LkAccountBindingScreen(
     }
     
     // 提交绑定信息到服务器
-    suspend fun submitBindingToServer(accountInfo: UserAccountInfo, url: String): BindingResult {
+    suspend fun submitBindingToServer(accountInfo: com.danshuang.AiLive.data.model.UserAccountInfo, url: String): com.danshuang.AiLive.data.model.BindingResult {
         return withContext(Dispatchers.IO) {
             try {
                 // 获取当前登录的token
                 val token = tokenManager.currentToken.first()
                 if (token.isNullOrBlank()) {
-                    return@withContext BindingResult(false, "用户未登录，请先登录后再绑定账户")
+                    return@withContext com.danshuang.AiLive.data.model.BindingResult(false, "用户未登录，请先登录后再绑定账户")
                 }
                 
                 // 从URL中提取房间ID（简单实现，实际可能需要更复杂的解析）
@@ -133,12 +133,12 @@ fun LkAccountBindingScreen(
                 )
                 
                 if (serverResponse.isSuccess) {
-                    BindingResult(true, serverResponse.msg)
+                    com.danshuang.AiLive.data.model.BindingResult(true, serverResponse.msg)
                 } else {
-                    BindingResult(false, serverResponse.msg)
+                    com.danshuang.AiLive.data.model.BindingResult(false, serverResponse.msg)
                 }
             } catch (e: Exception) {
-                BindingResult(false, "绑定失败: ${e.message}")
+                com.danshuang.AiLive.data.model.BindingResult(false, "绑定失败: ${e.message}")
             }
         }
     }
@@ -166,8 +166,8 @@ fun LkAccountBindingScreen(
                     saveAccountToLocal(accountInfo!!, userHomeUrl)
                     
                     // 保存绑定信息到用户登录信息中
-                    val boundAccount = BoundAccountInfo(
-                        platform = PlatformType.LK,
+                    val boundAccount = com.danshuang.AiLive.data.model.BoundAccountInfo(
+                        platform = com.danshuang.AiLive.data.model.PlatformType.LK,
                         avatar = accountInfo!!.avatar,
                         nickname = accountInfo!!.nickname,
                         userId = accountInfo!!.userId,
@@ -177,12 +177,12 @@ fun LkAccountBindingScreen(
                     )
                     
                     bindingResult = serverResult
-                    currentStep = BindingStep.ACCOUNT_PREVIEW
+                    currentStep = com.danshuang.AiLive.data.model.BindingStep.ACCOUNT_PREVIEW
                 } else {
                     bindingResult = serverResult
                 }
             } catch (e: Exception) {
-                bindingResult = BindingResult(false, "绑定过程中发生错误: ${e.message}")
+                bindingResult = com.danshuang.AiLive.data.model.BindingResult(false, "绑定过程中发生错误: ${e.message}")
             } finally {
                 isLoading = false
                 isCountingDown = false
@@ -273,7 +273,7 @@ fun LkAccountBindingScreen(
                             if (extractedUrl != null) {
                                 userHomeUrl = extractedUrl
                                 // 模拟账户信息提取
-                                accountInfo = UserAccountInfo(
+                                accountInfo = com.danshuang.AiLive.data.model.UserAccountInfo(
                                     avatar = "https://via.placeholder.com/80",
                                     nickname = "来客用户",
                                     isLive = false,
@@ -281,7 +281,7 @@ fun LkAccountBindingScreen(
                                 )
                                 bindingTrigger = true
                             } else {
-                                bindingResult = BindingResult(false, "无法从输入内容中提取有效的URL，请检查输入")
+                                bindingResult = com.danshuang.AiLive.data.model.BindingResult(false, "无法从输入内容中提取有效的URL，请检查输入")
                             }
                         },
                         modifier = Modifier.fillMaxWidth(),
@@ -354,7 +354,7 @@ fun LkAccountBindingScreen(
                 }
                 
                 // 账户预览
-                if (currentStep == BindingStep.ACCOUNT_PREVIEW && accountInfo != null) {
+                if (currentStep == com.danshuang.AiLive.data.model.BindingStep.ACCOUNT_PREVIEW && accountInfo != null) {
                     item {
                         Card(
                             modifier = Modifier.fillMaxWidth()

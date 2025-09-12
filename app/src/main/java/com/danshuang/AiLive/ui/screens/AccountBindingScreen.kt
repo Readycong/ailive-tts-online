@@ -3,6 +3,7 @@ package com.danshuang.AiLive.ui.screens
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
@@ -47,6 +48,8 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONObject
 import java.io.IOException
+import com.danshuang.AiLive.util.Utils
+import com.danshuang.AiLive.data.model.UserAccountInfo
 
 // DataStore实例
 private val Context.dataStore by preferencesDataStore(name = "login_prefs")
@@ -64,14 +67,6 @@ enum class ExtractionStatus {
     SUCCESS,        // 提取成功
     ERROR           // 提取失败
 }
-
-// 模拟用户账户信息
-data class UserAccountInfo(
-    val avatar: String = "https://via.placeholder.com/80",
-    val nickname: String = "示例用户",
-    val isLive: Boolean = false,
-    val userId: String = "" // 添加用户ID字段
-)
 
 // 绑定结果数据类
 data class BindingResult(
@@ -97,7 +92,7 @@ fun AccountBindingScreen(
     var bindingResult by remember { mutableStateOf<BindingResult?>(null) }
     var bindingTrigger by remember { mutableStateOf(false) }
     var currentStep by remember { mutableStateOf(BindingStep.URL_INPUT) }
-    var accountInfo by remember { mutableStateOf<UserAccountInfo?>(null) }
+    var accountInfo by remember { mutableStateOf<com.danshuang.AiLive.data.model.UserAccountInfo?>(null) }
     var showWebView by remember { mutableStateOf(false) }
     var showDropdownMenu by remember { mutableStateOf(false) }
     var userHomeUrl by remember { mutableStateOf("") }
@@ -114,7 +109,7 @@ fun AccountBindingScreen(
     }
     
     // 保存账户信息到本地存储
-    suspend fun saveAccountToLocal(accountInfo: UserAccountInfo, url: String) {
+    suspend fun saveAccountToLocal(accountInfo: com.danshuang.AiLive.data.model.UserAccountInfo, url: String) {
         try {
             // 使用LoginRepository中的公共方法来保存绑定账户信息
             val boundAccount = BoundAccountInfo(
@@ -133,7 +128,7 @@ fun AccountBindingScreen(
     }
     
     // 提交绑定信息到服务器
-    suspend fun submitBindingToServer(accountInfo: UserAccountInfo, url: String): BindingResult {
+    suspend fun submitBindingToServer(accountInfo: com.danshuang.AiLive.data.model.UserAccountInfo, url: String): BindingResult {
         return withContext(Dispatchers.IO) {
             try {
                 // 获取当前登录的token
@@ -276,8 +271,8 @@ fun AccountBindingScreen(
                         ) {
                             DropdownMenuItem(
                                 text = { Text("网页调试") },
-                                onClick = {
-                                    showWebView = !showWebView
+                                onClick = { 
+                                    showWebView = true
                                     showDropdownMenu = false
                                 },
                                 leadingIcon = {

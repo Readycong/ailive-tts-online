@@ -29,6 +29,54 @@ class Utils {
 })()
 """.trimIndent()
 
+        val script_binding = """
+                                        (function() {
+    try {
+        console.log('开始提取抖音账户信息...');
+        var infoObj = document.querySelector("#user_detail_element")
+        if (!infoObj) {
+            console.log('未找到 #user_detail_element 元素');
+            return {
+                js: "user_detail_element", 
+                load: "ERROR", 
+                status: 'NO', 
+                id: '',
+                nickname: '',
+                avatar: ''
+            }
+        }
+        console.log('找到用户信息元素，开始解析...');
+        var liveStatusElement = infoObj.querySelector("div > div:nth-child(2) > div");
+        var liveStatus = liveStatusElement ? liveStatusElement.innerText == '直播中' : false;
+        var nicknameElement = infoObj.querySelector("div:nth-child(2) > div:nth-child(2) > div");
+        var userIdElement = infoObj.querySelector("div:nth-child(2) > div:nth-child(2) > p > span");
+        var avatarElement = document.querySelector("#search-result-container > div:nth-child(3) > ul > li:nth-child(1) > div > a");
+        
+        var result = {
+            js: "user_detail_element", 
+            load: "FOUND", 
+            status: liveStatus ? 'PLAYING' : 'NO', 
+            id: userIdElement ? userIdElement.innerText.trim().replace('抖音号：', '') : '',
+            nickname: nicknameElement ? nicknameElement.innerText : '未知用户',
+            avatar: avatarElement ? avatarElement.src : '',
+            html: document.body.outerHTML
+        };
+        console.log('账户信息提取完成:', result);
+        return result;
+    } catch (e) {
+        console.error('提取账户信息时发生错误:', e);
+        return {
+            js: "user_detail_element", 
+            load: "ERROR", 
+            status: 'NO', 
+            id: '',
+            nickname: '',
+            avatar: ''
+        }
+    }
+})()
+""".trimIndent()
+
         @JvmStatic
         suspend fun getRemoteContent(url: String): String? {
             val client = OkHttpClient()

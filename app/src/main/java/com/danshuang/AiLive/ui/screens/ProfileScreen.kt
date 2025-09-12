@@ -77,6 +77,34 @@ fun ProfileScreen(
     val menuItems = remember {
         listOf(
             MenuItem(
+                icon = Icons.Filled.VideoLibrary,
+                title = "登录抖音",
+                dynamicTitle = {
+                    if (douyinAccount != null) {
+                        "抖音：${douyinAccount?.nickname}已登录"
+                    } else {
+                        "登录抖音"
+                    }
+                },
+                onClick = {
+                    onNavigateToDouyinAccountBinding()
+                }
+            ),
+            MenuItem(
+                icon = Icons.Filled.Store,
+                title = "登录来客",
+                dynamicTitle = {
+                    if (lkAccount != null) {
+                        "来客：${lkAccount?.nickname}已登录"
+                    } else {
+                        "登录来客"
+                    }
+                },
+                onClick = {
+                    onNavigateToLkAccountBinding()
+                }
+            ),
+            MenuItem(
                 icon = Icons.Filled.Lock,
                 title = "修改密码",
                 onClick = { 
@@ -97,34 +125,6 @@ fun ProfileScreen(
                 icon = Icons.Filled.Refresh,
                 title = "清理缓存",
                 onClick = { showCacheDialog = true }
-            ),
-            MenuItem(
-                icon = Icons.Filled.VideoLibrary,
-                title = "登录抖音",
-                dynamicTitle = { 
-                    if (douyinAccount != null) {
-                        "抖音：${douyinAccount?.nickname}已登录"
-                    } else {
-                        "登录抖音"
-                    }
-                },
-                onClick = { 
-                    onNavigateToDouyinAccountBinding()
-                }
-            ),
-            MenuItem(
-                icon = Icons.Filled.Store,
-                title = "登录来客",
-                dynamicTitle = { 
-                    if (lkAccount != null) {
-                        "来客：${lkAccount?.nickname}已登录"
-                    } else {
-                        "登录来客"
-                    }
-                },
-                onClick = { 
-                    onNavigateToLkAccountBinding()
-                }
             )
         )
     }
@@ -282,7 +282,7 @@ fun ProfileScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { item.onClick() }
-                        .padding(12.dp),
+                        .padding(8.dp),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {

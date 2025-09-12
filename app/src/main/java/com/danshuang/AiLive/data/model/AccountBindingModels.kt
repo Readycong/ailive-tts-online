@@ -14,12 +14,14 @@ enum class ExtractionStatus {
     ERROR           // 提取失败
 }
 
-// 模拟用户账户信息
+// 用户账户信息
 data class UserAccountInfo(
-    val avatar: String = "https://via.placeholder.com/80",
-    val nickname: String = "示例用户",
-    val isLive: Boolean = false,
-    val userId: String = "" // 添加用户ID字段
+    val avatar: String = "",
+    val nickname: String = "",
+    val userId: String = "",
+    val secUid: String = "",
+    val homeUrl: String = "",
+    val isLive: Boolean = false
 )
 
 // 绑定结果数据类
@@ -27,3 +29,10 @@ data class BindingResult(
     val success: Boolean,
     val message: String
 )
+
+// 登录状态枚举
+enum class LoginState {
+    LOGGED_IN,      // 已登录
+    NOT_LOGGED_IN,  // 未登录
+    LOGGING_IN      // 登录中
+}
