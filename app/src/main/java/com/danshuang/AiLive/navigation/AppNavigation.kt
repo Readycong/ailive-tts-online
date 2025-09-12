@@ -29,6 +29,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.activity.compose.BackHandler
+import androidx.compose.material.icons.filled.SettingsInputComponent
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -50,7 +51,7 @@ sealed class BottomNavItem(
     data object Model : BottomNavItem("大模型", Icons.Default.Person, "model")
     data object AILive : BottomNavItem("AI直播", Icons.Default.PlayArrow, "ai_live")
     data object Knowledge : BottomNavItem("知识库", Icons.Default.Search, "knowledge")
-    data object Profile : BottomNavItem("设置", Icons.Default.AccountCircle, "profile")
+    data object Profile : BottomNavItem("设置", Icons.Default.SettingsInputComponent, "profile")
 }
 
 @Composable
