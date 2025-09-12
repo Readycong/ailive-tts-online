@@ -40,6 +40,10 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import androidx.compose.ui.platform.LocalContext
 import java.lang.Exception
+// 添加必要的导入语句
+import android.provider.Settings
+import android.content.Intent
+import android.net.Uri
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -120,8 +124,11 @@ fun VoiceCloningScreen(
                 TextButton(
                     onClick = {
                         showPermissionDialog = false
-                        // 在实际应用中，这里应该引导用户去设置页面
-                        errorMessage = "请在手机设置中为本应用授予录音权限"
+                        // 打开应用设置页面
+                        val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                        val uri = Uri.fromParts("package", context.packageName, null)
+                        intent.data = uri
+                        context.startActivity(intent)
                     }
                 ) {
                     Text("去设置")
