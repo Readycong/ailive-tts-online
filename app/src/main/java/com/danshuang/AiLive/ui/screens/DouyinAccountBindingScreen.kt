@@ -140,7 +140,7 @@ fun DouyinAccountBindingScreen(
     // WebView接口类，用于拦截XHR请求
     class WebAppInterface(
         private val scope: kotlinx.coroutines.CoroutineScope,
-        private val onQrCodeReceived: (String) -> Unit,
+        private val webView: WebView,
         private val onLoginSuccess: (String, String, String, String) -> Unit,
         private val onError: (String) -> Unit
     ) {
@@ -148,70 +148,73 @@ fun DouyinAccountBindingScreen(
         fun onXhrResponse(method: String?, url: String?, status: Int, response: String?) {
             scope.launch {
                 try {
-                    Log.d("WebViewXHR", "XHR Request - Method: $method, URL: $url, Status: $status")
-                    
-                    // 拦截二维码请求
-                    if (url?.contains("https://login.douyin.com/passport/web/get_qrcode/") == true && status == 200) {
-                        Log.d("WebViewXHR", "QR Code response received")
-                        // 解析二维码数据
+                    Log.d("WebViewXHR", "XHR Request - Method: $method, URL: $url, Status: $status, Response: ${response?.take(500)}")
+
+                    var isInLoginState = false
+                    // 拦截登录验证请求
+                    if (url?.contains("/web/query/user") == true && status == 200) {
+                        Log.d("WebViewXHR", "User info response received")
+                        // 解析用户信息数据
                         response?.let { jsonResponse ->
                             try {
                                 val jsonObject = JSONObject(jsonResponse)
-                                if (jsonObject.has("data")) {
-                                    val dataObject = jsonObject.getJSONObject("data")
-                                    if (dataObject.has("qrcode")) {
-                                        val base64Data = dataObject.getString("qrcode")
-                                        onQrCodeReceived(base64Data)
-                                        retryCount = 0 // 重置重试计数
-                                        Log.d("WebViewXHR", "QR Code extracted successfully")
-                                    } else {
-                                        Log.w("WebViewXHR", "QR code data not found in response")
-                                        // 如果没有二维码数据，可能是请求频率过高
-                                        if (retryCount < 3) {
-                                            kotlinx.coroutines.delay(2000)
-                                            retryLoad()
-                                        }
+                                if (jsonObject.has("user_uid")) {
+                                    if (jsonObject.optString("user_uid", "").length > 1) {
+                                        isInLoginState = true
                                     }
-                                } else {
-                                    Log.w("WebViewXHR", "Data not found in QR code response")
                                 }
                             } catch (e: Exception) {
-                                Log.e("WebViewXHR", "Error parsing QR code data", e)
-                                onError("解析二维码数据时出错: ${e.message}")
+                                Log.e("WebViewXHR", "Error parsing user info data", e)
+                                onError("解析用户信息数据时出错: ${e.message}")
                             }
                         }
                     }
-                    
-                    // 拦截登录验证请求
-                    if (url?.contains("https://www.douyin.com/aweme/v1/aweme/favorite/") == true && status == 200) {
+                    if (url?.contains("/aweme/favorite/") == true && status == 200) {
                         Log.d("WebViewXHR", "Login validation response received")
                         // 解析登录验证数据
                         response?.let { jsonResponse ->
                             try {
-                                val jsonObject = JSONObject(jsonResponse)
+                                val dataObject = JSONObject(jsonResponse)
                                 // 检查是否有sec_uid
-                                if (jsonObject.has("data")) {
-                                    val dataObject = jsonObject.getJSONObject("data")
-                                    if (dataObject.has("sec_uid")) {
-                                        val secUid = dataObject.getString("sec_uid")
-                                        if (secUid.isNotEmpty()) {
-                                            Log.d("WebViewXHR", "Login successful, sec_uid: $secUid")
-                                            // 登录成功，获取用户信息
-                                            // 这里应该通过其他方式获取用户信息，因为WebView中的JavaScript执行可能有限制
-                                            onLoginSuccess(secUid, "", "", "")
-                                        } else {
-                                            Log.w("WebViewXHR", "SecUid is empty")
-                                        }
+                                if (dataObject.has("sec_uid")) {
+                                    val secUid = dataObject.getString("sec_uid")
+                                    if (secUid.isNotEmpty()) {
+                                        isInLoginState = true
+                                        Log.d("WebViewXHR", "Login successful, sec_uid: $secUid")
                                     } else {
-                                        Log.d("WebViewXHR", "SecUid not found in response")
+                                        Log.w("WebViewXHR", "SecUid is empty")
                                     }
                                 } else {
-                                    Log.w("WebViewXHR", "Data not found in login validation response")
+                                    Log.d("WebViewXHR", "SecUid not found in response")
                                 }
                             } catch (e: Exception) {
                                 Log.e("WebViewXHR", "Error parsing login validation data", e)
                                 onError("解析登录验证数据时出错: ${e.message}")
                             }
+                        }
+                    }
+
+                    if (isInLoginState) {
+                        // 登录成功，获取用户信息
+                        // 这里应该通过其他方式获取用户信息，因为WebView中的JavaScript执行可能有限制
+                        webView.evaluateJavascript("(function(){var html=document.body.outerHTML; return html.substr(html.indexOf('\"info'),10240)})()"){ html ->
+                            var info = html.replace("\\u002F", "&").replace("\\", "").replace("\"", "").substring(6).replace("u0026", "&")
+                            Log.d("WebView", "execute get user info: $info")
+                            val regex = Regex("(\\w+):([^,]+)")
+                            val matches = regex.findAll(info)
+                            val userInfoMap = mutableMapOf<String, String>()
+                            
+                            for (match in matches) {
+                                val (key, value) = match.destructured
+                                userInfoMap[key] = value
+                                Log.d("WebView", "Parsed info - Key: $key, Value: $value")
+                            }
+                            
+                            val secUid = userInfoMap["secUid"] ?: ""
+                            val nickname = userInfoMap["nickname"] ?: ""
+                            val avatar = userInfoMap["avatarUrl"] ?: ""
+                            val userId = userInfoMap["uid"] ?: ""
+                            onLoginSuccess(secUid, nickname, avatar, userId)
                         }
                     }
                 } catch (e: Exception) {
@@ -435,115 +438,59 @@ fun DouyinAccountBindingScreen(
                         }
                     }
                 }
-                
-                // 二维码显示区域（未登录状态）
-                if (loginState == LoginState.NOT_LOGGED_IN && showQRCode) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                horizontalAlignment = Alignment.CenterHorizontally
-                            ) {
-                                Text(
-                                    text = "请使用抖音APP扫码登录",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.Bold,
-                                    modifier = Modifier.padding(bottom = 16.dp)
-                                )
-                                
-                                // 二维码显示
-                                if (qrCodeData.isNotEmpty()) {
-                                    // 显示二维码图片
-                                    AsyncImage(
-                                        model = "data:image/png;base64,$qrCodeData",
-                                        contentDescription = "登录二维码",
-                                        modifier = Modifier
-                                            .size(200.dp)
-                                            .padding(8.dp)
-                                    )
-                                    Text(
-                                        text = "使用抖音APP扫描上方二维码完成登录绑定",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        textAlign = TextAlign.Center,
-                                        modifier = Modifier.padding(top = 16.dp)
-                                    )
-                                } else {
-                                    // 显示加载状态
-                                    Column(
-                                        horizontalAlignment = Alignment.CenterHorizontally,
-                                        modifier = Modifier.padding(32.dp)
-                                    ) {
-                                        CircularProgressIndicator(
-                                            modifier = Modifier.size(48.dp)
-                                        )
-                                        Text(
-                                            text = "正在获取二维码...",
-                                            modifier = Modifier.padding(top = 16.dp),
-                                            style = MaterialTheme.typography.bodyMedium
-                                        )
-                                        Text(
-                                            text = "请稍候...",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.padding(top = 8.dp)
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // 重新加载按钮（用于故障恢复）
-                if (loginState == LoginState.NOT_LOGGED_IN) {
-                    item {
-                        OutlinedButton(
-                            onClick = { retryLoad() },
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Icon(Icons.Filled.Refresh, contentDescription = "刷新")
-                            Text("重新获取二维码", modifier = Modifier.padding(start = 8.dp))
-                        }
-                    }
-                }
             }
             
             // 后台WebView（不可见）
             Box(
                 modifier = Modifier
                     .size(1920.dp, 720.dp) // 根据用户偏好设置WebView尺寸
-                    .alpha(0f) // 完全透明，后台运行
+//                    .alpha(0f) // 完全透明，后台运行
             ) {
                 AndroidView(
                     factory = { ctx ->
                         WebView(ctx).apply {
                             webViewInstance = this
-                            
-                            // 配置WebView设置
-                            settings.javaScriptEnabled = true
-                            settings.domStorageEnabled = true
-                            settings.useWideViewPort = true
-                            settings.loadWithOverviewMode = true
-                            settings.builtInZoomControls = false
-                            settings.displayZoomControls = false
-                            settings.allowContentAccess = true
-                            settings.allowFileAccess = true
-                            
-                            // 设置PC模式User-Agent
-                            val pcUserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
-                            settings.userAgentString = pcUserAgent
-                            
+//                            // 清除所有域的WebView数据
+//                            clearCache(true)
+//                            clearHistory()
+//                            clearFormData()
+//
+//                            // 清除所有cookie
+//                            android.webkit.CookieManager.getInstance().apply {
+//                                removeAllCookies(null)
+//                                removeSessionCookies(null)
+//                                flush()
+//                            }
+//
+//                            // 清除WebStorage数据（包括localStorage和sessionStorage）
+//                            android.webkit.WebStorage.getInstance().deleteAllData()
+//
+//                            // 清除数据库
+//                            android.webkit.WebViewDatabase.getInstance(context).clearUsernamePassword()
+//                            android.webkit.WebViewDatabase.getInstance(context).clearHttpAuthUsernamePassword()
+//
+//                            // 清除应用缓存
+//                            // setAppCacheEnabled 在较新版本中已被弃用
+//                            settings.cacheMode = android.webkit.WebSettings.LOAD_NO_CACHE
+                            WebView.setWebContentsDebuggingEnabled(true)
+                            settings.apply {
+                                javaScriptEnabled = true
+                                displayZoomControls = true
+                                setSupportZoom(true)
+                                allowContentAccess = true
+                                javaScriptCanOpenWindowsAutomatically = true
+                                domStorageEnabled = true
+                                databaseEnabled = true
+                                useWideViewPort = true
+                                loadWithOverviewMode = true
+                                setDatabaseEnabled(true)
+                                setGeolocationEnabled(true)
+                                // 设置为PC浏览器模式
+                                userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                            }
                             // 创建WebAppInterface实例
                             val webAppInterface = WebAppInterface(
-                                scope,
-                                { qrCode ->
-                                    qrCodeData = qrCode
-                                    showQRCode = true
-                                    loadingState = false
-                                },
+                                scope, this,
                                 { secUid, nickname, avatar, userId ->
                                     // 登录成功处理
                                     val userAccount = UserAccountInfo(
@@ -577,6 +524,32 @@ fun DouyinAccountBindingScreen(
                                     scope.launch {
                                         loginRepository.saveDouyinAccount(boundAccount)
                                     }
+                                    // 调用ServerApiUtilsV2.bindDouyinLive保存绑定
+                                    scope.launch {
+                                        try {
+                                            val response = com.danshuang.AiLive.api.ServerApiUtilsV2.bindDouyinLive(
+                                                secUid = secUid,
+                                                nickname = nickname,
+                                                avatar = avatar,
+                                                userId = userId
+                                            )
+                                            if (response.success) {
+                                                Log.d("ServerApi", "抖音账户绑定成功")
+                                            } else {
+                                                Log.e("ServerApi", "抖音账户绑定失败: ${response.message}")
+                                                errorMessage = "绑定失败: ${response.message}"
+                                            }
+                                        } catch (e: UnknownHostException) {
+                                            Log.e("ServerApi", "网络连接错误", e)
+                                            errorMessage = "网络连接错误，请检查网络设置"
+                                        } catch (e: SocketTimeoutException) {
+                                            Log.e("ServerApi", "请求超时", e)
+                                            errorMessage = "请求超时，请稍后重试"
+                                        } catch (e: Exception) {
+                                            Log.e("ServerApi", "绑定抖音账户时出错", e)
+                                            errorMessage = "绑定失败: ${e.message}"
+                                        }
+                                    }
                                     
                                     Log.d("WebViewXHR", "User info saved successfully")
                                 },
@@ -595,6 +568,14 @@ fun DouyinAccountBindingScreen(
                                     Log.d("WebView", "Page finished loading: $url")
                                     
                                     if (view == null) return
+
+                                    if (url != null) {
+                                        if (url.indexOf("https://www.douyin.com/help")>=0) {
+                                            view.evaluateJavascript("document.querySelectorAll('button').forEach(btn => { if (btn.innerText.includes('登录')) btn.click(); });document.querySelector('#b4kMZDrJ > div').click()") { html ->
+                                                Log.d("WebView", "execute show login layer: $html")
+                                            }
+                                        }
+                                    }
                                     
                                     // 注入JavaScript代码以拦截XMLHttpRequest
                                     val jsCode = """
@@ -662,12 +643,12 @@ fun DouyinAccountBindingScreen(
                             }
                             
                             // 加载抖音用户主页
-                            loadUrl("https://www.douyin.com/user/self?from_tab_name=main")
+                            loadUrl("https://www.douyin.com/help")
                         }
                     },
                     modifier = Modifier
                         .size(1920.dp, 720.dp)
-                        .alpha(0f) // 完全透明，后台运行
+//                        .alpha(0f) // 完全透明，后台运行
                 )
             }
         }
