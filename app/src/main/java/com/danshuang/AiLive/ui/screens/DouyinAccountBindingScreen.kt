@@ -28,10 +28,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.datastore.preferences.preferencesDataStore
 import coil.compose.AsyncImage
+import com.danshuang.AiLive.api.ServerApiUtilsV2
 import com.danshuang.AiLive.data.LoginRepository
+import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.model.LoginState
 import com.danshuang.AiLive.data.model.UserAccountInfo
 import com.danshuang.AiLive.navigation.NavigationState
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.net.SocketTimeoutException
@@ -105,6 +108,20 @@ fun DouyinAccountBindingScreen(
                 qrCodeData = ""
                 loginState = LoginState.NOT_LOGGED_IN
                 errorMessage = null
+
+                // 清除所有cookie
+                android.webkit.CookieManager.getInstance().apply {
+                    removeAllCookies(null)
+                    removeSessionCookies(null)
+                    flush()
+                }
+
+                // 清除WebStorage数据（包括localStorage和sessionStorage）
+                android.webkit.WebStorage.getInstance().deleteAllData()
+
+                // 清除数据库
+                android.webkit.WebViewDatabase.getInstance(context).clearUsernamePassword()
+                android.webkit.WebViewDatabase.getInstance(context).clearHttpAuthUsernamePassword()
             } catch (e: Exception) {
                 Log.e("DouyinAccountBinding", "Error during logout", e)
                 errorMessage = "退出登录时出错: ${e.message}"
@@ -212,7 +229,7 @@ fun DouyinAccountBindingScreen(
                             
                             val secUid = userInfoMap["secUid"] ?: ""
                             val nickname = userInfoMap["nickname"] ?: ""
-                            val avatar = userInfoMap["avatarUrl"] ?: ""
+                            val avatar = userInfoMap["avatar300Url"] ?: ""
                             val userId = userInfoMap["uid"] ?: ""
                             onLoginSuccess(secUid, nickname, avatar, userId)
                         }
@@ -233,28 +250,6 @@ fun DouyinAccountBindingScreen(
                     IconButton(onClick = { navController.navigateUp() }) {
                         Icon(Icons.Filled.ArrowBack, contentDescription = "返回")
                     }
-                },
-                actions = {
-                    Box {
-                        IconButton(onClick = { showDropdownMenu = true }) {
-                            Icon(Icons.Filled.MoreVert, contentDescription = "更多选项")
-                        }
-                        DropdownMenu(
-                            expanded = showDropdownMenu,
-                            onDismissRequest = { showDropdownMenu = false }
-                        ) {
-                            DropdownMenuItem(
-                                text = { Text("网页调试") },
-                                onClick = { 
-                                    // 调试功能可以在这里实现
-                                    showDropdownMenu = false
-                                },
-                                leadingIcon = {
-                                    Icon(Icons.Filled.BugReport, contentDescription = "调试")
-                                }
-                            )
-                        }
-                    }
                 }
             )
         }
@@ -270,78 +265,6 @@ fun DouyinAccountBindingScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                item {
-                    Text(
-                        text = "抖音账户绑定",
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp)
-                    )
-                    
-                    Text(
-                        text = "通过扫码登录绑定您的抖音账户，以便进行直播互动。",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(bottom = 16.dp)
-                    )
-                }
-                
-                // 显示错误信息
-                errorMessage?.let { message ->
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer)
-                        ) {
-                            Column(
-                                modifier = Modifier.padding(16.dp)
-                            ) {
-                                Text(
-                                    text = message,
-                                    color = MaterialTheme.colorScheme.onErrorContainer
-                                )
-                                if (retryCount < 5) {
-                                    Button(
-                                        onClick = { retryLoad() },
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(top = 8.dp),
-                                        colors = ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.onError,
-                                            contentColor = MaterialTheme.colorScheme.errorContainer
-                                        )
-                                    ) {
-                                        Text("重试")
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-                
-                // 加载状态
-                if (loginState == LoginState.LOGGING_IN || loadingState) {
-                    item {
-                        Card(
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.padding(32.dp)
-                            ) {
-                                CircularProgressIndicator(
-                                    modifier = Modifier.size(48.dp)
-                                )
-                                Text(
-                                    text = "正在处理登录请求...",
-                                    modifier = Modifier.padding(top = 16.dp),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            }
-                        }
-                    }
-                }
-                
                 // 用户信息卡片（已登录状态）
                 if (loginState == LoginState.LOGGED_IN && showUserInfoCard && userAccountInfo != null) {
                     item {
@@ -394,32 +317,32 @@ fun DouyinAccountBindingScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(vertical = 4.dp)
                                 )
-                                
-                                // 直播状态
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                ) {
-                                    Icon(
-                                        imageVector = if (userAccountInfo?.isLive == true) Icons.Filled.LiveTv else Icons.Filled.TvOff,
-                                        contentDescription = null,
-                                        tint = if (userAccountInfo?.isLive == true) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
-                                        text = if (userAccountInfo?.isLive == true) "正在直播" else "未在直播",
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = if (userAccountInfo?.isLive == true) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.padding(start = 4.dp)
-                                    )
-                                }
-                                
-                                // 绑定时间
-                                Text(
-                                    text = "绑定时间: ${android.text.format.DateFormat.format("yyyy-MM-dd HH:mm", java.util.Date())}",
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 8.dp)
-                                )
+
+//                                // 直播状态
+//                                Row(
+//                                    verticalAlignment = Alignment.CenterVertically,
+//                                    modifier = Modifier.padding(vertical = 4.dp)
+//                                ) {
+//                                    Icon(
+//                                        imageVector = if (userAccountInfo?.isLive == true) Icons.Filled.LiveTv else Icons.Filled.TvOff,
+//                                        contentDescription = null,
+//                                        tint = if (userAccountInfo?.isLive == true) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant
+//                                    )
+//                                    Text(
+//                                        text = if (userAccountInfo?.isLive == true) "正在直播" else "未在直播",
+//                                        style = MaterialTheme.typography.bodyMedium,
+//                                        color = if (userAccountInfo?.isLive == true) Color.Red else MaterialTheme.colorScheme.onSurfaceVariant,
+//                                        modifier = Modifier.padding(start = 4.dp)
+//                                    )
+//                                }
+//
+//                                // 绑定时间
+//                                Text(
+//                                    text = "绑定时间: ${android.text.format.DateFormat.format("yyyy-MM-dd HH:mm", java.util.Date())}",
+//                                    style = MaterialTheme.typography.bodySmall,
+//                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+//                                    modifier = Modifier.padding(top = 8.dp)
+//                                )
                                 
                                 // 退出登录按钮
                                 Button(
@@ -444,7 +367,7 @@ fun DouyinAccountBindingScreen(
             Box(
                 modifier = Modifier
                     .size(1920.dp, 720.dp) // 根据用户偏好设置WebView尺寸
-//                    .alpha(0f) // 完全透明，后台运行
+                    .alpha(0f) // 完全透明，后台运行
             ) {
                 AndroidView(
                     factory = { ctx ->
@@ -527,17 +450,34 @@ fun DouyinAccountBindingScreen(
                                     // 调用ServerApiUtilsV2.bindDouyinLive保存绑定
                                     scope.launch {
                                         try {
-                                            val response = com.danshuang.AiLive.api.ServerApiUtilsV2.bindDouyinLive(
-                                                secUid = secUid,
+                                            // 首先获取token
+                                            val token = loginRepository.authToken.first() ?: ""
+                                            if (token.isEmpty()) {
+                                                Log.e("ServerApi", "获取token失败")
+                                                errorMessage = "获取认证信息失败"
+                                                return@launch
+                                            }
+                                            
+                                            // 创建ServerApiUtilsV2实例
+                                            val apiUtils = ServerApiUtilsV2.createFromContext(
+                                                context,
+                                                TokenManager(loginRepository),
+                                                loginRepository
+                                            )
+                                            
+                                            val response = apiUtils.bindDouyinLive(
+                                                token = token,
+                                                douyinId = secUid,
                                                 nickname = nickname,
                                                 avatar = avatar,
-                                                userId = userId
+                                                roomId = "", // 暂时使用空字符串，可以根据需要设置
+                                                userHomeUrl = "https://www.douyin.com/user/$secUid"
                                             )
-                                            if (response.success) {
+                                            if (response.isSuccess) {
                                                 Log.d("ServerApi", "抖音账户绑定成功")
                                             } else {
-                                                Log.e("ServerApi", "抖音账户绑定失败: ${response.message}")
-                                                errorMessage = "绑定失败: ${response.message}"
+                                                Log.e("ServerApi", "抖音账户绑定失败: ${response.msg}")
+                                                errorMessage = "绑定失败: ${response.msg}"
                                             }
                                         } catch (e: UnknownHostException) {
                                             Log.e("ServerApi", "网络连接错误", e)
@@ -612,30 +552,6 @@ fun DouyinAccountBindingScreen(
                                     }
                                 }
                                 
-                                override fun onReceivedError(view: WebView?, request: WebResourceRequest?, error: android.webkit.WebResourceError?) {
-                                    super.onReceivedError(view, request, error)
-                                    Log.e("WebView", "WebView error: ${error?.description}")
-                                    
-                                    // 检查是否为网络错误
-                                    when {
-                                        error?.errorCode == android.webkit.WebViewClient.ERROR_HOST_LOOKUP -> {
-                                            errorMessage = "网络连接错误，请检查网络设置"
-                                        }
-                                        error?.errorCode == android.webkit.WebViewClient.ERROR_TIMEOUT -> {
-                                            errorMessage = "请求超时，请稍后重试"
-                                        }
-                                        error?.errorCode == android.webkit.WebViewClient.ERROR_CONNECT -> {
-                                            errorMessage = "连接失败，请检查网络连接"
-                                        }
-                                        else -> {
-                                            errorMessage = "加载页面时出错: ${error?.description}"
-                                        }
-                                    }
-                                    
-                                    loadingState = false
-                                    showQRCode = true
-                                }
-                                
                                 override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                     // 允许所有URL加载
                                     return false
@@ -648,7 +564,7 @@ fun DouyinAccountBindingScreen(
                     },
                     modifier = Modifier
                         .size(1920.dp, 720.dp)
-//                        .alpha(0f) // 完全透明，后台运行
+                        .alpha(0f) // 完全透明，后台运行
                 )
             }
         }
