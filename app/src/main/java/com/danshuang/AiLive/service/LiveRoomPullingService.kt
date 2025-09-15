@@ -763,9 +763,9 @@ class LiveRoomPullingService : Service() {
 //                        }
 
                         // 创建新的WebView实例
-                        if (webView == null)
+                        if (webView == null) {
                             webView = WebView(this@LiveRoomPullingService)
-
+                        }
                         gLiveRoomLoaded = false
                         webView?.tag = false
                         

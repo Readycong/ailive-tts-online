@@ -111,7 +111,7 @@ fun DouyinAccountBindingScreen(
                 // 清除抖音账户绑定信息
                 loginRepository.clearDouyinAccount()
                 Log.d("DouyinAccountBinding", "Cleared douyin account info")
-                
+
                 // 重置状态
                 isUserLoggedIn = false
                 showUserInfoCard = false
@@ -123,33 +123,36 @@ fun DouyinAccountBindingScreen(
                 loginPageUrl = "https://www.douyin.com/help"
                 Log.d("DouyinAccountBinding", "Reset state variables")
 
-                // 清除所有cookie
-                try {
-                    android.webkit.CookieManager.getInstance().apply {
-                        removeAllCookies(null)
-                        removeSessionCookies(null)
-                        flush()
+                if(false) {
+                    // 清除所有cookie
+                    try {
+                        android.webkit.CookieManager.getInstance().apply {
+                            removeSessionCookies(null)
+                            setCookie("https://www.douyin.com", ""); // 清除指定域下的Cookie
+                            flush()
+                        }
+                        Log.d("DouyinAccountBinding", "Cleared cookies")
+                    } catch (e: Exception) {
+                        Log.e("DouyinAccountBinding", "Error clearing cookies", e)
                     }
-                    Log.d("DouyinAccountBinding", "Cleared cookies")
-                } catch (e: Exception) {
-                    Log.e("DouyinAccountBinding", "Error clearing cookies", e)
-                }
 
-                // 清除WebStorage数据（包括localStorage和sessionStorage）
-                try {
-                    android.webkit.WebStorage.getInstance().deleteAllData()
-                    Log.d("DouyinAccountBinding", "Cleared web storage")
-                } catch (e: Exception) {
-                    Log.e("DouyinAccountBinding", "Error clearing web storage", e)
-                }
+                    // 清除WebStorage数据（包括localStorage和sessionStorage）
+                    try {
+                        android.webkit.WebStorage.getInstance().deleteAllData()
+                        Log.d("DouyinAccountBinding", "Cleared web storage")
+                    } catch (e: Exception) {
+                        Log.e("DouyinAccountBinding", "Error clearing web storage", e)
+                    }
 
-                // 清除数据库
-                try {
-                    android.webkit.WebViewDatabase.getInstance(context).clearUsernamePassword()
-                    android.webkit.WebViewDatabase.getInstance(context).clearHttpAuthUsernamePassword()
-                    Log.d("DouyinAccountBinding", "Cleared webview database")
-                } catch (e: Exception) {
-                    Log.e("DouyinAccountBinding", "Error clearing webview database", e)
+                    // 清除数据库
+                    try {
+                        android.webkit.WebViewDatabase.getInstance(context).clearUsernamePassword()
+                        android.webkit.WebViewDatabase.getInstance(context)
+                            .clearHttpAuthUsernamePassword()
+                        Log.d("DouyinAccountBinding", "Cleared webview database")
+                    } catch (e: Exception) {
+                        Log.e("DouyinAccountBinding", "Error clearing webview database", e)
+                    }
                 }
                 
                 // 重新加载WebView以显示登录页面
@@ -210,23 +213,23 @@ fun DouyinAccountBindingScreen(
 
                     var isInLoginState = false
                     // 拦截登录验证请求
-                    if (url?.contains("/web/query/user") == true && status == 200) {
-                        Log.d("WebViewXHR", "User info response received")
-                        // 解析用户信息数据
-                        response?.let { jsonResponse ->
-                            try {
-                                val jsonObject = JSONObject(jsonResponse)
-                                if (jsonObject.has("user_uid")) {
-                                    if (jsonObject.optString("user_uid", "").length > 1) {
-                                        isInLoginState = true
-                                    }
-                                }
-                            } catch (e: Exception) {
-                                Log.e("WebViewXHR", "Error parsing user info data", e)
-                                onError("解析用户信息数据时出错: ${e.message}")
-                            }
-                        }
-                    }
+//                    if (url?.contains("/web/query/user") == true && status == 200) {
+//                        Log.d("WebViewXHR", "User info response received")
+//                        // 解析用户信息数据
+//                        response?.let { jsonResponse ->
+//                            try {
+//                                val jsonObject = JSONObject(jsonResponse)
+//                                if (jsonObject.has("user_uid")) {
+//                                    if (jsonObject.optString("user_uid", "").length > 1) {
+//                                        isInLoginState = true
+//                                    }
+//                                }
+//                            } catch (e: Exception) {
+//                                Log.e("WebViewXHR", "Error parsing user info data", e)
+//                                onError("解析用户信息数据时出错: ${e.message}")
+//                            }
+//                        }
+//                    }
                     if (url?.contains("/aweme/favorite/") == true && status == 200) {
                         Log.d("WebViewXHR", "Login validation response received")
                         // 解析登录验证数据
