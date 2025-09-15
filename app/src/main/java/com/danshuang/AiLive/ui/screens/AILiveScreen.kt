@@ -42,6 +42,7 @@ import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.api.ServerApiUtilsV2
 import com.danshuang.AiLive.service.LiveRoomPullingService.Companion.PULLING_STATE_RECONNECT
+import com.danshuang.AiLive.util.Utils
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -870,7 +871,7 @@ private fun WebViewControlSection(
                                 setDatabaseEnabled(true)
                                 setGeolocationEnabled(true)
                                 // 设置为PC浏览器模式
-                                userAgentString = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+                                userAgentString = Utils.userAgent
                             }
                         }
                     },

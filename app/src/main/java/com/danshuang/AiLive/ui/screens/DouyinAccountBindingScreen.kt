@@ -39,6 +39,7 @@ import kotlinx.coroutines.launch
 import org.json.JSONObject
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import com.danshuang.AiLive.util.Utils
 
 // DataStore实例
 private val Context.dataStore by preferencesDataStore(name = "login_prefs")
@@ -66,13 +67,13 @@ fun DouyinAccountBindingScreen(
     var loginState by remember { mutableStateOf(LoginState.NOT_LOGGED_IN) }
     var retryCount by remember { mutableStateOf(0) }
     var lastErrorTime by remember { mutableStateOf(0L) }
-    var loginPageUrl by remember { mutableStateOf("about:blank") }
+    var loginPageUrl by remember { mutableStateOf("https://www.douyin.com/help") }
     
     // 初始化时检查本地存储的登录信息
     LaunchedEffect(Unit) {
         try {
             Log.d("DouyinAccountBinding", "Checking initial login status")
-            val douyinAccount = loginRepository.getDouyinAccount()
+            val douyinAccount: UserAccountInfo? = null
             if (douyinAccount != null && douyinAccount.userId.isNotEmpty()) {
                 Log.d("DouyinAccountBinding", "User is logged in with account: ${douyinAccount.userId}")
                 isUserLoggedIn = true
@@ -367,18 +368,16 @@ fun DouyinAccountBindingScreen(
                             }
                         }
                     }
-                } else {
-                    Log.d("DouyinAccountBinding", "Not showing user info card: loginState=$loginState, showUserInfoCard=$showUserInfoCard, userAccountInfo=${userAccountInfo != null}")
+                }
+//                else {
+//                    Log.d("DouyinAccountBinding", "Not showing user info card: loginState=$loginState, showUserInfoCard=$showUserInfoCard, userAccountInfo=${userAccountInfo != null}")
                     item {
                         Box(
                             modifier = Modifier.size(1920.dp, 720.dp) // 根据用户偏好设置WebView尺寸
                         ) {
                             AndroidView(
                                 factory = { ctx ->
-                                    Log.d(
-                                        "DouyinAccountBinding",
-                                        "Creating WebView with loginState: $loginState"
-                                    )
+                                    Log.d("DouyinAccountBinding", "Creating WebView with loginState: $loginState")
                                     WebView(ctx).apply {
                                         webViewInstance = this
                                         WebView.setWebContentsDebuggingEnabled(true)
@@ -395,16 +394,12 @@ fun DouyinAccountBindingScreen(
                                             setDatabaseEnabled(true)
                                             setGeolocationEnabled(true)
                                             // 设置为PC浏览器模式
-                                            userAgentString =
-                                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                                            userAgentString = Utils.userAgent
                                         }
-
+                                        
                                         // 根据登录状态决定加载的页面
                                         if (loginState != LoginState.LOGGED_IN) {
-                                            Log.d(
-                                                "DouyinAccountBinding",
-                                                "WebView loading login page"
-                                            )
+                                            Log.d("DouyinAccountBinding", "WebView loading login page")
                                             // 未登录时加载登录页面
                                             // 创建WebAppInterface实例
                                             val webAppInterface = WebAppInterface(
@@ -419,7 +414,7 @@ fun DouyinAccountBindingScreen(
                                                         homeUrl = "https://www.douyin.com/user/$secUid",
                                                         isLive = false // 默认为未直播
                                                     )
-
+                                                    
                                                     userAccountInfo = userAccount
                                                     isUserLoggedIn = true
                                                     showUserInfoCard = true
@@ -428,44 +423,38 @@ fun DouyinAccountBindingScreen(
                                                     loginState = LoginState.LOGGED_IN
                                                     retryCount = 0 // 重置重试计数
                                                     errorMessage = null
-
+                                                    
                                                     // 保存用户信息到本地存储
-                                                    val boundAccount =
-                                                        com.danshuang.AiLive.data.model.BoundAccountInfo(
-                                                            platform = com.danshuang.AiLive.data.model.PlatformType.DOUYIN,
-                                                            avatar = avatar,
-                                                            nickname = nickname,
-                                                            userId = userId,
-                                                            homeUrl = "https://www.douyin.com/user/$secUid",
-                                                            isLive = false,
-                                                            bindTime = System.currentTimeMillis()
-                                                        )
+                                                    val boundAccount = com.danshuang.AiLive.data.model.BoundAccountInfo(
+                                                        platform = com.danshuang.AiLive.data.model.PlatformType.DOUYIN,
+                                                        avatar = avatar,
+                                                        nickname = nickname,
+                                                        userId = userId,
+                                                        homeUrl = "https://www.douyin.com/user/$secUid",
+                                                        isLive = false,
+                                                        bindTime = System.currentTimeMillis()
+                                                    )
                                                     scope.launch {
-                                                        loginRepository.saveDouyinAccount(
-                                                            boundAccount
-                                                        )
+                                                        loginRepository.saveDouyinAccount(boundAccount)
                                                     }
                                                     // 调用ServerApiUtilsV2.bindDouyinLive保存绑定
                                                     scope.launch {
                                                         try {
                                                             // 首先获取token
-                                                            val token =
-                                                                loginRepository.authToken.first()
-                                                                    ?: ""
+                                                            val token = loginRepository.authToken.first() ?: ""
                                                             if (token.isEmpty()) {
                                                                 Log.e("ServerApi", "获取token失败")
                                                                 errorMessage = "获取认证信息失败"
                                                                 return@launch
                                                             }
-
+                                                            
                                                             // 创建ServerApiUtilsV2实例
-                                                            val apiUtils =
-                                                                ServerApiUtilsV2.createFromContext(
-                                                                    context,
-                                                                    TokenManager(loginRepository),
-                                                                    loginRepository
-                                                                )
-
+                                                            val apiUtils = ServerApiUtilsV2.createFromContext(
+                                                                context,
+                                                                TokenManager(loginRepository),
+                                                                loginRepository
+                                                            )
+                                                            
                                                             val response = apiUtils.bindDouyinLive(
                                                                 token = token,
                                                                 douyinId = secUid,
@@ -475,70 +464,52 @@ fun DouyinAccountBindingScreen(
                                                                 userHomeUrl = "https://www.douyin.com/user/$secUid"
                                                             )
                                                             if (response.isSuccess) {
-                                                                Log.d(
-                                                                    "ServerApi",
-                                                                    "抖音账户绑定成功"
-                                                                )
+                                                                Log.d("ServerApi", "抖音账户绑定成功")
                                                             } else {
-                                                                Log.e(
-                                                                    "ServerApi",
-                                                                    "抖音账户绑定失败: ${response.msg}"
-                                                                )
-                                                                errorMessage =
-                                                                    "绑定失败: ${response.msg}"
+                                                                Log.e("ServerApi", "抖音账户绑定失败: ${response.msg}")
+                                                                errorMessage = "绑定失败: ${response.msg}"
                                                             }
                                                         } catch (e: UnknownHostException) {
                                                             Log.e("ServerApi", "网络连接错误", e)
-                                                            errorMessage =
-                                                                "网络连接错误，请检查网络设置"
+                                                            errorMessage = "网络连接错误，请检查网络设置"
                                                         } catch (e: SocketTimeoutException) {
                                                             Log.e("ServerApi", "请求超时", e)
                                                             errorMessage = "请求超时，请稍后重试"
                                                         } catch (e: Exception) {
-                                                            Log.e(
-                                                                "ServerApi",
-                                                                "绑定抖音账户时出错",
-                                                                e
-                                                            )
+                                                            Log.e("ServerApi", "绑定抖音账户时出错", e)
                                                             errorMessage = "绑定失败: ${e.message}"
                                                         }
                                                     }
-
-                                                    Log.d(
-                                                        "WebViewXHR",
-                                                        "User info saved successfully"
-                                                    )
+                                                    
+                                                    Log.d("WebViewXHR", "User info saved successfully")
+                                                    loginPageUrl = "about:blank"
+                                                    // 加载空白页以停止WebView活动
+                                                    this.loadUrl("about:blank")
                                                 },
                                                 { error ->
                                                     errorMessage = error
                                                 }
                                             )
-
+                                            
                                             // 添加JavaScript接口以拦截XHR请求
                                             addJavascriptInterface(webAppInterface, "Android")
-
+                                            
                                             // 设置WebViewClient以处理页面加载
                                             webViewClient = object : WebViewClient() {
-                                                override fun onPageFinished(
-                                                    view: WebView?,
-                                                    url: String?
-                                                ) {
+                                                override fun onPageFinished(view: WebView?, url: String?) {
                                                     super.onPageFinished(view, url)
                                                     Log.d("WebView", "Page finished loading: $url")
-
+                                                    
                                                     if (view == null) return
 
                                                     if (url != null) {
-                                                        if (url.indexOf("https://www.douyin.com/help") >= 0) {
+                                                        if (url.indexOf("https://www.douyin.com/help")>=0) {
                                                             view.evaluateJavascript("document.querySelectorAll('button').forEach(btn => { if (btn.innerText.includes('登录')) btn.click(); });document.querySelector('#b4kMZDrJ > div').click()") { html ->
-                                                                Log.d(
-                                                                    "WebView",
-                                                                    "execute show login layer: $html"
-                                                                )
+                                                                Log.d("WebView", "execute show login layer: $html")
                                                             }
                                                         }
                                                     }
-
+                                                    
                                                     // 注入JavaScript代码以拦截XMLHttpRequest
                                                     val jsCode = """
                                             (function() {
@@ -564,42 +535,54 @@ fun DouyinAccountBindingScreen(
                                                 };
                                             })();
                                         """.trimIndent()
-
+                                                    
                                                     view.evaluateJavascript(jsCode, null)
                                                     webViewLoaded = true
-
+                                                    
                                                     // 如果是初始加载，显示加载状态
                                                     if (!isUserLoggedIn && qrCodeData.isEmpty()) {
                                                         loadingState = true
                                                     }
                                                 }
-
-                                                override fun shouldOverrideUrlLoading(
-                                                    view: WebView?,
-                                                    request: WebResourceRequest?
-                                                ): Boolean {
+                                                
+                                                override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
                                                     // 允许所有URL加载
                                                     return false
                                                 }
                                             }
-
+                                            
                                             // 加载抖音用户主页
                                             loadUrl(loginPageUrl)
                                         } else {
-                                            Log.d(
-                                                "DouyinAccountBinding",
-                                                "WebView loading blank page as user is logged in"
-                                            )
+                                            Log.d("DouyinAccountBinding", "WebView loading blank page as user is logged in")
                                             // 已登录时加载空白页面
                                             loadUrl("about:blank")
                                         }
                                     }
                                 },
-                                modifier = Modifier.size(1920.dp, 720.dp)
+                                update = { webView ->
+                                    Log.d("DouyinAccountBinding", "Updating WebView with loginPageUrl: $loginPageUrl, loginState: $loginState")
+                                    // 根据登录状态决定加载的页面
+                                    if (loginState != LoginState.LOGGED_IN) {
+                                        // 未登录时加载登录页面
+                                        if (webView.url != loginPageUrl) {
+                                            Log.d("DouyinAccountBinding", "Loading new loginPageUrl: $loginPageUrl")
+                                            webView.loadUrl(loginPageUrl)
+                                        }
+                                    } else {
+                                        // 已登录时加载空白页面
+                                        if (webView.url != "about:blank") {
+                                            Log.d("DouyinAccountBinding", "Loading blank page as user is logged in")
+                                            webView.loadUrl("about:blank")
+                                        }
+                                    }
+                                },
+                                modifier = Modifier
+                                    .size(1920.dp, 720.dp)
                             )
                         }
                     }
-                }
+
             }
         }
     }

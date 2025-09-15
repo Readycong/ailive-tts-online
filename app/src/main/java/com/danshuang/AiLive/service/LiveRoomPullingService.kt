@@ -790,8 +790,7 @@ class LiveRoomPullingService : Service() {
                             settings?.allowFileAccess = true
 
                             // 设置PC模式User-Agent
-                            val pcUserAgent =
-                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
+                            val pcUserAgent = Utils.userAgent
                             settings?.userAgentString = pcUserAgent
 
                             webView?.addJavascriptInterface(
