@@ -136,11 +136,12 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         )
 
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
+            horizontalArrangement = Arrangement.spacedBy(0.dp)
         ) {
             items(quickShopSettingActions) { action ->
                 QuickActionVectorCard(
-                    data = action
+                    data = action,
+                    modifier = Modifier.padding(horizontal = 0.dp)
                 )
             }
         }
@@ -209,7 +210,8 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         ) {
             items(quickLiveScriptActions) { action ->
                 QuickActionCard(
-                    action = action
+                    action = action,
+                    modifier = Modifier.padding(horizontal = 0.dp)
                 )
             }
         }

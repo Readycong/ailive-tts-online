@@ -365,7 +365,8 @@ fun AccountBindingScreen(
                                     }
                                 }
                             },
-                            isEnabled = accountUrl.text.isNotBlank()
+                            isEnabled = accountUrl.text.isNotBlank(),
+                            navController = navController
                         )
                     }
                     BindingStep.ACCOUNT_PREVIEW -> {
@@ -411,7 +412,8 @@ private fun UrlInputStep(
     accountUrl: TextFieldValue,
     onUrlChange: (TextFieldValue) -> Unit,
     onNextStep: () -> Unit,
-    isEnabled: Boolean
+    isEnabled: Boolean,
+    navController: NavigationState
 ) {
     Column(
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -458,29 +460,66 @@ private fun UrlInputStep(
                 }
             )
         }
-        
-        // 下一步按钮
-        Button(
-            onClick = onNextStep,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(56.dp),
-            enabled = isEnabled
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
         ) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.Center
+            // 登录绑定按钮
+            Button(
+                onClick = { navController.navigateToDouyinAccountBinding() },
+                modifier = Modifier
+                    .width(120.dp)
+                    .height(56.dp),
+                colors = ButtonColors(
+                    containerColor = MaterialTheme.colorScheme.secondary,
+                    contentColor = Color.White,
+                    disabledContainerColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                    disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
             ) {
-                Text(
-                    text = "下一步",
-                    fontSize = 16.sp
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Icon(
-                    imageVector = Icons.Filled.ArrowForward,
-                    contentDescription = "下一步",
-                    modifier = Modifier.size(20.dp)
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "登录",
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Filled.VerifiedUser,
+                        contentDescription = "登录",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.width(24.dp))
+
+            // 下一步按钮
+            Button(
+                onClick = onNextStep,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp),
+                enabled = isEnabled
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = "下一步",
+                        fontSize = 16.sp
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Icon(
+                        imageVector = Icons.Filled.ArrowForward,
+                        contentDescription = "下一步",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
             }
         }
     }

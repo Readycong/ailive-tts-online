@@ -59,7 +59,7 @@ fun QuickActionCard(
 ) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
-        modifier = modifier.width(64.dp)
+        modifier = modifier.width(60.dp)
     ) {
         Card(
             onClick = action.onClick,
