@@ -1,0 +1,284 @@
+{
+    "card_list": [
+        {
+            "card_id": "",
+            "card_url": "",
+            "is_selected": false,
+            "use_new": true,
+            "card_base_info": {
+                "card_id": "7435944554898950962",
+                "auth_type": 0,
+                "is_showing": false,
+                "live_card_type": 4,
+                "business_id": "0",
+                "product_status": 1,
+                "create_time": 1731315757
+            },
+            "product_base_info": {
+                "product_id": "1815415785987083",
+                "name": "【会员专属】门店会员专属轻妆丝绒眉",
+                "image_info": [
+                    {
+                        "web_url": "https://p3-sign.douyinpic.com/tos-cn-i-hf2m9xxmck/a1e5015c6ca941209b5081c53eca92c0~tplv-gtx4xrkekc-compress-cover:450:450.jpeg?lk3s=f829fba0\u0026x-expires=1758009600\u0026x-signature=HlhEoNKvvyPddGLcvwx97%2FXVjjg%3D\u0026from=4163500960",
+                        "web_uri": "tos-cn-i-hf2m9xxmck/a1e5015c6ca941209b5081c53eca92c0"
+                    }
+                ],
+                "poi": {
+                    "shop_info": "美伦颜·纹眉护肤 55家门店可用",
+                    "DeliveryFee": "",
+                    "PoiMarketingCopy": ""
+                },
+                "sku_count": 1,
+                "product_type": 1,
+                "product_sub_type": 0,
+                "category_id": 17007001,
+                "biz_code": "general",
+                "biz_type": {
+                    "full": "",
+                    "prefix": ""
+                },
+                "product_bizline": 1,
+                "product_pattern_type": 0,
+                "lynx_url": "aweme://webview/?rn_schema=aweme%3A%2F%2Freactnative%2F%3Factivity_id%3D1815415785987083%26biz_code%3Dgeneral%26bundle%3Dindex.js%26channel%3Dmp_lynx_groupon_detail%26enter_from%3Dlivebroadcasting%26groupon_channel%3Dlink%26hide_nav_bar%3D1%26module_name%3Dpage_groupon_detail%26sale_channel%3Ddefault.live.default%26sold_scene%3D1\u0026url=https%3A%2F%2Flife.scsjsd.com%2Ffalcon%2Fpoi_mwa%2Ftrade_detail%3Factivity_id%3D1815415785987083%26biz_code%3Dgeneral%26enter_from%3Dlivebroadcasting%26groupon_channel%3Dlink%26hide_nav_bar%3D1%26sale_channel%3Ddefault.live.default%26sold_scene%3D1\u0026force_full_screen=1",
+                "poi_url": "sslocal://poi/detail?id=7479716631950657555\u0026enter_from=livebroadcasting\u0026biz_code=general\u0026request_params=%7B%22delivery_industry_param%22%3A%22%7B%5C%22click_source%5C%22%3A%5C%22live%5C%22%2C%5C%22landing_product_id%5C%22%3A%5C%221815415785987083%5C%22%7D%22%2C%22live_anchor_id%22%3A%222056511742029369%22%2C%22room_id%22%3A%220%22%2C%22specify_poi_id%22%3A%22%22%7D\u0026header_params=%7B%22RPC-PERSIST-LANE-C-LIFE-BIZ-CODE%22%3A%22general%22%2C%22RPC-PERSIST-LANE-C-SALE-CHANNEL%22%3A%22%22%7D"
+            },
+            "stock_info": {
+                "sold": [
+                    "已售",
+                    "74"
+                ],
+                "stock": [
+                    "库存",
+                    "99万+"
+                ],
+                "stock_num": 9999999930
+            },
+            "price_info": {
+                "actual_price": 479900,
+                "origin_price": 497600,
+                "discount": "9.7折",
+                "display_origin_price": true
+            },
+            "cps_info": {
+                "need_invoice": false
+            },
+            "marketing_info": {},
+            "governance_info": {},
+            "label_info": {
+                "product_type_desc": "",
+                "goods_label": 0,
+                "right_list": [
+                    "周一至周日可用",
+                    "随时退"
+                ],
+                "service_label": {
+                    "common_label_list": [
+                        {
+                            "label_type": 1,
+                            "label_content": {
+                                "data": "{\"text\":\"周一至周日可用\",\"text_color\":\"rgba(22, 24, 35, 0.5)\",\"background_color\":\"rgba(22, 24, 35, 0.05)\"}",
+                                "template": "{\"text\":{\"custom_style\":{\"backgroundColor\":\"{{background_color}}\",\"borderRadius\":2,\"color\":\"{{text_color}}\",\"fontSize\":10,\"height\":16,\"lineHeight\":\"16px\",\"padding\":\"0 4px\"},\"text\":\"{{text}}\"}}"
+                            }
+                        },
+                        {
+                            "label_type": 1,
+                            "label_content": {
+                                "data": "{\"text\":\"随时退\",\"text_color\":\"rgba(22, 24, 35, 0.5)\",\"background_color\":\"rgba(22, 24, 35, 0.05)\"}",
+                                "template": "{\"text\":{\"custom_style\":{\"backgroundColor\":\"{{background_color}}\",\"borderRadius\":2,\"color\":\"{{text_color}}\",\"fontSize\":10,\"height\":16,\"lineHeight\":\"16px\",\"padding\":\"0 4px\"},\"text\":\"{{text}}\"}}"
+                            }
+                        }
+                    ]
+                }
+            },
+            "ab_params": "{\"service_label\":1}"
+        },
+        {
+            "card_id": "",
+            "card_url": "",
+            "is_selected": false,
+            "use_new": true,
+            "card_base_info": {
+                "card_id": "7478152743631276826",
+                "auth_type": 0,
+                "is_showing": false,
+                "live_card_type": 4,
+                "business_id": "0",
+                "product_status": 1,
+                "create_time": 1741143117
+            },
+            "product_base_info": {
+                "product_id": "1825720614212633",
+                "name": "【门店爆款】专属纹眉套餐",
+                "image_info": [
+                    {
+                        "web_url": "https://p3-sign.douyinpic.com/tos-cn-i-hf2m9xxmck/64ead153ed694644bd344010391d49af~tplv-gtx4xrkekc-compress-cover:450:450.jpeg?lk3s=f829fba0\u0026x-expires=1758009600\u0026x-signature=VXZvj0PDm4pcTUkgeDnM7bCGA44%3D\u0026from=4163500960",
+                        "web_uri": "tos-cn-i-hf2m9xxmck/64ead153ed694644bd344010391d49af"
+                    }
+                ],
+                "poi": {
+                    "shop_info": "美伦颜·纹眉护肤 6家门店可用",
+                    "DeliveryFee": "",
+                    "PoiMarketingCopy": ""
+                },
+                "sku_count": 1,
+                "product_type": 1,
+                "product_sub_type": 0,
+                "category_id": 17007001,
+                "biz_code": "general",
+                "biz_type": {
+                    "full": "",
+                    "prefix": ""
+                },
+                "product_bizline": 1,
+                "product_pattern_type": 0,
+                "lynx_url": "aweme://webview/?rn_schema=aweme%3A%2F%2Freactnative%2F%3Factivity_id%3D1825720614212633%26biz_code%3Dgeneral%26bundle%3Dindex.js%26channel%3Dmp_lynx_groupon_detail%26enter_from%3Dlivebroadcasting%26groupon_channel%3Dlink%26hide_nav_bar%3D1%26module_name%3Dpage_groupon_detail%26sale_channel%3Ddefault.live.default%26sold_scene%3D1\u0026url=https%3A%2F%2Flife.scsjsd.com%2Ffalcon%2Fpoi_mwa%2Ftrade_detail%3Factivity_id%3D1825720614212633%26biz_code%3Dgeneral%26enter_from%3Dlivebroadcasting%26groupon_channel%3Dlink%26hide_nav_bar%3D1%26sale_channel%3Ddefault.live.default%26sold_scene%3D1\u0026force_full_screen=1",
+                "poi_url": "sslocal://poi/detail?id=7416913485126338612\u0026enter_from=livebroadcasting\u0026biz_code=general\u0026request_params=%7B%22delivery_industry_param%22%3A%22%7B%5C%22click_source%5C%22%3A%5C%22live%5C%22%2C%5C%22landing_product_id%5C%22%3A%5C%221825720614212633%5C%22%7D%22%2C%22live_anchor_id%22%3A%222056511742029369%22%2C%22room_id%22%3A%220%22%2C%22specify_poi_id%22%3A%22%22%7D\u0026header_params=%7B%22RPC-PERSIST-LANE-C-LIFE-BIZ-CODE%22%3A%22general%22%2C%22RPC-PERSIST-LANE-C-SALE-CHANNEL%22%3A%22%22%7D"
+            },
+            "stock_info": {
+                "sold": [
+                    "已售",
+                    "1"
+                ],
+                "stock": [
+                    "库存",
+                    "99万+"
+                ],
+                "stock_num": 10000000000
+            },
+            "price_info": {
+                "actual_price": 199900,
+                "origin_price": 480090,
+                "discount": "4.2折",
+                "display_origin_price": true
+            },
+            "cps_info": {
+                "need_invoice": false
+            },
+            "marketing_info": {},
+            "governance_info": {},
+            "label_info": {
+                "product_type_desc": "",
+                "goods_label": 0,
+                "right_list": [
+                    "周一至周日可用",
+                    "随时退"
+                ],
+                "service_label": {
+                    "common_label_list": [
+                        {
+                            "label_type": 1,
+                            "label_content": {
+                                "data": "{\"text\":\"周一至周日可用\",\"text_color\":\"rgba(22, 24, 35, 0.5)\",\"background_color\":\"rgba(22, 24, 35, 0.05)\"}",
+                                "template": "{\"text\":{\"custom_style\":{\"backgroundColor\":\"{{background_color}}\",\"borderRadius\":2,\"color\":\"{{text_color}}\",\"fontSize\":10,\"height\":16,\"lineHeight\":\"16px\",\"padding\":\"0 4px\"},\"text\":\"{{text}}\"}}"
+                            }
+                        },
+                        {
+                            "label_type": 1,
+                            "label_content": {
+                                "data": "{\"text\":\"随时退\",\"text_color\":\"rgba(22, 24, 35, 0.5)\",\"background_color\":\"rgba(22, 24, 35, 0.05)\"}",
+                                "template": "{\"text\":{\"custom_style\":{\"backgroundColor\":\"{{background_color}}\",\"borderRadius\":2,\"color\":\"{{text_color}}\",\"fontSize\":10,\"height\":16,\"lineHeight\":\"16px\",\"padding\":\"0 4px\"},\"text\":\"{{text}}\"}}"
+                            }
+                        }
+                    ]
+                }
+            },
+            "ab_params": "{\"service_label\":1}"
+        },
+        {
+            "card_id": "",
+            "card_url": "",
+            "is_selected": false,
+            "use_new": true,
+            "card_base_info": {
+                "card_id": "7520103813764762402",
+                "auth_type": 0,
+                "is_showing": false,
+                "live_card_type": 4,
+                "business_id": "0",
+                "product_status": 1,
+                "create_time": 1750910611
+            },
+            "product_base_info": {
+                "product_id": "1835962558791739",
+                "name": "【门店爆款】男士专属定制眉",
+                "image_info": [
+                    {
+                        "web_url": "https://p3-sign.douyinpic.com/tos-cn-i-hf2m9xxmck/386bdb9db9714a069360f735691c44ae~tplv-gtx4xrkekc-compress-cover:450:450.jpeg?lk3s=f829fba0\u0026x-expires=1758009600\u0026x-signature=BAMYz3yImkxE%2FhlMI5yvHynFBvk%3D\u0026from=4163500960",
+                        "web_uri": "tos-cn-i-hf2m9xxmck/386bdb9db9714a069360f735691c44ae"
+                    }
+                ],
+                "poi": {
+                    "shop_info": "美伦颜·纹眉护肤 47家门店可用",
+                    "DeliveryFee": "",
+                    "PoiMarketingCopy": ""
+                },
+                "sku_count": 1,
+                "product_type": 22,
+                "product_sub_type": 2201,
+                "category_id": 17007001,
+                "biz_code": "general",
+                "biz_type": {
+                    "full": "",
+                    "prefix": ""
+                },
+                "product_bizline": 1,
+                "product_pattern_type": 0,
+                "lynx_url": "aweme://webview/?rn_schema=aweme%3A%2F%2Freactnative%2F%3Factivity_id%3D1835962558791739%26biz_code%3Dgeneral%26bundle%3Dindex.js%26channel%3Dmp_lynx_groupon_detail%26enter_from%3Dlivebroadcasting%26groupon_channel%3Dlink%26hide_nav_bar%3D1%26module_name%3Dpage_groupon_detail%26sale_channel%3Ddefault.live.default%26sold_scene%3D1\u0026url=https%3A%2F%2Flife.scsjsd.com%2Ffalcon%2Fpoi_mwa%2Ftrade_detail%3Factivity_id%3D1835962558791739%26biz_code%3Dgeneral%26enter_from%3Dlivebroadcasting%26groupon_channel%3Dlink%26hide_nav_bar%3D1%26sale_channel%3Ddefault.live.default%26sold_scene%3D1\u0026force_full_screen=1",
+                "poi_url": "sslocal://poi/detail?id=7479716631950657555\u0026enter_from=livebroadcasting\u0026biz_code=general\u0026request_params=%7B%22delivery_industry_param%22%3A%22%7B%5C%22click_source%5C%22%3A%5C%22live%5C%22%2C%5C%22landing_product_id%5C%22%3A%5C%221835962558791739%5C%22%7D%22%2C%22live_anchor_id%22%3A%222056511742029369%22%2C%22room_id%22%3A%220%22%2C%22specify_poi_id%22%3A%22%22%7D\u0026header_params=%7B%22RPC-PERSIST-LANE-C-SALE-CHANNEL%22%3A%22%22%2C%22RPC-PERSIST-LANE-C-LIFE-BIZ-CODE%22%3A%22general%22%7D"
+            },
+            "stock_info": {
+                "sold": [
+                    "已售",
+                    "7"
+                ],
+                "stock": [
+                    "库存",
+                    "99万+"
+                ],
+                "stock_num": 9999999994
+            },
+            "price_info": {
+                "actual_price": 493000,
+                "origin_price": 498300,
+                "discount": "",
+                "display_origin_price": true
+            },
+            "cps_info": {
+                "need_invoice": false
+            },
+            "marketing_info": {},
+            "governance_info": {},
+            "label_info": {
+                "product_type_desc": "",
+                "goods_label": 0,
+                "right_list": [
+                    "随时退",
+                    "周末节假日通用"
+                ],
+                "service_label": {
+                    "common_label_list": [
+                        {
+                            "label_type": 1,
+                            "label_content": {
+                                "data": "{\"text\":\"随时退\",\"text_color\":\"rgba(22, 24, 35, 0.5)\",\"background_color\":\"rgba(22, 24, 35, 0.05)\"}",
+                                "template": "{\"text\":{\"custom_style\":{\"backgroundColor\":\"{{background_color}}\",\"borderRadius\":2,\"color\":\"{{text_color}}\",\"fontSize\":10,\"height\":16,\"lineHeight\":\"16px\",\"padding\":\"0 4px\"},\"text\":\"{{text}}\"}}"
+                            }
+                        },
+                        {
+                            "label_type": 1,
+                            "label_content": {
+                                "data": "{\"text\":\"周末节假日通用\",\"text_color\":\"rgba(22, 24, 35, 0.5)\",\"background_color\":\"rgba(22, 24, 35, 0.05)\"}",
+                                "template": "{\"text\":{\"custom_style\":{\"backgroundColor\":\"{{background_color}}\",\"borderRadius\":2,\"color\":\"{{text_color}}\",\"fontSize\":10,\"height\":16,\"lineHeight\":\"16px\",\"padding\":\"0 4px\"},\"text\":\"{{text}}\"}}"
+                            }
+                        }
+                    ]
+                }
+            },
+            "ab_params": "{\"service_label\":1}"
+        }
+    ],
+    "total": 3,
+    "agg_card_id": "7550505883277495075",
+    "status_code": 0,
+    "status_msg": ""
+}

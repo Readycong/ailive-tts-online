@@ -49,6 +49,14 @@ import java.text.SimpleDateFormat
 import java.util.*
 import kotlin.text.isNotEmpty
 
+// 添加广播接收器导入
+import android.content.BroadcastReceiver
+import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
+import androidx.core.content.ContextCompat
+import android.widget.Toast
+
 // 直播间动态信息数据类
 data class LiveMessage(
     val id: Long,
@@ -120,10 +128,48 @@ fun AILiveScreen(
     val tokenManager = remember { TokenManager(loginRepository) }
     val serverApiUtils = remember { ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository) }
 
+    // 添加广播接收器用于接收提示信息
+    val livePromptReceiver = remember {
+        object : BroadcastReceiver() {
+            override fun onReceive(context: android.content.Context, intent: android.content.Intent) {
+                when (intent.action) {
+                    "com.danshuang.AiLive.LIVE_LOGIN_PROMPT" -> {
+                        val message = intent.getStringExtra("message")
+                        message?.let {
+                            // 显示提示信息
+                            Toast.makeText(context, it, Toast.LENGTH_LONG).show()
+                        }
+                    }
+                    "com.danshuang.AiLive.PRODUCT_LIST_UPDATED" -> {
+                        // 商品列表更新通知，可根据需要处理
+                        Log.d("AILiveScreen", "商品列表已更新")
+                    }
+                }
+            }
+        }
+    }
+
     // 监控服务状态
     val pullingState by LiveRoomPullingService.pullingStateFlow.collectAsState()
     val connectionState by LiveRoomPullingService.connectionStateFlow.collectAsState()
     val errorMessage by LiveRoomPullingService.errorMessageFlow.collectAsState()
+
+    // 注册广播接收器
+    DisposableEffect(Unit) {
+        val filter = IntentFilter().apply {
+            addAction("com.danshuang.AiLive.LIVE_LOGIN_PROMPT")
+            addAction("com.danshuang.AiLive.PRODUCT_LIST_UPDATED")
+        }
+        ContextCompat.registerReceiver(context, livePromptReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        
+        onDispose {
+            try {
+                context.unregisterReceiver(livePromptReceiver)
+            } catch (e: Exception) {
+                Log.e("AILiveScreen", "注销广播接收器时出错", e)
+            }
+        }
+    }
 
     // 根据服务状态确定开关状态
     var liveMonitorEnabled = pullingState == LiveRoomPullingService.PULLING_STATE_MONITORING

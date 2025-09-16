@@ -1213,7 +1213,7 @@ class LiveRoomPullingService : Service() {
 }
 
 // 添加WebAppInterface类定义
-class WebAppInterface(private val context: android.content.Context) {
+class WebAppInterface(private val context: android.content.Context, private val scope: kotlinx.coroutines.CoroutineScope? = null) {
     @JavascriptInterface
     fun onXhrResponse(method: String?, url: String?, status: Int, response: String?) {
 //                Log.d("XHR", "Method: " + method)
@@ -1251,7 +1251,8 @@ class WebAppInterface(private val context: android.content.Context) {
                         val tokenManager = TokenManager(loginRepository)
                         val serverApiUtils = ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository)
 
-                        CoroutineScope(Dispatchers.IO).launch {
+                        val coroutineScope = scope ?: kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO)
+                        coroutineScope.launch {
                             try {
                                 val currentUser = serverApiUtils.getCurrentUser()
                                 val douyinId = currentUser?.userProfile?.boundAccount?.userId ?: ""

@@ -37,6 +37,8 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import com.danshuang.AiLive.ui.screens.LiveMessageManager
 import com.danshuang.AiLive.ui.screens.MessageType
+import com.danshuang.AiLive.service.ProductListManager
+import com.danshuang.AiLive.service.ProductInfo
 import java.io.File
 import java.util.Random
 
@@ -47,6 +49,9 @@ import java.util.Random
 class LiveChattingService : Service() {
     
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+    
+    // 添加后台WebView管理器
+    private lateinit var backgroundWebViewManager: BackgroundWebViewManager
     
     // 服务状态
     private var isServiceRunning = false
@@ -75,6 +80,9 @@ class LiveChattingService : Service() {
     
     // 广播接收器
     private lateinit var settingsUpdateReceiver: BroadcastReceiver
+    
+    // 添加广播接收器
+    private lateinit var productListUpdateReceiver: BroadcastReceiver
     
     // 前台服务通知相关
     private val NOTIFICATION_ID = 1001
@@ -134,6 +142,10 @@ class LiveChattingService : Service() {
         super.onCreate()
         isServiceInitialized = true
         
+        // 初始化后台WebView
+        backgroundWebViewManager = BackgroundWebViewManager(this)
+        backgroundWebViewManager.initializeWebView(serviceScope)
+        
         // 创建通知渠道
         createNotificationChannel()
         
@@ -156,6 +168,7 @@ class LiveChattingService : Service() {
         
         // 注册广播接收器
         registerSettingsUpdateReceiver()
+        registerProductListUpdateReceiver() // 添加商品列表更新接收器
     }
     
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -174,6 +187,10 @@ class LiveChattingService : Service() {
         // 更新状态流
         _chattingStateFlow.value = CHATTING_STATE_PLAYING
         Log.d(TAG, "LiveChattingService 启动")
+        
+        // 启动时加载直播页面
+        backgroundWebViewManager.loadLivePage()
+        
         // 启动播放流程
         serviceScope.launch {
             // 启动时先检查一次网络状态
@@ -185,10 +202,6 @@ class LiveChattingService : Service() {
         return START_STICKY
     }
     
-    override fun onBind(intent: Intent?): IBinder? {
-        return null
-    }
-    
     override fun onDestroy() {
         super.onDestroy()
         isServiceRunning = false
@@ -196,6 +209,22 @@ class LiveChattingService : Service() {
         updateServiceRunningState(false)
         // 更新状态流
         _chattingStateFlow.value = CHATTING_STATE_STOPPED
+        
+        // 清理WebView资源
+        backgroundWebViewManager.destroy()
+        
+        // 注销广播接收器
+        try {
+            unregisterReceiver(settingsUpdateReceiver)
+        } catch (e: Exception) {
+            Log.e(TAG, "注销广播接收器时出错", e)
+        }
+        
+        try {
+            unregisterReceiver(productListUpdateReceiver)
+        } catch (e: Exception) {
+            Log.e(TAG, "注销商品列表更新接收器时出错", e)
+        }
         
         // 释放MediaPlayer资源
         mediaPlayer?.let {
@@ -316,7 +345,7 @@ class LiveChattingService : Service() {
         } catch (e: Exception) {
             Log.e(TAG, "插入AI主播消息失败", e)
         }
-        
+
         // 请求音频焦点
         if (!requestAudioFocus()) {
             Log.w(TAG, "无法获取音频焦点，可能影响播放效果")
@@ -333,7 +362,10 @@ class LiveChattingService : Service() {
                 filePath = fileDownloader.downloadAndCacheFile(voiceFile)
             }
         }
-        
+
+        // 检查并切换商品卡片
+        checkAndSwitchProductCard(voiceFile.text)
+
         // 使用同步锁确保播放完成后再返回
         val lock = java.lang.Object()
         var isPlaybackFinished = false
@@ -794,6 +826,86 @@ class LiveChattingService : Service() {
         }
     }
 
+    /**
+     * 使用正则表达式匹配商品编号
+     * @param text 待匹配的文本
+     * @return 匹配到的商品编号，如果未匹配到则返回null
+     */
+    private fun extractProductNumber(text: String): String? {
+        val regex = "([\\d]+|[一二三四五六七八九十]+)号(商品|链接)".toRegex()
+        val matchResult = regex.find(text)
+        return matchResult?.groupValues?.get(1)
+    }
+
+    /**
+     * 将中文数字转换为阿拉伯数字
+     * @param chineseNumber 中文数字字符串
+     * @return 对应的阿拉伯数字
+     */
+    private fun convertChineseToArabic(chineseNumber: String): Int {
+        val chineseNumerals = mapOf(
+            "一" to 1, "二" to 2, "三" to 3, "四" to 4, "五" to 5,
+            "六" to 6, "七" to 7, "八" to 8, "九" to 9, "十" to 10
+        )
+        
+        // 如果是纯数字，直接返回
+        if (chineseNumber.all { it.isDigit() }) {
+            return chineseNumber.toInt()
+        }
+        
+        // 特殊处理十开头的情况，如"十三"、"十五"等
+        if (chineseNumber.startsWith("十")) {
+            val remaining = chineseNumber.substring(1)
+            return if (remaining.isEmpty()) 10 else 10 + (chineseNumerals[remaining] ?: 0)
+        }
+        
+        // 处理复合数字，如"二十"、"二十一"等
+        if (chineseNumber.contains("十") && chineseNumber.length > 1) {
+            val tenIndex = chineseNumber.indexOf("十")
+            val tensDigit = if (tenIndex == 0) 1 else (chineseNumerals[chineseNumber.substring(0, tenIndex)] ?: 0)
+            val unitsDigit = if (tenIndex == chineseNumber.length - 1) 0 
+                             else (chineseNumerals[chineseNumber.substring(tenIndex + 1)] ?: 0)
+            return tensDigit * 10 + unitsDigit
+        }
+        
+        // 处理简单数字，如"一"、"三"等
+        return chineseNumerals[chineseNumber] ?: 0
+    }
+
+    /**
+     * 检查文本是否包含商品编号信息，如果包含则提取编号并切换商品卡片
+     * 同时将商品信息发送到LiveMessageManager
+     */
+    private fun checkAndSwitchProductCard(text: String) {
+        val productNumberStr = extractProductNumber(text)
+        if (productNumberStr != null) {
+            val productId = convertChineseToArabic(productNumberStr)
+            Log.d(TAG, "检测到商品编号: $productNumberStr, 转换为: $productId")
+            
+            // 获取商品信息
+            val productInfo = ProductListManager.getProductById(productId.toString())
+            
+            // 切换商品卡片
+            backgroundWebViewManager.switchCard(productId)
+            
+            // 发送商品信息到消息列表
+            if (productInfo != null) {
+                LiveMessageManager.insertMessage(
+                    type = MessageType.SYSTEM,
+                    content = "推送商品卡: ${productId}号 ${productInfo.name}",
+                    userName = "AI主播"
+                )
+            } else {
+                // 如果未找到商品信息，发送默认消息
+                LiveMessageManager.insertMessage(
+                    type = MessageType.SYSTEM,
+                    content = "推送商品卡：${productId}号商品，但未找到对应商品信息",
+                    userName = "AI主播"
+                )
+            }
+        }
+    }
+    
     // 注册广播接收器
     private fun registerSettingsUpdateReceiver() {
         settingsUpdateReceiver = object : BroadcastReceiver() {
@@ -811,6 +923,47 @@ class LiveChattingService : Service() {
             ContextCompat.registerReceiver(this, settingsUpdateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
         } else {
             ContextCompat.registerReceiver(this, settingsUpdateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        }
+    }
+    
+    // 注册商品列表更新广播接收器
+    private fun registerProductListUpdateReceiver() {
+        productListUpdateReceiver = object : BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                if (intent.action == "com.danshuang.AiLive.PRODUCT_LIST_UPDATED") {
+                    // 处理商品列表更新
+                    handleProductListUpdate()
+                }
+            }
+        }
+        
+        val filter = IntentFilter("com.danshuang.AiLive.PRODUCT_LIST_UPDATED")
+        // 根据Android版本使用适当的registerReceiver方法
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            ContextCompat.registerReceiver(this, productListUpdateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        } else {
+            ContextCompat.registerReceiver(this, productListUpdateReceiver, filter, ContextCompat.RECEIVER_NOT_EXPORTED)
+        }
+    }
+    
+    // 处理商品列表更新
+    private fun handleProductListUpdate() {
+        val products = ProductListManager.products
+        
+        // 发送商品数量消息
+        LiveMessageManager.insertMessage(
+            type = MessageType.SYSTEM,
+            content = "当前直播间共有 ${products.size} 件商品",
+            userName = "系统"
+        )
+        
+        // 发送各商品信息
+        for ((index, product) in products.withIndex()) {
+            LiveMessageManager.insertMessage(
+                type = MessageType.SYSTEM,
+                content = "${index + 1}号商品: ${product.name}",
+                userName = "系统"
+            )
         }
     }
     
@@ -838,5 +991,9 @@ class LiveChattingService : Service() {
                 Log.e(TAG, "重新加载语音设置时出错", e)
             }
         }
+    }
+    
+    override fun onBind(intent: Intent?): IBinder? {
+        return null
     }
 }
