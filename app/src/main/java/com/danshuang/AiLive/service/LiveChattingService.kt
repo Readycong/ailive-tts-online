@@ -879,27 +879,28 @@ class LiveChattingService : Service() {
     private fun checkAndSwitchProductCard(text: String) {
         val productNumberStr = extractProductNumber(text)
         if (productNumberStr != null) {
-            val productId = convertChineseToArabic(productNumberStr)
-            Log.d(TAG, "检测到商品编号: $productNumberStr, 转换为: $productId")
+            val prodIndex = convertChineseToArabic(productNumberStr)
+            Log.d(TAG, "检测到商品编号: $productNumberStr, 转换为: $prodIndex")
             
             // 获取商品信息
-            val productInfo = ProductListManager.getProductById(productId.toString())
+            val productInfo = ProductListManager.getProductById(prodIndex)
             
             // 切换商品卡片
-            backgroundWebViewManager.switchCard(productId)
-            
+            serviceScope.launch(Dispatchers.Main) {
+                backgroundWebViewManager.switchCard(prodIndex)
+            }
             // 发送商品信息到消息列表
             if (productInfo != null) {
                 LiveMessageManager.insertMessage(
                     type = MessageType.SYSTEM,
-                    content = "推送商品卡: ${productId}号 ${productInfo.name}",
+                    content = "推送商品卡: ${prodIndex}号 ${productInfo.name}",
                     userName = "AI主播"
                 )
             } else {
                 // 如果未找到商品信息，发送默认消息
                 LiveMessageManager.insertMessage(
                     type = MessageType.SYSTEM,
-                    content = "推送商品卡：${productId}号商品，但未找到对应商品信息",
+                    content = "推送商品卡：${prodIndex}号商品，但未找到对应商品信息",
                     userName = "AI主播"
                 )
             }

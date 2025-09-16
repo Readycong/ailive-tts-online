@@ -19,7 +19,10 @@ class WebViewJsInterface(
     companion object {
         private const val TAG = "WebViewJsInterface"
         private const val PRODUCT_LIST_URL = "/data/life/live/shelves/anchor/"
+        private const val MIN_INTERVAL_MS = 60 * 1000L // 1分钟间隔
     }
+
+    private var lastParseTime = 0L
 
     @JavascriptInterface
     fun onXhrResponse(method: String?, url: String?, status: Int, response: String?) {
@@ -37,7 +40,17 @@ class WebViewJsInterface(
         }
     }
 
-    private fun parseProductList(jsonResponse: String?) {
+    protected fun parseProductList(jsonResponse: String?) {
+        // 频率限制检查
+        val currentTime = System.currentTimeMillis()
+        if (currentTime - lastParseTime < MIN_INTERVAL_MS) {
+            Log.w(TAG, "parseProductList调用频率过高，已限制执行。距离上次执行: ${currentTime - lastParseTime}ms")
+            return
+        }
+        
+        // 更新上次执行时间
+        lastParseTime = currentTime
+        
         jsonResponse?.let {
             try {
                 val jsonObject = JSONObject(it)

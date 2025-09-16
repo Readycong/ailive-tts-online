@@ -12,6 +12,8 @@ import com.danshuang.AiLive.util.Utils
 
 // 添加WebViewJsInterface导入
 import com.danshuang.AiLive.service.WebViewJsInterface
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.MainScope
 
 /**
  * 后台WebView管理器
@@ -88,6 +90,7 @@ class BackgroundWebViewManager(private val context: Context) {
 
     public fun switchCard(id: Int) {
         val jsCode = "document.querySelector('#live-card-list > div > div > div > div:nth-child(3) > div > div.drag-cotent-ohRc5x > div > div.card-data-and-operate-Si6qcs > div.operate-area-VZ_EbJ > span:nth-child(${id}) > span > div').click()"
+
         webView?.evaluateJavascript(jsCode, null)
     }
 
@@ -135,7 +138,6 @@ class BackgroundWebViewManager(private val context: Context) {
                 };
             })();
         """.trimIndent()
-        
         webView?.evaluateJavascript(jsCode, null)
     }
     

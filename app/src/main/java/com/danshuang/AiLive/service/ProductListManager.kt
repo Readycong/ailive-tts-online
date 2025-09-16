@@ -18,8 +18,8 @@ object ProductListManager {
         _products.clear()
     }
 
-    fun getProductById(productId: String): ProductInfo? {
-        return _products.find { it.productId == productId }
+    fun getProductById(index: Int): ProductInfo? {
+        return _products[index.toInt()]
     }
 
     val productCount: Int get() = _products.size
