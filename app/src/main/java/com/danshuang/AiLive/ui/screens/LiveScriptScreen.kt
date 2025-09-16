@@ -86,12 +86,12 @@ fun LiveScriptScreen(
     }
     
     val title = when (scriptKey) {
-        "WELCOME" -> "问候话术"
-        "ROOM" -> "品牌话术"
-        "PRODUCT" -> "带货话术"
+        "WELCOME" -> "开场话术"
+        "ROOM" -> "品宣话术"
+        "PRODUCT" -> "讲品话术"
         "KEEP" -> "留咨话术"
-        "ORDER" -> "促成话术"
-        "THANKS" -> "感谢话术"
+        "ORDER" -> "成交话术"
+        "THANKS" -> "结束话术"
         else -> "eRRRRRor"
     }
 

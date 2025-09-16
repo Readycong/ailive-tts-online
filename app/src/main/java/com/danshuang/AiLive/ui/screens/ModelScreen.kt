@@ -155,7 +155,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         )
         val quickLiveScriptActions = listOf(
             QuickActionData(
-                title = "问候 >",
+                title = "开场 >",
                 icon = R.drawable.counter_1_24px,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
@@ -163,7 +163,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 }
             ),
             QuickActionData(
-                title = "品牌 >",
+                title = "品宣 >",
                 icon = R.drawable.counter_2_24px,
                 backgroundColor = Color(0xFF4CAF50),
                 onClick = {
@@ -171,7 +171,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 }
             ),
             QuickActionData(
-                title = "带货 >",
+                title = "讲品 >",
                 icon = R.drawable.counter_3_24px,
                 backgroundColor = Color(0xFFFF9800),
                 onClick = {
@@ -187,7 +187,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 }
             ),
             QuickActionData(
-                title = "促成 >",
+                title = "成交 >",
                 icon = R.drawable.counter_5_24px,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
@@ -195,7 +195,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 }
             ),
             QuickActionData(
-                title = "感谢",
+                title = "结束语",
                 icon = R.drawable.counter_6_24px,
                 backgroundColor = Color(0xFF4CAF50),
                 onClick = {
