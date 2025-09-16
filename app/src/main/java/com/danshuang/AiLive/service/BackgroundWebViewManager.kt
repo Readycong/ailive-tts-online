@@ -89,7 +89,7 @@ class BackgroundWebViewManager(private val context: Context) {
 
 
     public fun switchCard(id: Int) {
-        val jsCode = "document.querySelector('#live-card-list > div > div > div > div:nth-child(3) > div > div.drag-cotent-ohRc5x > div > div.card-data-and-operate-Si6qcs > div.operate-area-VZ_EbJ > span:nth-child(${id}) > span > div').click()"
+        val jsCode = "document.querySelector('#live-card-list > div > div > div > div:nth-child(${id}) > div > div.drag-cotent-ohRc5x > div > div.card-data-and-operate-Si6qcs > div.operate-area-VZ_EbJ > span:nth-child(2) > span > div').click()";
 
         webView?.evaluateJavascript(jsCode, null)
     }
