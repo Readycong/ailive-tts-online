@@ -189,7 +189,7 @@ fun ProfileScreen(
                     
                     // 昵称（可点击）
                     Text(
-                        text = userProfile?.nickname?.takeIf { it.isNotEmpty() } ?: "未设置昵称",
+                        text = userProfile?.boundAccount?.nickname?.takeIf { it.isNotEmpty() } ?: (userProfile?.nickname?.takeIf { it.isNotEmpty() } ?:"未设置昵称"),
                         style = MaterialTheme.typography.headlineSmall,
                         fontWeight = FontWeight.Bold,
 //                        modifier = Modifier.clickable {

@@ -168,18 +168,20 @@ fun AccountBindingScreen(
             countdownSeconds = AppConfig.Api.getTimeout(context).toInt()
             
             // 开始倒计时
-            while (countdownSeconds > 0 && isCountingDown) {
-                kotlinx.coroutines.delay(1000)
-                if (isCountingDown) {
-                    countdownSeconds--
-                }
-            }
+//            while (countdownSeconds > 0 && isCountingDown) {
+//                kotlinx.coroutines.delay(1000)
+//                if (isCountingDown) {
+//                    countdownSeconds--
+//                }
+//            }
             
             try {
                 // 提交到服务器
                 val serverResult = submitBindingToServer(accountInfo!!, userHomeUrl)
                 
                 if (serverResult.success) {
+                    val avatar = accountInfo!!.avatar.replace("\\u0026", "&")
+                    userRealHomeUrl = userRealHomeUrl.replace("\\u0026", "&")
                     // 服务器保存成功，同时保存到本地
                     saveAccountToLocal(accountInfo!!, userHomeUrl)
                     
@@ -1050,13 +1052,15 @@ private fun WebViewControlSection(
                                                 val gson = Gson()
                                                 gson.fromJson(jsonResult, Map::class.java)
                                                     ?.let { jsonMap ->
-                                                        val html = jsonMap["html"]?.toString()?.replace("\\\"", "")
-                                                        val avatarMatch = Regex("avatar300Url:(https:[^,]*)").find(html ?: "")
-                                                        val avatar = avatarMatch?.groupValues?.get(1) ?: ""
-
                                                         val nickname = jsonMap["nickname"]?.toString()?.split("\n")?.firstOrNull() ?: "未知用户"
                                                         val userId = jsonMap["id"]?.toString() ?: ""
                                                         val isLive = jsonMap["status"]?.toString() == "PLAYING"
+
+                                                        var html = jsonMap["html"]?.toString() ?: ""
+                                                        html = html.substring(html.indexOf("\"$userId") - 2048)
+                                                        val avatarMatch = Regex("avatar300Url:(https:[^,]*)").find(html.replace("\\\"", ""))
+                                                        val avatar = avatarMatch?.groupValues?.get(1)?.replace("\\u0026", "&") ?: ""
+
 
                                                         println("提取成功 - 昵称: $nickname, 用户ID: $userId, 直播状态: $isLive")
                                                         onAccountInfoExtracted(

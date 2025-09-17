@@ -460,7 +460,7 @@ fun DouyinAccountBindingScreen(
                                                             
                                                             val response = apiUtils.bindDouyinLive(
                                                                 token = token,
-                                                                douyinId = secUid,
+                                                                douyinId = userId,
                                                                 nickname = nickname,
                                                                 avatar = avatar,
                                                                 roomId = "", // 暂时使用空字符串，可以根据需要设置
