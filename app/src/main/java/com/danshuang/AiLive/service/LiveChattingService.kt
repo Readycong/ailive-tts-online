@@ -61,6 +61,9 @@ class LiveChattingService : Service() {
     // 播放状态
     private var chattingState = CHATTING_STATE_STOPPED
     
+    // 音频焦点检查任务
+    private var audioFocusCheckJob: kotlinx.coroutines.Job? = null
+    
     // 依赖组件
     private lateinit var serverApiUtils: ServerApiUtilsV2
     private lateinit var fileDownloader: FileDownloader
@@ -191,6 +194,9 @@ class LiveChattingService : Service() {
         // 启动时加载直播页面
         backgroundWebViewManager.loadLivePage()
         
+        // 启动音频焦点检查任务
+        startAudioFocusCheck()
+        
         // 启动播放流程
         serviceScope.launch {
             // 启动时先检查一次网络状态
@@ -209,6 +215,9 @@ class LiveChattingService : Service() {
         updateServiceRunningState(false)
         // 更新状态流
         _chattingStateFlow.value = CHATTING_STATE_STOPPED
+        
+        // 取消音频焦点检查任务
+        audioFocusCheckJob?.cancel()
         
         // 清理WebView资源
         backgroundWebViewManager.destroy()
@@ -261,6 +270,7 @@ class LiveChattingService : Service() {
             
             if (!networkAvailable) {
                 Log.w(TAG, "网络不可用，暂停播放流程")
+                LiveMessageManager.insertMessage(MessageType.SYSTEM, "网络不可用，暂停播放流程...", "系统")
                 // 等待一段时间后重新检查
                 kotlinx.coroutines.delay(5000)
                 continue
@@ -366,11 +376,6 @@ class LiveChattingService : Service() {
         // 检查并切换商品卡片
         checkAndSwitchProductCard(voiceFile.text)
 
-        // 使用同步锁确保播放完成后再返回
-        val lock = java.lang.Object()
-        var isPlaybackFinished = false
-        var playbackError = false
-        
         try {
             // 释放之前的MediaPlayer实例
             mediaPlayer?.let {
@@ -413,114 +418,6 @@ class LiveChattingService : Service() {
                 }
             }
             
-            // 设置播放完成监听器
-            player.setOnCompletionListener { mp ->
-                synchronized(lock) {
-                    Log.d(TAG, "语音文件播放完成: ${voiceFile.id}")
-                    
-                    // 播放完成后释放资源
-                    mp.release()
-                    mediaPlayer = null
-                    
-                    // 更新播放状态
-                    chattingState = CHATTING_STATE_STOPPED
-                    _chattingStateFlow.value = CHATTING_STATE_STOPPED
-                    
-                    // 添加随机静音延迟
-                    val silenceTime = generateRandomSilenceTime()
-                    Log.d(TAG, "随机静音时间: ${silenceTime}ms")
-                    
-                    // 在锁外执行延迟，避免阻塞锁
-                    serviceScope.launch {
-                        kotlinx.coroutines.delay(silenceTime)
-                        Log.d(TAG, "静音延迟完成: ${silenceTime}ms")
-                        synchronized(lock) {
-                            isPlaybackFinished = true
-                            lock.notify()
-                        }
-                    }
-                }
-            }
-            
-            // 设置错误监听器
-            player.setOnErrorListener { mp, what, extra ->
-                synchronized(lock) {
-                    Log.e(TAG, "播放音频文件出错: ${voiceFile.id}, what: $what, extra: $extra")
-                    
-                    // 出错时释放资源
-                    mp.release()
-                    mediaPlayer = null
-                    
-                    // 更新播放状态
-                    chattingState = CHATTING_STATE_STOPPED
-                    _chattingStateFlow.value = CHATTING_STATE_STOPPED
-                    
-                    isPlaybackFinished = true
-                    playbackError = true
-                    lock.notify()
-                }
-                true // 返回true表示已处理错误
-            }
-            
-            // 设置准备监听器
-            player.setOnPreparedListener { mp ->
-                Log.d(TAG, "语音文件准备完成，开始播放: ${voiceFile.id}")
-                Log.d(TAG, "音频状态 - 是否有音频焦点: $hasAudioFocus")
-                
-                try {
-                    // 生成随机音频参数
-                    val audioParams = generateRandomParameters()
-                    Log.d(TAG, "生成随机音频参数: 音量=${audioParams.volume}, 音调=${audioParams.pitch}, 速度=${audioParams.speed}")
-                    
-                    // 应用随机参数到MediaPlayer（需要API 23+）
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                        try {
-                            val playbackParams = PlaybackParams()
-                            playbackParams.setSpeed(audioParams.speed)
-                            playbackParams.setPitch(audioParams.pitch)
-                            mp.playbackParams = playbackParams
-                            Log.d(TAG, "成功应用播放参数: 速度=${audioParams.speed}, 音调=${audioParams.pitch}")
-                        } catch (e: Exception) {
-                            Log.e(TAG, "设置播放参数失败", e)
-                        }
-                    } else {
-                        Log.d(TAG, "Android版本低于API 23，无法设置播放参数")
-                    }
-                    
-                    // 设置音量
-                    mp.setVolume(audioParams.volume, audioParams.volume)
-                    Log.d(TAG, "设置音量: ${audioParams.volume}")
-                    
-                    // 检查音频焦点
-                    if (!hasAudioFocus) {
-                        Log.w(TAG, "警告：没有音频焦点，尝试重新获取")
-                        requestAudioFocus()
-                    }
-                    
-                    mp.start()
-                    Log.d(TAG, "播放状态: 正在播放=${mp.isPlaying}")
-                    
-                    // 检查系统音量
-                    audioManager?.let { am ->
-                        val volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
-                        val maxVolume = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
-                        Log.d(TAG, "系统音量: $volume/$maxVolume")
-                    }
-                    
-                } catch (e: Exception) {
-                    Log.e(TAG, "启动播放失败: ${voiceFile.id}", e)
-                    synchronized(lock) {
-                        mp.release()
-                        mediaPlayer = null
-                        chattingState = CHATTING_STATE_STOPPED
-                        _chattingStateFlow.value = CHATTING_STATE_STOPPED
-                        isPlaybackFinished = true
-                        playbackError = true
-                        lock.notify()
-                    }
-                }
-            }
-            
             // 设置数据源
             if (filePath != null && File(filePath).exists()) {
                 Log.d(TAG, "播放本地文件: $filePath")
@@ -530,33 +427,74 @@ class LiveChattingService : Service() {
                 player.setDataSource(voiceFile.url)
             }
             
-            // 异步准备播放器
-            player.prepareAsync()
+            // 同步准备播放器
+            player.prepare()
+            
+            // 生成随机音频参数
+            val audioParams = generateRandomParameters()
+            Log.d(TAG, "生成随机音频参数: 音量=${audioParams.volume}, 音调=${audioParams.pitch}, 速度=${audioParams.speed}")
+            
+            // 应用随机参数到MediaPlayer（需要API 23+）
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                try {
+                    val playbackParams = PlaybackParams()
+                    playbackParams.setSpeed(audioParams.speed)
+                    playbackParams.setPitch(audioParams.pitch)
+                    player.playbackParams = playbackParams
+                    Log.d(TAG, "成功应用播放参数: 速度=${audioParams.speed}, 音调=${audioParams.pitch}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "设置播放参数失败", e)
+                }
+            } else {
+                Log.d(TAG, "Android版本低于API 23，无法设置播放参数")
+            }
+            
+            // 设置音量
+            player.setVolume(audioParams.volume, audioParams.volume)
+            Log.d(TAG, "设置音量: ${audioParams.volume}")
+            
+            // 检查音频焦点
+            if (!hasAudioFocus) {
+                Log.w(TAG, "警告：没有音频焦点，尝试重新获取")
+                requestAudioFocus()
+            }
+            
+            // 开始播放
+            player.start()
+            Log.d(TAG, "播放状态: 正在播放=${player.isPlaying}")
+            
+            // 检查系统音量
+            audioManager?.let { am ->
+                val volume = am.getStreamVolume(AudioManager.STREAM_MUSIC)
+                val maxVolume = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                Log.d(TAG, "系统音量: $volume/$maxVolume")
+            }
             
             // 等待播放完成
-            synchronized(lock) {
-                while (!isPlaybackFinished) {
-                    try {
-                        lock.wait(600000) // 最多等待10分钟=600秒，即音频超过10分钟会提前结束播放
-                        if (!isPlaybackFinished) {
-                            Log.w(TAG, "播放超时，停止播放: ${voiceFile.id}")
-                            player.stop()
-                            player.release()
-                            mediaPlayer = null
-                            break
-                        }
-                    } catch (e: InterruptedException) {
-                        Log.e(TAG, "等待播放完成时被中断", e)
-                        break
-                    }
-                }
+            while (player.isPlaying) {
+                Thread.sleep(100) // 每100毫秒检查一次播放状态
             }
             
-            if (playbackError) {
-                Log.e(TAG, "播放音频文件失败: ${voiceFile.id}")
-            } else {
-                Log.d(TAG, "播放音频文件成功: ${voiceFile.id}")
+            Log.d(TAG, "语音文件播放完成: ${voiceFile.id}")
+            
+            // 播放完成后释放资源
+            player.release()
+            mediaPlayer = null
+            
+            // 更新播放状态
+            chattingState = CHATTING_STATE_STOPPED
+            _chattingStateFlow.value = CHATTING_STATE_STOPPED
+            
+            // 添加随机静音延迟
+            val silenceTime = generateRandomSilenceTime()
+            Log.d(TAG, "随机静音时间: ${silenceTime}ms")
+            // 使用非阻塞方式处理静音延迟
+            serviceScope.launch {
+                kotlinx.coroutines.delay(silenceTime)
+                Log.d(TAG, "静音延迟完成: ${silenceTime}ms")
             }
+            
+            Log.d(TAG, "播放音频文件成功: ${voiceFile.id}")
         } catch (e: Exception) {
             Log.e(TAG, "播放音频文件失败: ${voiceFile.id}", e)
             
@@ -711,28 +649,36 @@ class LiveChattingService : Service() {
             AudioManager.AUDIOFOCUS_GAIN -> {
                 Log.d(TAG, "获取音频焦点")
                 hasAudioFocus = true
-                mediaPlayer?.let {
-                    if (!it.isPlaying) {
-                        it.start()
+                mediaPlayer?.let { player ->
+                    // 如果之前是播放状态，恢复播放
+                    if (chattingState == CHATTING_STATE_PLAYING && !player.isPlaying) {
+                        try {
+                            player.start()
+                            Log.d(TAG, "恢复播放")
+                        } catch (e: Exception) {
+                            Log.e(TAG, "恢复播放失败", e)
+                        }
                     }
-                    it.setVolume(1.0f, 1.0f)
+                    player.setVolume(1.0f, 1.0f)
                 }
             }
             AudioManager.AUDIOFOCUS_LOSS -> {
                 Log.d(TAG, "失去音频焦点")
                 hasAudioFocus = false
-                mediaPlayer?.let {
-                    if (it.isPlaying) {
-                        it.pause()
+                mediaPlayer?.let { player ->
+                    if (player.isPlaying) {
+                        player.pause()
+                        Log.d(TAG, "暂停播放")
                     }
                 }
             }
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
                 Log.d(TAG, "短暂失去音频焦点")
                 hasAudioFocus = false
-                mediaPlayer?.let {
-                    if (it.isPlaying) {
-                        it.pause()
+                mediaPlayer?.let { player ->
+                    if (player.isPlaying) {
+                        player.pause()
+                        Log.d(TAG, "暂停播放")
                     }
                 }
             }
@@ -784,6 +730,25 @@ class LiveChattingService : Service() {
             
             hasAudioFocus = false
             Log.d(TAG, "释放音频焦点结果: $result")
+        }
+    }
+
+    /**
+     * 启动音频焦点检查任务
+     */
+    private fun startAudioFocusCheck() {
+        audioFocusCheckJob?.cancel()
+        audioFocusCheckJob = serviceScope.launch {
+            while (isServiceRunning) {
+                // 每5秒检查一次音频焦点状态
+                kotlinx.coroutines.delay(5000)
+                
+                // 如果当前正在播放且没有音频焦点，则尝试重新获取
+                if (chattingState == CHATTING_STATE_PLAYING && !hasAudioFocus) {
+                    Log.d(TAG, "检测到正在播放但无音频焦点，尝试重新获取")
+                    requestAudioFocus()
+                }
+            }
         }
     }
 
