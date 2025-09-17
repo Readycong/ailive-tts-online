@@ -515,8 +515,7 @@ fun AILiveScreen(
                             coroutineScope.launch {
                                 // 获取当前绑定账户信息
                                 val douyinId = userProfile.boundAccount?.userId ?: ""
-                                // roomId 需要通过其他方式获取，暂时使用 userId 作为替代
-                                val roomId = userProfile.boundAccount?.userId ?: ""
+                                val roomId = com.danshuang.AiLive.service.roomId.ifEmpty { "0" }
                                 
                                 // 检查必要信息
                                 if (douyinId.isEmpty() || roomId.isEmpty()) {
@@ -543,7 +542,7 @@ fun AILiveScreen(
                                     )
                                     
                                     if (result.isSuccess) {
-                                        snackbarHostState.showSnackbar("消息发送成功")
+//                                        snackbarHostState.showSnackbar("消息发送成功")
                                         
                                         // 将发送的消息添加到本地消息列表显示
                                         LiveMessageManager.insertMessage(
