@@ -966,7 +966,8 @@ private fun LiveMessageList(
     val topAppBarHeight = 64.dp
     val switchControlSectionHeight = 96.dp
     val messageSendBarHeight = 56.dp
-    val listHeight = screenHeightDp - topAppBarHeight - switchControlSectionHeight - messageSendBarHeight
+    //val listHeight = screenHeightDp - topAppBarHeight - switchControlSectionHeight - messageSendBarHeight
+    val listHeight = screenHeightDp - topAppBarHeight - switchControlSectionHeight - messageSendBarHeight - 160.dp // 额外减去32dp的安全间距
 
     Column(
         modifier = Modifier
