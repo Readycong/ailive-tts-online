@@ -90,7 +90,8 @@ class LiveChattingService : Service() {
     // 前台服务通知相关
     private val NOTIFICATION_ID = 1001
     private val CHANNEL_ID = "LiveChattingServiceChannel"
-    
+    private var cachedProducts: MutableList<ProductInfo> = mutableListOf()
+
     companion object {
         const val CHATTING_STATE_STOPPED = 0
         const val CHATTING_STATE_PLAYING = 1
@@ -915,21 +916,29 @@ class LiveChattingService : Service() {
     // 处理商品列表更新
     private fun handleProductListUpdate() {
         val products = ProductListManager.products
-        
-        // 发送商品数量消息
-        LiveMessageManager.insertMessage(
-            type = MessageType.SYSTEM,
-            content = "当前直播间共有 ${products.size} 件商品",
-            userName = "系统"
-        )
-        
-        // 发送各商品信息
-        for ((index, product) in products.withIndex()) {
+
+        if (products.size != cachedProducts.size) {
+            // 发送商品数量消息
             LiveMessageManager.insertMessage(
                 type = MessageType.SYSTEM,
-                content = "${index + 1}号商品: ${product.name}",
+                content = "当前直播间共有 ${products.size} 件商品",
                 userName = "系统"
             )
+
+            // 发送各商品信息
+            for ((index, product) in products.withIndex()) {
+                if (product.name != cachedProducts.getOrNull(index)?.name) {
+                    LiveMessageManager.insertMessage(
+                        type = MessageType.SYSTEM,
+                        content = "${index + 1}号商品: ${product.name}",
+                        userName = "系统"
+                    )
+                    cachedProducts[index] = product
+                }else{
+                    // 商品名称未变化，跳过发送
+                    Log.d(TAG, "商品 ${index + 1} 名称未变化，跳过发送")
+                }
+            }
         }
     }
     
