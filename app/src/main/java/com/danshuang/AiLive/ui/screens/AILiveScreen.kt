@@ -1112,7 +1112,7 @@ private fun MessageItem(message: LiveMessage) {
         MessageType.COMMENT -> MaterialTheme.colorScheme.surface
         MessageType.GIFT -> Color(0xFFFFE0B2)
         MessageType.FOLLOW -> Color(0xFFE8F5E8)
-        MessageType.ENTER -> Color(0xFFE3F2FD)
+        MessageType.ENTER -> Color(0xFFFF9800)
         MessageType.SYSTEM -> Color(0xFFFFF3E0)
     }
 

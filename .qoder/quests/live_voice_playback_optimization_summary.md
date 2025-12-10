@@ -27,7 +27,7 @@
 #### 技术文档
 - [直播语音播放服务优化版API文档](live_voice_playback_optimized_api.md) - 详细说明新服务的API和使用方法
 - [直播语音播放服务使用示例](live_voice_playback_usage_example.md) - 提供实际使用示例和最佳实践
-- [README.md](README.md) - 更新了项目文档，添加了新服务的介绍
+- [README.md](../../README.md) - 更新了项目文档，添加了新服务的介绍
 
 #### 项目总结
 - [直播语音播放优化项目总结](live_voice_playback_optimization_summary.md) - 本文件

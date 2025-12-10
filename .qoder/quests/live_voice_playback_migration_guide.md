@@ -22,11 +22,11 @@ import com.danshuang.AiLive.service.LiveChattingServiceOptimized as LiveChatting
 
 以下文件已完成迁移：
 
-1. [MainActivity.kt](app/src/main/java/com/danshuang/AiLive/MainActivity.kt)
-2. [AILiveScreen.kt](app/src/main/java/com/danshuang/AiLive/ui/screens/AILiveScreen.kt)
-3. [HomeScreen.kt](app/src/main/java/com/danshuang/AiLive/ui/screens/HomeScreen.kt)
-4. [AppLifecycleManager.kt](app/src/main/java/com/danshuang/AiLive/util/AppLifecycleManager.kt)
-5. [UnauthorizedErrorHandler.kt](app/src/main/java/com/danshuang/AiLive/util/UnauthorizedErrorHandler.kt)
+1. [MainActivity.kt](../../app/src/main/java/com/danshuang/AiLive/MainActivity.kt)
+2. [AILiveScreen.kt](../../app/src/main/java/com/danshuang/AiLive/ui/screens/AILiveScreen.kt)
+3. [HomeScreen.kt](../../app/src/main/java/com/danshuang/AiLive/ui/screens/HomeScreen.kt)
+4. [AppLifecycleManager.kt](../../app/src/main/java/com/danshuang/AiLive/util/AppLifecycleManager.kt)
+5. [UnauthorizedErrorHandler.kt](../../app/src/main/java/com/danshuang/AiLive/util/UnauthorizedErrorHandler.kt)
 
 ### 3. API 兼容性
 
@@ -79,4 +79,4 @@ import com.danshuang.AiLive.service.LiveChattingService
 
 1. 两个服务版本可以共存，AndroidManifest.xml中已同时声明
 2. 优化版服务向前兼容旧版服务的所有功能
-3. 如需完全移除旧版服务，可删除[LiveChattingService.kt](app/src/main/java/com/danshuang/AiLive/service/LiveChattingService.kt)文件并从AndroidManifest.xml中移除相关声明
+3. 如需完全移除旧版服务，可删除[LiveChattingService.kt](../../app/src/main/java/com/danshuang/AiLive/service/LiveChattingService.kt)文件并从AndroidManifest.xml中移除相关声明
