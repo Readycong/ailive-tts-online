@@ -149,6 +149,14 @@ class ServerApiUtilsV2(
         val token = getTokenOrThrow() ?: return null
         return douyinApiService.fetchAiComments(token, roomId, step)
     }
+
+    suspend fun checkHasComment(
+        roomId: String,
+        step: String
+    ): ServerResponse<Any>? {
+        val token = getTokenOrThrow() ?: return null
+        return douyinApiService.checkHasComment(token, roomId, step)
+    }
     
     /**
      * 添加主播评论

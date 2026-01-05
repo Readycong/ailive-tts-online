@@ -64,6 +64,9 @@ class LiveChattingService : Service() {
     // 音频焦点检查任务
     private var audioFocusCheckJob: kotlinx.coroutines.Job? = null
     
+    // 评论检查任务
+    private var commentCheckJob: kotlinx.coroutines.Job? = null
+    
     // 依赖组件
     private lateinit var serverApiUtils: ServerApiUtilsV2
     private lateinit var fileDownloader: FileDownloader
@@ -74,6 +77,9 @@ class LiveChattingService : Service() {
     private var audioManager: AudioManager? = null
     private var audioFocusRequest: AudioFocusRequest? = null
     private var hasAudioFocus = false
+    private var isPlayingKbsAudio = false
+    private var hasCommentAudio = false
+    private var isPlayingCommentAudio = false
     
     // 语音设置
     private var currentVoiceSettings: VoiceSettingsData? = null
@@ -198,6 +204,9 @@ class LiveChattingService : Service() {
         // 启动音频焦点检查任务
         startAudioFocusCheck()
         
+        // 启动评论检查任务
+        startCommentCheck()
+        
         // 启动播放流程
         serviceScope.launch {
             // 启动时先检查一次网络状态
@@ -219,6 +228,9 @@ class LiveChattingService : Service() {
         
         // 取消音频焦点检查任务
         audioFocusCheckJob?.cancel()
+        
+        // 取消评论检查任务
+        commentCheckJob?.cancel()
         
         // 清理WebView资源
         backgroundWebViewManager.destroy()
@@ -284,13 +296,17 @@ class LiveChattingService : Service() {
                 // 获取单个话术语音文件
                 val voiceFile = fetchAiKnowledge(roomId, stage)
                 voiceFile?.let {
+                    isPlayingKbsAudio = true
                     playVoiceFile(it)
+                    isPlayingKbsAudio = false
                     // 检查服务状态，如果服务已停止则退出
                     if (!isServiceRunning) return
                 }
                 // 获取AI评论列表，即时并依次播放回复评论的语音
                 val voiceFiles = fetchAiComments(roomId)
+                isPlayingCommentAudio = true
                 playVoiceFiles(voiceFiles)
+                isPlayingCommentAudio = false
 
                 if (stage == "THANKS") {
                     currentStageIndex = 0
@@ -473,6 +489,9 @@ class LiveChattingService : Service() {
             
             // 等待播放完成
             while (player.isPlaying) {
+                if (isPlayingCommentAudio == false && isPlayingKbsAudio==false || isPlayingKbsAudio && hasCommentAudio) {
+                    break;
+                }
                 Thread.sleep(100) // 每100毫秒检查一次播放状态
             }
             
@@ -749,6 +768,52 @@ class LiveChattingService : Service() {
                     Log.d(TAG, "检测到正在播放但无音频焦点，尝试重新获取")
                     requestAudioFocus()
                 }
+            }
+        }
+    }
+
+    /**
+     * 启动评论检查任务
+     */
+    private fun startCommentCheck() {
+        commentCheckJob?.cancel()
+        commentCheckJob = serviceScope.launch {
+            while (isServiceRunning) {
+                try {
+                    // 从DataStore中读取roomId
+                    val roomId = loginRepository.liveRoomId.first() ?: "default_room_id"
+                    
+                    // 调用checkHasComment接口
+                    val response = serverApiUtils.checkHasComment(roomId, "comment")
+                    
+                    if (response != null && response.isSuccess) {
+                        // 尝试从data中获取count字段
+                        val data = response.data
+                        if (data is Map<*, *>) {
+                            val count = when (val countValue = data["count"]) {
+                                is Number -> countValue.toInt()
+                                is String -> countValue.toIntOrNull() ?: 0
+                                else -> 0
+                            }
+                            
+                            // 根据count值设置hasCommentAudio
+                            hasCommentAudio = count > 0
+                            Log.d(TAG, "评论检查结果: count=$count, hasCommentAudio=$hasCommentAudio")
+                        } else {
+                            Log.w(TAG, "评论检查响应数据格式不正确: $data")
+                            hasCommentAudio = false
+                        }
+                    } else {
+                        Log.w(TAG, "评论检查失败: ${response?.msg ?: "响应为空"}")
+                        hasCommentAudio = false
+                    }
+                } catch (e: Exception) {
+                    Log.e(TAG, "评论检查过程中出错", e)
+                    hasCommentAudio = false
+                }
+                
+                // 每秒检查一次评论状态
+                kotlinx.coroutines.delay(1000)
             }
         }
     }

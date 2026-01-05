@@ -220,7 +220,35 @@ class DouyinApiService(
             null
         }
     }
-    
+
+    suspend fun checkHasComment(
+        token: String,
+        roomId: String,
+        step: String
+    ): ServerResponse<Any> = withContext(Dispatchers.IO) {
+        val apiName = "checkHasComment"
+        return@withContext try {
+            val url = "${baseUrl}/dscrm/dylive-android/has-comment"
+            val postData = mapOf(
+                "room_id" to roomId,
+            )
+
+            responseHandler.logApiCall(apiName, url, "POST", postData)
+
+            val requestBody = createJsonRequestBody(postData)
+            val request = createPostRequest(url, requestBody)
+                .addTokenHeader(token)
+                .build()
+
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
+
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "添加评论失败: ${e.message}", data = null)
+        }
+    }
+
     /**
      * 添加主播评论
      */
