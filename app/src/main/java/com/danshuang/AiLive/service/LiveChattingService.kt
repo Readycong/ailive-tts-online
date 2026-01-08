@@ -797,7 +797,7 @@ class LiveChattingService : Service() {
                             }
                             
                             // 根据count值设置hasCommentAudio
-                            hasCommentAudio = count > 0
+                            hasCommentAudio = count != 0
                             Log.d(TAG, "评论检查结果: count=$count, hasCommentAudio=$hasCommentAudio")
                         } else {
                             Log.w(TAG, "评论检查响应数据格式不正确: $data")
