@@ -10,7 +10,7 @@ import androidx.annotation.Keep
 data class VoiceFileInfo(
     val id: String,
     val text: String,
-    val url: String,
+    var url: String,
     val cache: Boolean = false,
     val duration: Long? = null // 音频时长（毫秒），可为空
 )

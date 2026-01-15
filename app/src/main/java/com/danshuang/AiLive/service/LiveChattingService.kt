@@ -41,6 +41,7 @@ import com.danshuang.AiLive.service.ProductListManager
 import com.danshuang.AiLive.service.ProductInfo
 import java.io.File
 import java.util.Random
+import kotlin.math.ceil
 
 /**
  * 直播语音播放服务
@@ -297,16 +298,20 @@ class LiveChattingService : Service() {
                 val voiceFile = fetchAiKnowledge(roomId, stage)
                 voiceFile?.let {
                     isPlayingKbsAudio = true
+                    isPlayingCommentAudio = false
                     playVoiceFile(it)
                     isPlayingKbsAudio = false
+                    isPlayingCommentAudio = false
                     // 检查服务状态，如果服务已停止则退出
                     if (!isServiceRunning) return
                 }
                 // 获取AI评论列表，即时并依次播放回复评论的语音
                 val voiceFiles = fetchAiComments(roomId)
                 isPlayingCommentAudio = true
+                isPlayingKbsAudio = false
                 playVoiceFiles(voiceFiles)
                 isPlayingCommentAudio = false
+                isPlayingKbsAudio = false
 
                 if (stage == "THANKS") {
                     currentStageIndex = 0
@@ -358,20 +363,8 @@ class LiveChattingService : Service() {
     private fun playVoiceFile(voiceFile: VoiceFileInfo) {
         chattingState = CHATTING_STATE_PLAYING
         _chattingStateFlow.value = CHATTING_STATE_PLAYING
-        
+        voiceFile.url = fileDownloader.processUrl(voiceFile.url);
         Log.d(TAG, "开始播放语音文件: ${voiceFile.id}, URL: ${voiceFile.url}")
-        
-        // 将AI主播的文字内容插入到实时动态列表中
-        try {
-            LiveMessageManager.insertMessage(
-                type = MessageType.AI_RESPONSE,
-                content = voiceFile.text,
-                userName = "AI主播"
-            )
-            Log.d(TAG, "AI主播消息已插入动态列表: ${voiceFile.text}")
-        } catch (e: Exception) {
-            Log.e(TAG, "插入AI主播消息失败", e)
-        }
 
         // 请求音频焦点
         if (!requestAudioFocus()) {
@@ -387,8 +380,18 @@ class LiveChattingService : Service() {
             // 如果未缓存，则下载并缓存文件
             if (filePath == null) {
                 filePath = fileDownloader.downloadAndCacheFile(voiceFile)
+            } else {
+                Log.d(TAG, "语音已缓存: ${voiceFile.url}")
+            }
+            if (filePath == null) {
+                LiveMessageManager.insertMessage(
+                    type = MessageType.AI_RESPONSE,
+                    content = "异常mp3: ${voiceFile.url}",
+                    userName = "AI主播"
+                )
             }
         }
+        Log.d(TAG, "当前URL: ${voiceFile.url}")
 
         // 检查并切换商品卡片
         checkAndSwitchProductCard(voiceFile.text)
@@ -434,18 +437,36 @@ class LiveChattingService : Service() {
                     am.setStreamVolume(AudioManager.STREAM_MUSIC, (maxVolume * 0.5).toInt(), 0)
                 }
             }
-            
+            var voiceSource = "/L"
             // 设置数据源
-            if (filePath != null && File(filePath).exists()) {
+            if (voiceFile.cache && filePath != null && File(filePath).exists()) {
                 Log.d(TAG, "播放本地文件: $filePath")
                 player.setDataSource(filePath)
             } else {
                 Log.d(TAG, "播放网络文件: ${voiceFile.url}")
                 player.setDataSource(voiceFile.url)
+                voiceSource = "/W"
             }
-            
+
             // 同步准备播放器
             player.prepare()
+
+            // 将AI主播的文字内容插入到实时动态列表中
+            try {
+                var voiceSecond = player.duration;
+                if (voiceSecond>0){
+                    voiceSecond = voiceSecond/1000
+                }
+                LiveMessageManager.insertMessage(
+                    type = MessageType.AI_RESPONSE,
+
+                    content = voiceFile.text + voiceSource + String.format("%03d", voiceSecond),
+                    userName = "AI主播"
+                )
+                Log.d(TAG, "AI主播消息已插入动态列表: ${voiceFile.text}")
+            } catch (e: Exception) {
+                Log.e(TAG, "插入AI主播消息失败", e)
+            }
             
             // 生成随机音频参数
             val audioParams = generateRandomParameters()
@@ -490,6 +511,8 @@ class LiveChattingService : Service() {
             // 等待播放完成
             while (player.isPlaying) {
                 if (isPlayingCommentAudio == false && isPlayingKbsAudio==false || isPlayingKbsAudio && hasCommentAudio) {
+                    isPlayingKbsAudio = false
+                    isPlayingCommentAudio = false
                     break;
                 }
                 Thread.sleep(100) // 每100毫秒检查一次播放状态

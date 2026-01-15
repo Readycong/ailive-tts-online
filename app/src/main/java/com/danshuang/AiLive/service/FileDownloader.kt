@@ -55,11 +55,8 @@ class FileDownloader(private val context: Context) {
                 return getCacheFilePath(voiceFile.id)
             }
             
-            // 处理URL，如果URL不是以http://或https://开头，则添加file_base_url作为前缀
-            val processedUrl = processUrl(voiceFile.url)
-            
             // 下载文件
-            val url = URL(processedUrl)
+            val url = URL(voiceFile.url)
             val connection = url.openConnection()
             connection.connect()
             
@@ -92,7 +89,7 @@ class FileDownloader(private val context: Context) {
     /**
      * 处理URL，如果URL不是以http://或https://开头，则添加file_base_url作为前缀
      */
-    private fun processUrl(url: String): String {
+    fun processUrl(url: String): String {
         // 检查URL是否以http://或https://开头
         if (url.startsWith("http://") || url.startsWith("https://")) {
             return url
