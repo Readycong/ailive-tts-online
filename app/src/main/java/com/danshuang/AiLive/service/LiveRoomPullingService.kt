@@ -454,7 +454,11 @@ class LiveRoomPullingService : Service() {
                 if (wssUrl != null && cookieString != null) {
                     // 使用传入的URL和Cookie连接主WebSocket
                     connectWebSocket(wssUrl, cookieString)
-                    addLogMessage("直播间连接成功", true)
+                    if (connectionState == ConnectionState.CONNECTED) {
+                        addLogMessage("直播间连接成功", true)
+                    } else {
+                        addLogMessage("直播间连接失败，请检查网络环境或尝试手工启动，30秒后重试", true)
+                    }
                 } else {
                     addLogMessage("直播连接失败D", true)
                     Log.d(TAG, "Failed to initialize pulling WebSocket connection: wssUrl=%s, cookieString=%s".format(wssUrl, cookieString))
@@ -553,7 +557,7 @@ class LiveRoomPullingService : Service() {
                     isServiceRunning.set(false)
                     isServiceStopped.set(true)
                     serviceScope.launch(Dispatchers.Main) {
-                        webView?.loadUrl("about:blank")
+                        //webView?.loadUrl("about:blank") // 10086 EEEEEEEEEEEEEEEEEEE
                     }
                 }
                 ConnectionState.ERROR -> {
@@ -1083,12 +1087,16 @@ class LiveRoomPullingService : Service() {
                             serviceScope.launch {
                                 try {
                                     val tokenManager = TokenManager(loginRepository)
-                                    val serverApiUtils = ServerApiUtilsV2.createFromContext(context, tokenManager, loginRepository)
-                                    
+                                    val serverApiUtils = ServerApiUtilsV2.createFromContext(
+                                        context,
+                                        tokenManager,
+                                        loginRepository
+                                    )
+
                                     // 获取当前用户信息
                                     val currentUser = serverApiUtils.getCurrentUser()
                                     val boundAccount = currentUser?.userProfile?.boundAccount
-                                    
+
                                     if (boundAccount != null && boundAccount.userId.isNotEmpty()) {
                                         // 调用bindDouyinLive方法绑定直播间信息
                                         val bindResult = serverApiUtils.bindDouyinLive(
@@ -1099,7 +1107,7 @@ class LiveRoomPullingService : Service() {
                                             roomId = roomId,
                                             userHomeUrl = boundAccount.homeUrl
                                         )
-                                        
+
                                         if (bindResult.isSuccess) {
                                             addLogMessage("直播间信息绑定成功")
                                         } else {
@@ -1119,26 +1127,35 @@ class LiveRoomPullingService : Service() {
                             isServiceRunning.set(true)
                             initializeWebSocketConnection(wsUri, cookie)
                             hookWebView(liveView)
-//
-//                        // 通过收到消息间隔判断直播间是否卡停
-//                        checkLiveRoomJob = MainScope().launch {
-//                            while (true) {
-//                                try {
-//                                    delay(10000) // 每10秒检查一次
-//                                    val currentTime = System.currentTimeMillis()/1000
-//                                    if (currentTime - lastWSPostTime > 20) {
-//                                        addLogMessage("直播间消息长时间未更新，尝试重连直播间", true)
-//                                        pullingState = PULLING_STATE_RECONNECT
-//                                        Log.w(TAG, "No messages received from WebSocket for over 30 seconds")
+
+                            // 通过收到消息间隔判断直播间是否卡停
+                            checkLiveRoomJob = MainScope().launch {
+                                while (true) {
+                                    try {
+                                        delay(30000) // 每30秒检查一次
+                                        val currentTime = System.currentTimeMillis() / 1000
+                                        if (currentTime - lastWSPostTime > 29) {
+                                            addLogMessage(
+                                                "直播间消息长时间未更新，尝试重连直播间",
+                                                true
+                                            )
+                                            serviceState = PULLING_STATE_RECONNECT
+                                            connectionState = ConnectionState.CONNECTING
+                                            Log.w(
+                                                TAG,
+                                                "No messages received from WebSocket for over 30 seconds"
+                                            )
+                                            initializeWebSocketConnection(wsUri, cookie)
+//                                            break
+                                        }
+                                    } catch (e: Exception) {
+                                        Log.e(TAG, "Error while checking live room status", e)
+                                        delay(30000) // 每30秒检查一次
 //                                        break
-//                                    }
-//                                } catch (e: Exception) {
-//                                    Log.e(TAG, "Error while checking live room status", e)
-//                                    break
-//                                }
-//                            }
-//                            stopSelf()
-//                        }
+                                    }
+                                }
+                                //stopSelf() // 10068 EEEEEEEEEEEEEEEEEEEEEEEEEE
+                            }
                         }
                     }
                 } catch (e: Exception) {

@@ -224,9 +224,7 @@ fun AILiveScreen(
     LaunchedEffect(pullingState) {
         // 当服务停止时，关闭监控开关
         if (pullingState == LiveRoomPullingService.PULLING_STATE_RECONNECT) {
-            liveMonitorEnabled = false
-            LiveRoomPullingService.stopService(context)
-
+            Log.e("AILiveScreen", "连接断开，尝试重连接中：{$pullingState}")
 //            LiveRoomPullingService.startService(
 //                context,
 //                wssUrl = "",

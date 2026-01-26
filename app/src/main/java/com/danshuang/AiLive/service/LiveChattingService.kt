@@ -380,6 +380,13 @@ class LiveChattingService : Service() {
             // 如果未缓存，则下载并缓存文件
             if (filePath == null) {
                 filePath = fileDownloader.downloadAndCacheFile(voiceFile)
+                if (filePath == null) {
+                    LiveMessageManager.insertMessage(
+                        type = MessageType.AI_RESPONSE,
+                        content = "下载失败: ${voiceFile.msg}",
+                        userName = "AI主播"
+                    )
+                }
             } else {
                 Log.d(TAG, "语音已缓存: ${voiceFile.url}")
             }
@@ -452,20 +459,22 @@ class LiveChattingService : Service() {
             player.prepare()
 
             // 将AI主播的文字内容插入到实时动态列表中
-            try {
-                var voiceSecond = player.duration;
-                if (voiceSecond>0){
-                    voiceSecond = voiceSecond/1000
-                }
-                LiveMessageManager.insertMessage(
-                    type = MessageType.AI_RESPONSE,
+            if (!isPlayingKbsAudio) {
+                try {
+                    var voiceSecond = player.duration;
+                    if (voiceSecond > 0) {
+                        voiceSecond = voiceSecond / 1000
+                    }
+                    LiveMessageManager.insertMessage(
+                        type = MessageType.AI_RESPONSE,
 
-                    content = voiceFile.text + voiceSource + String.format("%03d", voiceSecond),
-                    userName = "AI主播"
-                )
-                Log.d(TAG, "AI主播消息已插入动态列表: ${voiceFile.text}")
-            } catch (e: Exception) {
-                Log.e(TAG, "插入AI主播消息失败", e)
+                        content = voiceFile.text + voiceSource + String.format("%03d", voiceSecond),
+                        userName = "AI主播"
+                    )
+                    Log.d(TAG, "AI主播消息已插入动态列表: ${voiceFile.text}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "插入AI主播消息失败", e)
+                }
             }
             
             // 生成随机音频参数

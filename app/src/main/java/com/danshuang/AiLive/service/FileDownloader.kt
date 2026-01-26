@@ -5,6 +5,7 @@ import android.util.Log
 import com.danshuang.AiLive.R
 import java.io.File
 import java.io.FileOutputStream
+import java.net.HttpURLConnection
 import java.net.URL
 
 /**
@@ -49,6 +50,9 @@ class FileDownloader(private val context: Context) {
      * 下载并缓存文件
      */
     fun downloadAndCacheFile(voiceFile: com.danshuang.AiLive.data.model.VoiceFileInfo): String? {
+        val startTime = System.currentTimeMillis()
+        val timeout = 3000L // 3秒超时限制
+
         return try {
             // 如果文件标记为已缓存且本地存在，则直接返回路径
             if (voiceFile.cache && isFileCached(voiceFile.id)) {
@@ -57,21 +61,55 @@ class FileDownloader(private val context: Context) {
             
             // 下载文件
             val url = URL(voiceFile.url)
-            val connection = url.openConnection()
+            val connection = url.openConnection() as HttpURLConnection
+            connection.connectTimeout = timeout.toInt()
+            connection.readTimeout = timeout.toInt()
             connection.connect()
+            
+            // 检查建立连接是否已经超时
+            if (System.currentTimeMillis() - startTime > timeout) {
+                Log.e(TAG, "连接超时 (超过 3 秒): ${voiceFile.id}")
+                voiceFile.msg = "连接超时 (超过 3 秒)"
+                return null
+            }
             
             val input = connection.getInputStream()
             val cacheFile = File(getCacheDir(), voiceFile.id)
             val output = FileOutputStream(cacheFile)
             
-            input.copyTo(output)
-            input.close()
-            output.close()
+            val buffer = ByteArray(8192)
+            var bytesRead: Int
+            var isTimeout = false
+            
+            try {
+                while (input.read(buffer).also { bytesRead = it } != -1) {
+                    output.write(buffer, 0, bytesRead)
+                    // 检查下载过程中的总耗时
+                    if (System.currentTimeMillis() - startTime > timeout) {
+                        isTimeout = true
+                        break
+                    }
+                }
+            } finally {
+                input.close()
+                output.close()
+                connection.disconnect()
+            }
+            
+            if (isTimeout) {
+                Log.e(TAG, "下载内容超时 (超过 3 秒): ${voiceFile.id}")
+                if (cacheFile.exists()) {
+                    cacheFile.delete()
+                }
+                voiceFile.msg = "连接超时 (超过 3 秒)"
+                return null
+            }
             
             Log.d(TAG, "文件下载并缓存成功: ${voiceFile.id}")
             cacheFile.absolutePath
         } catch (e: Exception) {
             Log.e(TAG, "文件下载失败: ${voiceFile.id}", e)
+            voiceFile.msg = "文件下载失败"
             null
         }
     }

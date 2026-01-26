@@ -12,5 +12,6 @@ data class VoiceFileInfo(
     val text: String,
     var url: String,
     val cache: Boolean = false,
-    val duration: Long? = null // 音频时长（毫秒），可为空
+    val duration: Long? = null, // 音频时长（毫秒），可为空
+    var msg: String? = null
 )

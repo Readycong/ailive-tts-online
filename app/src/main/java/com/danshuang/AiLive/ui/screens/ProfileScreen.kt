@@ -35,6 +35,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.collectAsState
 import coil.compose.AsyncImage
+import com.danshuang.AiLive.service.FileDownloader
 
 // 菜单项数据类
 data class MenuItem(
@@ -438,7 +439,7 @@ fun ProfileScreen(
                 if (cacheCleaned) {
                     Text("缓存清理成功！")
                 } else {
-                    Text("确定要清理缓存和用户数据吗？此操作不可恢复。")
+                    Text("确定要清理缓存？")
                 }
             },
             confirmButton = {
@@ -446,7 +447,9 @@ fun ProfileScreen(
                     if (!cacheCleaned) {
                         // 清理缓存逻辑
                         scope.launch {
-                            loginRepository.clearLoginInfo()
+//                            loginRepository.clearLoginInfo()
+                            var fileMan = FileDownloader(context)
+                            fileMan.clearCache()
                             cacheCleaned = true
                         }
                     } else {

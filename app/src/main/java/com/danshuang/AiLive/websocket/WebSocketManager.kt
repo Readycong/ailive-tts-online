@@ -15,7 +15,7 @@ class WebSocketManager {
     private var webSocket: WebSocket? = null
     private var currentUrl: String? = null
     private var reconnectAttempts = 0
-    private val maxReconnectAttempts = 5
+    private val maxReconnectAttempts = -1
     private val reconnectBaseDelay = 5000L // 5秒基础延迟
     private var textMessageListener: ((String) -> Unit)? = null
     private var binaryMessageListener: ((okio.ByteString) -> Unit)? = null
@@ -73,6 +73,7 @@ class WebSocketManager {
                 .connectTimeout(CONNECT_TIMEOUT, TimeUnit.SECONDS)
                 .readTimeout(READ_TIMEOUT, TimeUnit.SECONDS)
                 .writeTimeout(WRITE_TIMEOUT, TimeUnit.SECONDS)
+                .pingInterval(15, TimeUnit.SECONDS)
                 .retryOnConnectionFailure(true)
                 .build()
             
