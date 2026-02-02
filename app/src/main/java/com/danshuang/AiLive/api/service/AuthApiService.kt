@@ -78,8 +78,8 @@ class AuthApiService(
                     nickname = data["nickname"] as? String ?: "",
                     headimg = data["headimg"] as? String ?: "",
                     balance = data["balance"] as? String ?: "",
-                    point = data["point"] as? String ?: "",
-                    ailiveExpireTime = (data["ailive_expire_time"] as? Number)?.toLong() ?: 0L
+                    point = data["point"] as? String ?: ""
+                    // ailiveExpireTime 不再从此接口初始化，改为从 getBinding 接口同步
                 )
                 ServerResponse(
                     code = serverResponse.code,

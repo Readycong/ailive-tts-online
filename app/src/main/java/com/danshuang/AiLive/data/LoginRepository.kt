@@ -42,6 +42,9 @@ class LoginRepository(val context: Context) {
     private val BOUND_ACCOUNT_HOME_URL_KEY = stringPreferencesKey("bound_account_home_url")
     private val BOUND_ACCOUNT_IS_LIVE_KEY = stringPreferencesKey("bound_account_is_live")
     private val BOUND_ACCOUNT_BIND_TIME_KEY = longPreferencesKey("bound_account_bind_time")
+    private val BOUND_ACCOUNT_STATUS_KEY = longPreferencesKey("bound_account_status")
+    private val BOUND_ACCOUNT_BEGIN_AT_KEY = stringPreferencesKey("bound_account_begin_at")
+    private val BOUND_ACCOUNT_EXPIRES_AT_KEY = stringPreferencesKey("bound_account_expires_at")
 
     // 抖音账户信息存储键
     private val DOUYIN_ACCOUNT_PLATFORM_KEY = stringPreferencesKey("douyin_account_platform")
@@ -106,7 +109,10 @@ class LoginRepository(val context: Context) {
                     homeUrl = preferences[BOUND_ACCOUNT_HOME_URL_KEY] ?: "",
                     isLive = preferences[BOUND_ACCOUNT_IS_LIVE_KEY]?.toBoolean() ?: false,
                     bindTime = preferences[BOUND_ACCOUNT_BIND_TIME_KEY]
-                        ?: System.currentTimeMillis()
+                        ?: System.currentTimeMillis(),
+                    status = preferences[BOUND_ACCOUNT_STATUS_KEY] ?: 1L,
+                    beginAt = preferences[BOUND_ACCOUNT_BEGIN_AT_KEY] ?: "",
+                    expiresAt = preferences[BOUND_ACCOUNT_EXPIRES_AT_KEY] ?: ""
                 )
             } else {
                 null
@@ -161,7 +167,8 @@ class LoginRepository(val context: Context) {
             preferences[USER_HEADIMG_KEY] = user.userProfile.headimg
             preferences[USER_BALANCE_KEY] = user.userProfile.balance
             preferences[USER_POINT_KEY] = user.userProfile.point
-            preferences[USER_AILIVE_EXPIRE_TIME_KEY] = user.userProfile.ailiveExpireTime
+            // ailiveExpireTime 现在由 getBinding 接口同步，login 接口不再设置此值
+            // preferences[USER_AILIVE_EXPIRE_TIME_KEY] = user.userProfile.ailiveExpireTime
 
             // 保存绑定账户信息
             user.userProfile.boundAccount?.let { boundAccount ->
@@ -182,7 +189,8 @@ class LoginRepository(val context: Context) {
             preferences[USER_HEADIMG_KEY] = profile.headimg
             preferences[USER_BALANCE_KEY] = profile.balance
             preferences[USER_POINT_KEY] = profile.point
-            preferences[USER_AILIVE_EXPIRE_TIME_KEY] = profile.ailiveExpireTime
+            // ailiveExpireTime 现在由 getBinding 接口同步，此处不再更新
+            // preferences[USER_AILIVE_EXPIRE_TIME_KEY] = profile.ailiveExpireTime
 
             // 更新绑定账户信息
             profile.boundAccount?.let { boundAccount ->
@@ -238,6 +246,9 @@ class LoginRepository(val context: Context) {
             preferences[BOUND_ACCOUNT_HOME_URL_KEY] = boundAccount.homeUrl
             preferences[BOUND_ACCOUNT_IS_LIVE_KEY] = boundAccount.isLive.toString()
             preferences[BOUND_ACCOUNT_BIND_TIME_KEY] = boundAccount.bindTime
+            preferences[BOUND_ACCOUNT_STATUS_KEY] = boundAccount.status
+            preferences[BOUND_ACCOUNT_BEGIN_AT_KEY] = boundAccount.beginAt
+            preferences[BOUND_ACCOUNT_EXPIRES_AT_KEY] = boundAccount.expiresAt
         }
     }
 
@@ -250,6 +261,9 @@ class LoginRepository(val context: Context) {
             preferences.remove(BOUND_ACCOUNT_HOME_URL_KEY)
             preferences.remove(BOUND_ACCOUNT_IS_LIVE_KEY)
             preferences.remove(BOUND_ACCOUNT_BIND_TIME_KEY)
+            preferences.remove(BOUND_ACCOUNT_STATUS_KEY)
+            preferences.remove(BOUND_ACCOUNT_BEGIN_AT_KEY)
+            preferences.remove(BOUND_ACCOUNT_EXPIRES_AT_KEY)
         }
     }
 
@@ -282,6 +296,32 @@ class LoginRepository(val context: Context) {
             val nickname = bindingData["nickname"] as? String ?: ""
             val avatar = bindingData["avatar"] as? String ?: ""
             val userHomeUrl = bindingData["user_home_url"] as? String ?: ""
+            val status = when (val statusValue = bindingData["status"]) {
+                is Number -> statusValue.toLong()
+                is String -> statusValue.toLongOrNull() ?: 1L
+                else -> 1L
+            }
+            val beginAt = bindingData["begin_at"] as? String ?: ""
+            val expiresAt = bindingData["expires_at"] as? String ?: ""
+            
+            // 将 expires_at 日期字符串转换为 Unix 时间戳（秒）
+            val ailiveExpireTime = if (expiresAt.isNotEmpty()) {
+                try {
+                    val dateFormat = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.getDefault())
+                    val date = dateFormat.parse(expiresAt)
+                    // 将到期日期设置为当天的 23:59:59
+                    val calendar = java.util.Calendar.getInstance()
+                    calendar.time = date
+                    calendar.set(java.util.Calendar.HOUR_OF_DAY, 23)
+                    calendar.set(java.util.Calendar.MINUTE, 59)
+                    calendar.set(java.util.Calendar.SECOND, 59)
+                    calendar.timeInMillis / 1000 // 转换为秒
+                } catch (e: Exception) {
+                    0L
+                }
+            } else {
+                0L
+            }
 
             if (douyinId.isNotEmpty()) {
                 // 更新绑定账户信息
@@ -292,6 +332,12 @@ class LoginRepository(val context: Context) {
                 preferences[BOUND_ACCOUNT_HOME_URL_KEY] = userHomeUrl
                 preferences[BOUND_ACCOUNT_IS_LIVE_KEY] = "false" // 默认设置为离线状态
                 preferences[BOUND_ACCOUNT_BIND_TIME_KEY] = System.currentTimeMillis()
+                preferences[BOUND_ACCOUNT_STATUS_KEY] = status
+                preferences[BOUND_ACCOUNT_BEGIN_AT_KEY] = beginAt
+                preferences[BOUND_ACCOUNT_EXPIRES_AT_KEY] = expiresAt
+                
+                // 同步更新 ailiveExpireTime
+                preferences[USER_AILIVE_EXPIRE_TIME_KEY] = ailiveExpireTime
 
                 // 同时更新用户头像
                 if (avatar.isNotEmpty()) {
@@ -306,6 +352,11 @@ class LoginRepository(val context: Context) {
                 preferences.remove(BOUND_ACCOUNT_HOME_URL_KEY)
                 preferences.remove(BOUND_ACCOUNT_IS_LIVE_KEY)
                 preferences.remove(BOUND_ACCOUNT_BIND_TIME_KEY)
+                preferences.remove(BOUND_ACCOUNT_STATUS_KEY)
+                preferences.remove(BOUND_ACCOUNT_BEGIN_AT_KEY)
+                preferences.remove(BOUND_ACCOUNT_EXPIRES_AT_KEY)
+                // 清除 ailiveExpireTime
+                preferences[USER_AILIVE_EXPIRE_TIME_KEY] = 0L
             }
         }
     }

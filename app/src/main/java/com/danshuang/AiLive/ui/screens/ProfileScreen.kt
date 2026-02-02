@@ -36,6 +36,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.runtime.collectAsState
 import coil.compose.AsyncImage
 import com.danshuang.AiLive.service.FileDownloader
+import com.danshuang.AiLive.api.service.DouyinApiService
+import com.danshuang.AiLive.data.manager.TokenManager
+import com.danshuang.AiLive.config.AppConfig
 
 // 菜单项数据类
 data class MenuItem(
@@ -57,6 +60,7 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     val loginRepository = remember { LoginRepository(context) }
+    val tokenManager = remember { TokenManager(loginRepository) }
     val scope = rememberCoroutineScope()
     var showHelpDialog by remember { mutableStateOf(false) }
     var showContactDialog by remember { mutableStateOf(false) }
@@ -66,6 +70,7 @@ fun ProfileScreen(
     // 从登录仓库获取用户数据
     val loggedInUser by loginRepository.loggedInUser.collectAsState(initial = null)
     val userProfile = loggedInUser?.userProfile
+    val authToken by loginRepository.authToken.collectAsState(initial = null)
     
     // 获取抖音和来客账户信息
     val douyinAccount by loginRepository.getDouyinAccountFlow().collectAsState(initial = null)
@@ -73,7 +78,22 @@ fun ProfileScreen(
     
     var showNicknameDialog by remember { mutableStateOf(false) }
     var newNickname by remember { mutableStateOf("") }
+    val douyinApiService = remember { DouyinApiService(tokenManager, AppConfig.getApiBaseUrl(context), context) }    
     
+    // 登录时获取绑定信息
+    LaunchedEffect(authToken) {
+        authToken?.let { token ->
+            try {
+                val response = douyinApiService.getBinding(token)
+                if (response.isSuccess && response.data != null) {
+                    loginRepository.updateBoundAccountFromBindingData(response.data)
+                }
+            } catch (e: Exception) {
+                // 静默失败，不影响正常使用
+            }
+        }
+    }
+
     // 菜单列表
     val menuItems = remember {
         listOf(

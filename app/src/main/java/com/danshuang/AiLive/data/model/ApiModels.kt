@@ -50,8 +50,12 @@ data class UserProfile(
             "￥$balance / $point"
         } else ""
         
+    /**
+     * 判断 AI 直播服务是否过期
+     * 基于绑定账户的 status 字段：1=正常（未过期），0=禁用，2=过期
+     */
     val isAiliveExpired: Boolean
-        get() = ailiveExpireTime > 0 && System.currentTimeMillis() / 1000 > ailiveExpireTime
+        get() = boundAccount?.status != 1L
         
     val ailiveExpireDate: String
         get() = if (ailiveExpireTime > 0) {
@@ -73,7 +77,10 @@ data class BoundAccountInfo(
     val userId: String = "",          // 用户ID
     val homeUrl: String = "",         // 用户主页URL
     val isLive: Boolean = false,      // 是否在直播
-    val bindTime: Long = System.currentTimeMillis()  // 绑定时间
+    val bindTime: Long = System.currentTimeMillis(),  // 绑定时间
+    val status: Long = 1L,            // 账户状态：0=禁用, 1=正常, 2=过期
+    val beginAt: String = "",         // 服务开始时间（YYYY-mm-dd格式）
+    val expiresAt: String = ""        // 服务到期时间（YYYY-mm-dd格式）
 )
 
 /**
