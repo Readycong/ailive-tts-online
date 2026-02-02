@@ -31,12 +31,16 @@ open class BaseApiClient(
     
     protected val responseHandler = ApiResponseHandler.getInstance()
     
+    // 从AppConfig获取SITE_ID
+    protected val siteId: String by lazy {
+        AppConfig.Api.getSiteId(context)
+    }
+    
     companion object {
-        const val SITE_ID = "100000"
         const val CONTENT_TYPE_JSON = "application/json"
         const val CONTENT_TYPE_FORM = "application/x-www-form-urlencoded"
     }
-    
+
     /**
      * 创建GET请求构建器
      */
@@ -47,7 +51,7 @@ open class BaseApiClient(
         val builder = Request.Builder()
             .url(url)
             .get()
-            .addHeader("site-id", SITE_ID)
+            .addHeader("site-id", siteId)
             .addHeader("Content-Type", CONTENT_TYPE_JSON)
         
         // TODO: 在实际使用中需要通过TokenManager获取token
@@ -66,7 +70,7 @@ open class BaseApiClient(
         val builder = Request.Builder()
             .url(url)
             .post(requestBody)
-            .addHeader("site-id", SITE_ID)
+            .addHeader("site-id", siteId)
             .addHeader("Content-Type", CONTENT_TYPE_JSON)
         
         // TODO: 在实际使用中需要通过TokenManager获取token

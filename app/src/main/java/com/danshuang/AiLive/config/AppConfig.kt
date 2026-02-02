@@ -45,6 +45,10 @@ class AppConfig private constructor(private val context: Context) {
         fun getImageBaseUrl(context: Context): String {
             return context.getString(R.string.image_base_url)
         }
+
+        fun getSiteId(context: Context): String {
+            return context.getString(R.string.site_id)
+        }
         
         /**
          * 获取API超时时间（秒）
