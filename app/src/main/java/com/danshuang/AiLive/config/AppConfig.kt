@@ -51,6 +51,13 @@ class AppConfig private constructor(private val context: Context) {
         }
         
         /**
+         * 获取WAP基础URL
+         */
+        fun getWapBaseUrl(context: Context): String {
+            return context.getString(R.string.wap_base_url)
+        }
+        
+        /**
          * 获取API超时时间（秒）
          */
         fun getTimeout(context: Context): Long {
@@ -167,6 +174,20 @@ class AppConfig private constructor(private val context: Context) {
         }
         
         /**
+         * 快速获取 WAP 基础 URL 的便捷方法
+         */
+        fun getWapBaseUrl(context: Context): String {
+            return Api.getWapBaseUrl(context)
+        }
+        
+        /**
+         * 快速获取站点ID的便捷方法
+         */
+        fun getSiteId(context: Context): String {
+            return Api.getSiteId(context)
+        }
+        
+        /**
          * 根据环境获取 API URL
          */
         fun getApiUrlByEnvironment(context: Context, environment: Environment): String {
@@ -179,6 +200,8 @@ class AppConfig private constructor(private val context: Context) {
  * 扩展函数：为 Context 添加便捷的配置访问方法
  */
 fun Context.getApiBaseUrl(): String = AppConfig.getApiBaseUrl(this)
+fun Context.getWapBaseUrl(): String = AppConfig.getWapBaseUrl(this)
+fun Context.getSiteId(): String = AppConfig.getSiteId(this)
 fun Context.getImageBaseUrl(): String = AppConfig.Api.getImageBaseUrl(this)
 fun Context.getAppConfig(): AppConfig = AppConfig.getInstance(this)
 

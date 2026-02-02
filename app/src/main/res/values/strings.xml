@@ -6,6 +6,7 @@
     <string name="api_base_url1">https://www.huichuang100.com/index.php/api</string>
     <string name="image_base_url">https://www.huichuang100.com/</string>
     <string name="file_base_url">https://www.huichuang100.com/</string>
+    <string name="wap_base_url">https://www.huichuang100.com/wap</string>
     <string name="site_id">100014</string>
     <string name="api_timeout">20</string>
     <string name="douyin_search_pattern">https://www.douyin.com/search/%s?type=user</string>

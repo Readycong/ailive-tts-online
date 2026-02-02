@@ -32,6 +32,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ import com.danshuang.AiLive.ui.theme.AiLiveTheme
 import com.danshuang.AiLive.data.VoiceSettings
 import com.danshuang.AiLive.ui.components.QuickActionData
 import com.danshuang.AiLive.ui.components.QuickActionCard
+import com.danshuang.AiLive.config.AppConfig
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,6 +83,8 @@ fun ModelScreen(navigationState: NavigationState) {
 
 @Composable
 private fun QuickActionsSection(navigationState: NavigationState) {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier.padding(horizontal = 16.dp)
     ) {
@@ -278,13 +282,27 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         )
         val quickVoiceCloningActions = listOf(
             QuickActionVectorData(
-                title = "声音克隆",
+                title = "音色管理",
                 icon = Icons.Default.Face,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
-                    navigationState.navigateToVoiceCloning()
+                    val wapBaseUrl = AppConfig.getWapBaseUrl(context)
+                    val voiceManageUrl = "$wapBaseUrl/app/pages/member/index"
+                    navigationState.navigateToWebView(
+                        url = voiceManageUrl,
+                        title = "音色管理"
+                    )
                 }
             ),
+//
+//            QuickActionVectorData(
+//                title = "声音克隆",
+//                icon = Icons.Default.Face,
+//                backgroundColor = Color(0xFF2196F3),
+//                onClick = {
+//                    navigationState.navigateToVoiceCloning()
+//                }
+//            ),
 
 
             QuickActionVectorData(

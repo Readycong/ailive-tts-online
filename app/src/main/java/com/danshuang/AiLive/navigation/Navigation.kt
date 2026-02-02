@@ -20,6 +20,7 @@ import com.danshuang.AiLive.ui.screens.ProfileScreen
 import com.danshuang.AiLive.ui.screens.ChangePasswordScreen
 import com.danshuang.AiLive.ui.screens.HelpScreen
 import com.danshuang.AiLive.ui.screens.CardActivationScreen
+import com.danshuang.AiLive.ui.screens.WebViewScreen
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -62,12 +63,17 @@ sealed class Screen(val route: String) {
     data object CardActivation : Screen("card_activation") {
         fun createRoute() = "card_activation"
     }
+    data object WebView : Screen("webview") {
+        fun createRoute(url: String, title: String) = "webview?url=$url&title=$title"
+    }
 }
 
 class NavigationState {
     var currentScreen by mutableStateOf<Screen>(Screen.Home)
     var contentEditKey by mutableStateOf<String?>(null)
     var liveScriptKey by mutableStateOf<String?>(null)
+    var webViewUrl by mutableStateOf<String?>(null)
+    var webViewTitle by mutableStateOf<String?>(null)
     
     fun navigateTo(screen: Screen) {
         currentScreen = screen
@@ -127,6 +133,12 @@ class NavigationState {
         currentScreen = Screen.CardActivation
     }
 
+    fun navigateToWebView(url: String, title: String = "页面详情") {
+        webViewUrl = url
+        webViewTitle = title
+        currentScreen = Screen.WebView
+    }
+
     fun navigateUp() {
         when (currentScreen) {
             is Screen.ContentEdit -> {
@@ -169,6 +181,11 @@ class NavigationState {
             }
             is Screen.CardActivation -> {
                 currentScreen = Screen.Profile
+            }
+            is Screen.WebView -> {
+                webViewUrl = null
+                webViewTitle = null
+                currentScreen = Screen.Home
             }
             else -> {
                 currentScreen = Screen.Home
@@ -346,6 +363,20 @@ fun ScreenNavigation(
             CardActivationScreen(
                 onNavigateBack = { navigationState.navigateUp() }
             )
+        }
+        is Screen.WebView -> {
+            navigationState.webViewUrl?.let { url ->
+                WithLoginProtection(
+                    screenName = "WebView",
+                    onLogout = onLogout
+                ) {
+                    WebViewScreen(
+                        navController = navigationState,
+                        url = url,
+                        title = navigationState.webViewTitle ?: "页面详情"
+                    )
+                }
+            }
         }
     }
 }

@@ -122,7 +122,8 @@ fun MainAppNavigation(
             is Screen.GreetingSettings, is Screen.NicknameRestrictions,
             is Screen.CommentRestrictions, is Screen.VoiceSettings,
             is Screen.VoiceCloning, is Screen.ChangePassword,
-            is Screen.Help, is Screen.AccountBinding, is Screen.CardActivation -> {
+            is Screen.Help, is Screen.AccountBinding, is Screen.CardActivation,
+            is Screen.WebView -> {
                 // 这些页面有明确的返回页面，使用navigateUp
                 navigationState.navigateUp()
             }
