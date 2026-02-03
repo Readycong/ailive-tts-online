@@ -1,5 +1,6 @@
 package com.danshuang.AiLive.navigation
 
+import android.content.Context
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -7,7 +8,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
+import com.danshuang.AiLive.config.AppConfig
 import com.danshuang.AiLive.ui.components.WithLoginProtection
 import com.danshuang.AiLive.ui.screens.ContentEditScreen
 import com.danshuang.AiLive.ui.screens.HomeScreen
@@ -133,8 +136,10 @@ class NavigationState {
         currentScreen = Screen.CardActivation
     }
 
-    fun navigateToWebView(url: String, title: String = "页面详情") {
-        webViewUrl = url
+    fun navigateToWebView(url: String, context: Context, title: String = "页面详情") {
+        val wapBaseUrl = AppConfig.getApiBaseUrl(context)
+        val voiceManageUrl = wapBaseUrl+"/dscrm/dylive-android/initWap?url="+url
+        webViewUrl = voiceManageUrl
         webViewTitle = title
         currentScreen = Screen.WebView
     }
@@ -237,7 +242,7 @@ fun ScreenNavigation(
                 onLogout = onLogout,
                 onNavigateToChangePassword = { navigationState.navigateToChangePassword() },
                 onNavigateToHelp = { navigationState.navigateToHelp() },
-                onNavigateToCardActivation = { navigationState.navigateToCardActivation() },
+                onNavigateToCardActivation = {  },
                 onNavigateToDouyinAccountBinding = { navigationState.navigateToDouyinAccountBinding() },
                 onNavigateToLkAccountBinding = { navigationState.navigateToLkAccountBinding() }
             )

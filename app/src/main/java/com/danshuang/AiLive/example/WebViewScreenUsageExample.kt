@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.danshuang.AiLive.navigation.NavigationState
 
@@ -18,10 +19,12 @@ import com.danshuang.AiLive.navigation.NavigationState
  * 4. 支持返回导航
  * 
  * 使用方法：
- * 在任何需要打开WebView页面的地方，调用navigationState.navigateToWebView(url, title)
+ * 在任何需要打开WebView页面的地方，调用navigationState.navigateToWebView(url, context, title)
  */
 @Composable
 fun WebViewScreenUsageExample(navigationState: NavigationState) {
+    val context = LocalContext.current
+    
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -37,7 +40,8 @@ fun WebViewScreenUsageExample(navigationState: NavigationState) {
         Button(
             onClick = {
                 navigationState.navigateToWebView(
-                    url = "https://example.com/business-page"
+                    url = "https://example.com/business-page",
+                    context = context
                 )
             },
             modifier = Modifier.fillMaxWidth()
@@ -50,6 +54,7 @@ fun WebViewScreenUsageExample(navigationState: NavigationState) {
             onClick = {
                 navigationState.navigateToWebView(
                     url = "https://example.com/order-detail",
+                    context = context,
                     title = "订单详情"
                 )
             },
@@ -63,6 +68,7 @@ fun WebViewScreenUsageExample(navigationState: NavigationState) {
             onClick = {
                 navigationState.navigateToWebView(
                     url = "https://example.com/user-profile",
+                    context = context,
                     title = "个人信息"
                 )
             },
@@ -77,6 +83,7 @@ fun WebViewScreenUsageExample(navigationState: NavigationState) {
                 val productId = "12345"
                 navigationState.navigateToWebView(
                     url = "https://example.com/product/$productId",
+                    context = context,
                     title = "商品详情"
                 )
             },
@@ -129,10 +136,13 @@ fun WebViewScreenUsageExample(navigationState: NavigationState) {
  */
 @Composable
 fun BusinessUsageExample(navigationState: NavigationState) {
+    val context = LocalContext.current
+    
     // 示例：从商品列表点击进入商品详情页
     fun openProductDetail(productId: String) {
         navigationState.navigateToWebView(
             url = "https://api.example.com/product/detail?id=$productId",
+            context = context,
             title = "商品详情"
         )
     }
@@ -141,6 +151,7 @@ fun BusinessUsageExample(navigationState: NavigationState) {
     fun openOrderDetail(orderId: String) {
         navigationState.navigateToWebView(
             url = "https://api.example.com/order/detail?id=$orderId",
+            context = context,
             title = "订单详情"
         )
     }
@@ -149,6 +160,7 @@ fun BusinessUsageExample(navigationState: NavigationState) {
     fun openActivityPage(activityId: String) {
         navigationState.navigateToWebView(
             url = "https://api.example.com/activity?id=$activityId",
+            context = context,
             title = "活动详情"
         )
     }
@@ -157,6 +169,7 @@ fun BusinessUsageExample(navigationState: NavigationState) {
     fun openHelpCenter() {
         navigationState.navigateToWebView(
             url = "https://help.example.com",
+            context = context,
             title = "帮助中心"
         )
     }

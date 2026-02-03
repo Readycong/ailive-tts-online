@@ -361,6 +361,7 @@ private val noteCards = listOf(
 // 3. 卡片组件
 @Composable
 fun NoteCardItem(card: NoteCard, navController: NavigationState, modifier: Modifier = Modifier) {
+    val context = LocalContext.current
     Card(
         modifier = modifier
             .width(0.dp)
@@ -371,9 +372,18 @@ fun NoteCardItem(card: NoteCard, navController: NavigationState, modifier: Modif
                 when (card.tag) {
                     "model" -> navController.navigateTo(Screen.Model)
                     "knowledge" -> navController.navigateTo(Screen.Knowledge)
-                    "voice_cloning" -> navController.navigateToVoiceCloning()
+                    "voice_cloning" -> navController.navigateToWebView(
+                        url = "/wap/addon/dsalive/pages/voice/index",
+                        context,
+                        title = "音色管理"
+                    )
                     "live_params" -> navController.navigateTo(Screen.VoiceSettings)
-                    "live_review" -> navController.navigateTo(Screen.AILive)
+                    //"live_review" -> navController.navigateTo(Screen.AILive)
+                    "live_review" -> navController.navigateToWebView(
+                        url = "/wap/addon/dsalive/pages/billing/list",
+                        context,
+                        title = "直播场次记录"
+                    )
                     "card_activation" -> navController.navigateToCardActivation()
                     else -> {} // 默认情况不执行任何操作
                 }

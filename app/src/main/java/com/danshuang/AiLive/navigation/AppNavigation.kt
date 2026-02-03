@@ -149,6 +149,7 @@ fun MainAppNavigation(
                 navigationState.currentScreen !is Screen.VoiceSettings &&
                 navigationState.currentScreen !is Screen.VoiceCloning &&
                 navigationState.currentScreen !is Screen.AILive &&
+                navigationState.currentScreen !is Screen.WebView &&
                 navigationState.currentScreen !is Screen.CardActivation) {
                 NavigationBar(
                     containerColor = backgroundLight,

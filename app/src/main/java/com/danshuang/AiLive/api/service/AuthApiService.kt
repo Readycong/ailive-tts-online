@@ -24,9 +24,9 @@ class AuthApiService(
     /**
      * 用户登录
      */
-    suspend fun login(username: String, password: String): LoginResult {
+    suspend fun login(username: String, password: String): LoginResult = withContext(Dispatchers.IO) {
         val apiName = "Login"
-        return try {
+        return@withContext try {
             val url = "${baseUrl}/login?username=$username&password=$password&mobile=&mobile_code=&mobile_key="
             responseHandler.logApiCall(apiName, url, "GET")
             

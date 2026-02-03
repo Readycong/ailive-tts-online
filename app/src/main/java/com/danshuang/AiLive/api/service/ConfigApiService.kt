@@ -292,7 +292,7 @@ class ConfigApiService(
         token: String,
         douyinId: String,
         keys: List<String>
-    ): Map<String, ConfigItem> {
+    ): Map<String, ConfigItem> = withContext(Dispatchers.IO) {
         val results = mutableMapOf<String, ConfigItem>()
         
         keys.forEach { key ->
@@ -302,7 +302,7 @@ class ConfigApiService(
             }
         }
         
-        return results
+        return@withContext results
     }
     
     /**
@@ -356,12 +356,12 @@ class ConfigApiService(
     suspend fun uploadAudioWithValidation(
         token: String,
         filePath: String
-    ): ServerResponse<Boolean> {
+    ): ServerResponse<Boolean> = withContext(Dispatchers.IO) {
         val validationError = validateAudioFile(filePath)
         if (validationError != null) {
-            return ServerResponse(code = 0, msg = validationError, data = false)
+            return@withContext ServerResponse(code = 0, msg = validationError, data = false)
         }
 
-        return uploadAudio(token, filePath)
+        return@withContext uploadAudio(token, filePath)
     }
 }

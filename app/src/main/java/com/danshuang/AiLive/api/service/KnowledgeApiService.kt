@@ -213,8 +213,8 @@ class KnowledgeApiService(
     suspend fun batchUpdateKbItems(
         token: String,
         items: List<KnowledgeItem>
-    ): List<ServerResponse<Any>> {
-        return items.map { item ->
+    ): List<ServerResponse<Any>> = withContext(Dispatchers.IO) {
+        return@withContext items.map { item ->
             updateKbItem(
                 token = token,
                 typeId = item.typeId,
@@ -231,8 +231,8 @@ class KnowledgeApiService(
     suspend fun batchDeleteKbItems(
         token: String,
         itemIds: List<Number>
-    ): List<ServerResponse<Any>> {
-        return itemIds.map { id ->
+    ): List<ServerResponse<Any>> = withContext(Dispatchers.IO) {
+        return@withContext itemIds.map { id ->
             deleteKbItem(token, id)
         }
     }

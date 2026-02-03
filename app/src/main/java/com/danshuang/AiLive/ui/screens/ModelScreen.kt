@@ -286,10 +286,9 @@ private fun QuickActionsSection(navigationState: NavigationState) {
                 icon = Icons.Default.Face,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
-                    val wapBaseUrl = AppConfig.getWapBaseUrl(context)
-                    val voiceManageUrl = "$wapBaseUrl/app/pages/member/index"
                     navigationState.navigateToWebView(
-                        url = voiceManageUrl,
+                        url = "/wap/addon/dsalive/pages/voice/index",
+                        context,
                         title = "音色管理"
                     )
                 }

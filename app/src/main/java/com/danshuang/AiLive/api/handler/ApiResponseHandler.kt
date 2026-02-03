@@ -6,6 +6,8 @@ import com.danshuang.AiLive.data.model.ServerResponse
 import com.danshuang.AiLive.util.GlobalEventManager
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import okhttp3.Response
 import java.io.IOException
 
@@ -21,25 +23,31 @@ class ApiResponseHandler {
     /**
      * 处理HTTP响应并解析为ServerResponse
      */
-    inline fun <reified T> handleResponse(
+    suspend inline fun <reified T> handleResponse(
         response: Response,
         apiName: String = "Unknown",
         context: Context
-    ): ServerResponse<T> {
-        return try {
+    ): ServerResponse<T> = withContext(Dispatchers.IO) {
+        return@withContext try {
             if (!response.isSuccessful) {
                 Log.w(tag, "$apiName: HTTP ${response.code} - ${response.message}")
                 // 检查HTTP状态码是否为401
                 if (response.code == 401) {
                     GlobalEventManager.getInstance().sendUnauthorizedErrorEvent(context)
                 }
-                return createErrorResponse("HTTP错误: ${response.code} ${response.message}")
+                return@withContext createErrorResponse("HTTP错误: ${response.code} ${response.message}")
             }
             
-            val responseBody = response.body?.string()
+            val responseBody = try {
+                response.body?.string() ?: ""
+            } catch (e: IllegalStateException) {
+                Log.e(tag, "Failed to read response body", e)
+                return@withContext createErrorResponse("读取响应体失败: ${e.message}")
+            }
+
             if (responseBody.isNullOrBlank()) {
                 Log.w(tag, "$apiName: Empty response body")
-                return createErrorResponse("服务器返回空响应")
+                return@withContext createErrorResponse("服务器返回空响应")
             }
             
             Log.d(tag, "$apiName Response: $responseBody")
@@ -66,7 +74,7 @@ class ApiResponseHandler {
                             gson.fromJson(gson.toJson(data), T::class.java)
                         } catch (e: Exception) {
                             Log.e(tag, "$apiName: Data parsing failed", e)
-                            return createErrorResponse("数据解析失败: ${e.message}")
+                            return@withContext createErrorResponse("数据解析失败: ${e.message}")
                         }
                     }
                 }
@@ -91,48 +99,48 @@ class ApiResponseHandler {
     /**
      * 处理简单的响应（不需要具体类型转换）
      */
-    fun handleSimpleResponse(
+    suspend fun handleSimpleResponse(
         response: Response,
         apiName: String = "Unknown",
         context: Context
-    ): ServerResponse<Any> {
-        return handleResponse<Any>(response, apiName, context)
+    ): ServerResponse<Any> = withContext(Dispatchers.IO) {
+        return@withContext handleResponse<Any>(response, apiName, context)
     }
     
     /**
      * 处理返回布尔值的简单接口
      */
-    fun handleBooleanResponse(
+    suspend fun handleBooleanResponse(
         response: Response,
         apiName: String = "Unknown",
         context: Context
-    ): Boolean {
+    ): Boolean = withContext(Dispatchers.IO) {
         val result = handleSimpleResponse(response, apiName, context)
-        return result.isSuccess
+        return@withContext result.isSuccess
     }
     
     /**
      * 处理返回Map类型的响应
      */
-    fun handleMapResponse(
+    suspend fun handleMapResponse(
         response: Response,
         apiName: String = "Unknown",
         context: Context
-    ): Map<String, Any>? {
+    ): Map<String, Any>? = withContext(Dispatchers.IO) {
         val result = handleResponse<Map<String, Any>>(response, apiName, context)
-        return if (result.isSuccess) result.data else null
+        return@withContext if (result.isSuccess) result.data else null
     }
     
     /**
      * 处理返回List类型的响应
      */
-    fun handleListResponse(
+    suspend fun handleListResponse(
         response: Response,
         apiName: String = "Unknown",
         context: Context
-    ): List<Any>? {
+    ): List<Any>? = withContext(Dispatchers.IO) {
         val result = handleResponse<List<Any>>(response, apiName, context)
-        return if (result.isSuccess) result.data else null
+        return@withContext if (result.isSuccess) result.data else null
     }
     
     /**

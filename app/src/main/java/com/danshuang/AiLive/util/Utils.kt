@@ -86,7 +86,12 @@ class Utils {
                 withContext(Dispatchers.IO) { client.newCall(request).execute() }
 
             if (!response.isSuccessful) return null
-            return response.body?.string()
+            return try {
+                response.body?.string()
+            } catch (e: IllegalStateException) {
+                e.printStackTrace()
+                null
+            }
         }
 
         fun loadBase64Image(imageView: ImageView, base64String: String) {

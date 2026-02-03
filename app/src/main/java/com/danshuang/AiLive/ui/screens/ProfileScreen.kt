@@ -39,6 +39,7 @@ import com.danshuang.AiLive.service.FileDownloader
 import com.danshuang.AiLive.api.service.DouyinApiService
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.config.AppConfig
+import com.danshuang.AiLive.navigation.rememberNavigationState
 
 // 菜单项数据类
 data class MenuItem(
@@ -78,8 +79,9 @@ fun ProfileScreen(
     
     var showNicknameDialog by remember { mutableStateOf(false) }
     var newNickname by remember { mutableStateOf("") }
-    val douyinApiService = remember { DouyinApiService(tokenManager, AppConfig.getApiBaseUrl(context), context) }    
-    
+    val douyinApiService = remember { DouyinApiService(tokenManager, AppConfig.getApiBaseUrl(context), context) }
+    val navigationState = rememberNavigationState()
+
     // 登录时获取绑定信息
     LaunchedEffect(authToken) {
         authToken?.let { token ->
@@ -284,12 +286,14 @@ fun ProfileScreen(
                                 // }
                                 
                                 Button(
-                                    onClick = { onNavigateToCardActivation() },
+                                    onClick = {
+                                        navigationState.navigateToWebView("/wap/app/pages/member/index", context, "会员服务")
+                                    },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.primary
                                     )
                                 ) {
-                                    Text("卡密激活")
+                                    Text("会员中心")
                                 }
                             }
                         }
