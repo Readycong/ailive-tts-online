@@ -52,6 +52,7 @@ data class MenuItem(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
+    navigationState: NavigationState,
     onLogout: () -> Unit = {},
     onNavigateToChangePassword: () -> Unit = {},
     onNavigateToHelp: () -> Unit = {},
@@ -80,7 +81,6 @@ fun ProfileScreen(
     var showNicknameDialog by remember { mutableStateOf(false) }
     var newNickname by remember { mutableStateOf("") }
     val douyinApiService = remember { DouyinApiService(tokenManager, AppConfig.getApiBaseUrl(context), context) }
-    val navigationState = rememberNavigationState()
 
     // 登录时获取绑定信息
     LaunchedEffect(authToken) {
@@ -498,7 +498,8 @@ fun ProfileScreen(
 @Preview(showBackground = true)
 @Composable
 fun ProfileScreenPreview() {
+    val navigationState = rememberNavigationState()
     AiLiveTheme {
-        ProfileScreen()
+        ProfileScreen(navigationState = navigationState)
     }
 }
