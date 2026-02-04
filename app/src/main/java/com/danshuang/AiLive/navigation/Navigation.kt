@@ -239,6 +239,7 @@ fun ScreenNavigation(
             onLogout = onLogout
         ) {
             ProfileScreen(
+                navigationState = navigationState,
                 onLogout = onLogout,
                 onNavigateToChangePassword = { navigationState.navigateToChangePassword() },
                 onNavigateToHelp = { navigationState.navigateToHelp() },
