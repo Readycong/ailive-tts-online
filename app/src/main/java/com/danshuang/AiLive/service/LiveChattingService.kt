@@ -278,7 +278,7 @@ class LiveChattingService : Service() {
         
         while (isServiceRunning) {
             // 从DataStore中读取roomId，如果为空则使用默认值
-            val roomId = loginRepository.liveRoomId.first() ?: "default_room_id"
+            val roomId = loginRepository.liveRoomId.first() ?: "0"
             // 检查网络状态
             checkNetworkStatus()
             

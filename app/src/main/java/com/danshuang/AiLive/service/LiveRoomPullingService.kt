@@ -456,7 +456,7 @@ class LiveRoomPullingService : Service() {
                     connectWebSocket(wssUrl, cookieString)
                     if (connectionState == ConnectionState.CONNECTED) {
                         addLogMessage("直播间连接成功", true)
-                    } else {
+                    } else if (connectionState == ConnectionState.ERROR) {
                         addLogMessage("直播间连接失败，请检查网络环境或尝试手工启动，30秒后重试", true)
                     }
                 } else {
@@ -556,9 +556,9 @@ class LiveRoomPullingService : Service() {
                     // 不再直接调用stopSelf()，而是通过状态管理
                     isServiceRunning.set(false)
                     isServiceStopped.set(true)
-                    serviceScope.launch(Dispatchers.Main) {
-                        //webView?.loadUrl("about:blank") // 10086 EEEEEEEEEEEEEEEEEEE
-                    }
+//                    serviceScope.launch(Dispatchers.Main) {
+//                        webView?.loadUrl("about:blank") // 10086 EEEEEEEEEEEEEEEEEEE
+//                    }
                 }
                 ConnectionState.ERROR -> {
                     Log.e(TAG, "Pulling WebSocket connection error")
