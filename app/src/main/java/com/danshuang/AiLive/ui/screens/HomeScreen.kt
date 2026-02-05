@@ -352,7 +352,7 @@ data class NoteCard(
 private val noteCards = listOf(
     NoteCard("model", "门店大模型", "智能对话，贴心服务", "https://www.huichuang100.com/android/v2/z/ai-model.png"),
     NoteCard("knowledge", "知识库", "专用解答，行业知识驱动", "https://www.huichuang100.com/android/v2/z/kb-lib.png"),
-    NoteCard("voice_cloning", "语音克隆", "让客户记住您的声音，提升辨识度", "https://www.huichuang100.com/android/v2/z/voice-cloning.png"),
+    NoteCard("voice_cloning", "音色管理", "选择匹配业务风格的音色，提升辨识度", "https://www.huichuang100.com/android/v2/z/voice-cloning.png"),
     NoteCard("live_params", "直播参数", "对话过程控制优化", "https://www.huichuang100.com/android/v2/z/live-params.png"),
     NoteCard("live_review", "直播回顾", "回看每场AI对话，同步优化", "https://www.huichuang100.com/android/v2/z/ai-review.png"),
     NoteCard("card_activation", "卡密续费", "卡密兑换，账户续费", "https://www.huichuang100.com/android/v2/z/account-rights.png")

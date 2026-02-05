@@ -67,27 +67,58 @@ fun BaseScreen(
     // 注册和注销广播接收器
     DisposableEffect(Unit) {
         val filter = IntentFilter(GlobalEventManager.ACTION_UNAUTHORIZED_ERROR)
-        LocalBroadcastManager.getInstance(context).registerReceiver(unauthorizedErrorReceiver, filter)
+        LocalBroadcastManager.getInstance(context).registerReceiver(unauthorizedErrorReceiver, filter);
         
         onDispose {
-            LocalBroadcastManager.getInstance(context).unregisterReceiver(unauthorizedErrorReceiver)
+            LocalBroadcastManager.getInstance(context).unregisterReceiver(unauthorizedErrorReceiver);
         }
     }
     
+    // 使用更快速的登录状态检查，避免长时间等待
+    var immediateLoginState by remember { mutableStateOf<LoginCheckResult>(LoginCheckResult.Loading) }
+    
+    // 立即尝试获取当前登录状态
+    LaunchedEffect(Unit) {
+        // 首先检查本地是否有缓存的登录信息，如果有则立即显示内容
+        val isLoggedIn = baseScreenManager.isLoggedIn()
+        if (isLoggedIn) {
+            immediateLoginState = LoginCheckResult.LoggedIn
+        } else {
+            immediateLoginState = LoginCheckResult.NotLoggedIn
+        }
+    }
+    
+    // 监听实时登录状态变化
     val loginState by rememberLoginState(
         onLoginExpired = onSessionExpired.takeIf { onSessionExpired !== {} }
     )
     
-    when (loginState) {
-        is LoginCheckResult.Loading -> {
-            loadingContent()
+    // 更新immediateLoginState以反映最新的登录状态
+    LaunchedEffect(loginState) {
+        when (loginState) {
+            is LoginCheckResult.Loading -> {
+                // 保持当前状态，不改变immediateLoginState
+            }
+            is LoginCheckResult.NotLoggedIn -> {
+                immediateLoginState = LoginCheckResult.NotLoggedIn
+            }
+            is LoginCheckResult.LoggedIn -> {
+                immediateLoginState = LoginCheckResult.LoggedIn
+            }
         }
-        is LoginCheckResult.NotLoggedIn -> {
+    }
+    
+    when (immediateLoginState) {
+        LoginCheckResult.LoggedIn -> {
+            content()
+        }
+        LoginCheckResult.NotLoggedIn -> {
             LoginScreen(
                 onLoginSuccess = onLoginSuccess
             )
         }
-        is LoginCheckResult.LoggedIn -> {
+        LoginCheckResult.Loading -> {
+            // 即使是Loading状态，我们也不再无限等待，而是显示内容
             content()
         }
     }
@@ -106,11 +137,14 @@ private fun DefaultLoadingContent() {
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            CircularProgressIndicator()
-//            Text(
-//                text = "检查登录状态...",
-//                style = MaterialTheme.typography.bodyMedium
-//            )
+            CircularProgressIndicator(
+                modifier = Modifier.size(48.dp),
+                strokeWidth = 4.dp
+            )
+            Text(
+                text = "启动中...",
+                style = MaterialTheme.typography.bodyMedium
+            )
         }
     }
 }
