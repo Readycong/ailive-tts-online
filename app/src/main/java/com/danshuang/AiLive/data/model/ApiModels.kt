@@ -157,3 +157,58 @@ data class OnlineUser(
     val avatar: String,
     val joinTime: Long = System.currentTimeMillis()
 )
+
+/**
+ * 直播场次信息
+ */
+@Keep
+data class LiveSession(
+    val localId: Int,
+    val roomId: String,
+    val statusName: String,
+    val status: Int,
+    val duration: Int,              // 时长（秒）
+    val startTime: String,
+    val endTime: String,
+    val createTime: String,
+    val updateTime: String,
+    val usePoint: Int,
+    val balanceData: String?
+)
+
+/**
+ * 直播场次列表分页响应
+ */
+@Keep
+data class LiveSessionList(
+    val total: Int,
+    val perPage: Int,
+    val currentPage: Int,
+    val lastPage: Int,
+    val data: List<LiveSession>
+)
+
+/**
+ * 直播统计数据
+ */
+@Keep
+data class LiveStatistics(
+    val totalCount: Int,
+    val totalUsePoint: Int,
+    val totalBalanceData: String
+)
+
+/**
+ * 直播间交互记录
+ */
+@Keep
+data class LiveInteractionRecord(
+    val method: String,              // chat, greet等
+    val liveUserNickname: String,
+    val question: String,
+    val answer: String,
+    val usePoint: Int?,
+    val createTime: String,
+    val playTime: Int?,
+    val roomId: String
+)

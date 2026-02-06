@@ -2,6 +2,7 @@ package com.danshuang.AiLive.ui.screens
 
 import android.util.Log
 import android.webkit.CookieManager
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -96,30 +97,73 @@ fun WebViewScreen(
                                     Log.i("load page", pageUrl)
                                 }
                             }
+                            
+                            override fun shouldOverrideUrlLoading(
+                                view: WebView?,
+                                request: WebResourceRequest?
+                            ): Boolean {
+                                // 允许在同一个WebView中加载所有链接
+                                return false
+                            }
                         }
+                        
+                        // 设置WebChromeClient以支持完整的H5特性
+                        webChromeClient = WebChromeClient()
+                        
                         settings.apply {
+                            // JavaScript相关
                             javaScriptEnabled = true
+                            javaScriptCanOpenWindowsAutomatically = true
+                            
+                            // DOM存储
                             domStorageEnabled = true
                             databaseEnabled = true
+                            
+                            // 文件访问
                             allowContentAccess = true
                             allowFileAccess = true
+                            
+                            // 媒体播放
                             mediaPlaybackRequiresUserGesture = false
+                            
+                            // 视口和缩放
                             loadWithOverviewMode = true
-                            useWideViewPort = true
-                            setSupportZoom(true)
+                            useWideViewPort = false
+//                            setSupportZoom(true)
                             builtInZoomControls = true
                             displayZoomControls = false
-                            // 启用混合内容模式（如果需要）
+                            
+                            // 设置默认文本编码
+                            defaultTextEncodingName = "utf-8"
+                            
+                            // 自动加载图片
+                            loadsImagesAutomatically = true
+                            blockNetworkImage = false
+                            
+                            // 支持多窗口
+                            setSupportMultipleWindows(false)
+                            
+                            // 启用混合内容模式
                             mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-
+                            
+                            // 设置User-Agent为移动端浏览器UA
+                            userAgentString = userAgentString?.let { ua ->
+                                if (!ua.contains("Mobile")) {
+                                    "$ua Mobile"
+                                } else {
+                                    ua
+                                }
+                            }
+                            
                             // 缓存设置
                             cacheMode = WebSettings.LOAD_DEFAULT
+                            
+                            // 支持内容重新布局
+                            layoutAlgorithm = WebSettings.LayoutAlgorithm.NORMAL
                         }
-
-                        // 启用Cookie
-                        CookieManager.getInstance().apply {
-                            setAcceptCookie(true)
-                        }
+                        
+                        // 启用硬件加速
+                        setLayerType(WebView.LAYER_TYPE_HARDWARE, null)
                     }
 
                     // 准备请求头，包含token - 使用当前组合时的token值
@@ -135,7 +179,7 @@ fun WebViewScreen(
 
                     // 加载URL带请求头
                     webView.loadUrl(url, extraHeaders.toMap())
-
+                    webView.webChromeClient = WebChromeClient()
                     webView
                 },
                 update = { view ->

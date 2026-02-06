@@ -24,6 +24,7 @@ import com.danshuang.AiLive.ui.screens.ChangePasswordScreen
 import com.danshuang.AiLive.ui.screens.HelpScreen
 import com.danshuang.AiLive.ui.screens.CardActivationScreen
 import com.danshuang.AiLive.ui.screens.WebViewScreen
+import com.danshuang.AiLive.ui.screens.LiveHistoryScreen
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -68,6 +69,9 @@ sealed class Screen(val route: String) {
     }
     data object WebView : Screen("webview") {
         fun createRoute(url: String, title: String) = "webview?url=$url&title=$title"
+    }
+    data object LiveHistory : Screen("live_history") {
+        fun createRoute() = "live_history"
     }
 }
 
@@ -144,6 +148,10 @@ class NavigationState {
         currentScreen = Screen.WebView
     }
 
+    fun navigateToLiveHistory() {
+        currentScreen = Screen.LiveHistory
+    }
+
     fun navigateUp() {
         when (currentScreen) {
             is Screen.ContentEdit -> {
@@ -191,6 +199,9 @@ class NavigationState {
                 webViewUrl = null
                 webViewTitle = null
                 currentScreen = Screen.Home
+            }
+            is Screen.LiveHistory -> {
+                currentScreen = Screen.Profile
             }
             else -> {
                 currentScreen = Screen.Home
@@ -245,7 +256,8 @@ fun ScreenNavigation(
                 onNavigateToHelp = { navigationState.navigateToHelp() },
                 onNavigateToCardActivation = {  },
                 onNavigateToDouyinAccountBinding = { navigationState.navigateToDouyinAccountBinding() },
-                onNavigateToLkAccountBinding = { navigationState.navigateToLkAccountBinding() }
+                onNavigateToLkAccountBinding = { navigationState.navigateToLkAccountBinding() },
+                onNavigateToLiveHistory = { navigationState.navigateToLiveHistory() }
             )
         }
         is Screen.ChangePassword -> WithLoginProtection(
@@ -383,6 +395,14 @@ fun ScreenNavigation(
                     )
                 }
             }
+        }
+        is Screen.LiveHistory -> WithLoginProtection(
+            screenName = "LiveHistory",
+            onLogout = onLogout
+        ) {
+            LiveHistoryScreen(
+                onNavigateBack = { navigationState.navigateUp() }
+            )
         }
     }
 }

@@ -352,9 +352,11 @@ class LiveRoomPullingService : Service() {
      */
     private fun initializeComponents() {
         try {
-            apiService = LiveRoomApiService()
-            liveRoomRepository = LiveRoomRepository(this, apiService)
             loginRepository = LoginRepository(this)
+            val tokenManager = TokenManager(loginRepository)
+            val baseUrl = com.danshuang.AiLive.config.AppConfig.getApiBaseUrl(this)
+            apiService = LiveRoomApiService(tokenManager, baseUrl, this)
+            liveRoomRepository = LiveRoomRepository(this, apiService)
             webSocketManager = WebSocketManager()
             secondaryWebSocketManager = WebSocketManager()
             messageProcessor = MessageProcessor(liveRoomRepository, serviceScope)
@@ -368,6 +370,10 @@ class LiveRoomPullingService : Service() {
                             secondaryWebSocketManager.sendBinaryMessage(bytes)
 //                            Log.d(TAG, "Forwarded binary message to platform websocket")
                             lastWSPostTime = System.currentTimeMillis()/1000
+
+                            _connectionStateFlow.value = ConnectionState.CONNECTED
+                            _pullingStateFlow.value = PULLING_STATE_MONITORING
+                            updateNotification()
                         }
                     } catch (e: Exception) {
                         Log.e(TAG, "Failed to forward binary message to platform websocket", e)

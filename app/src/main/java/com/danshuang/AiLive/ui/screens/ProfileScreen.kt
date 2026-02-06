@@ -58,7 +58,8 @@ fun ProfileScreen(
     onNavigateToHelp: () -> Unit = {},
     onNavigateToCardActivation: () -> Unit = {},
     onNavigateToDouyinAccountBinding: () -> Unit = {},
-    onNavigateToLkAccountBinding: () -> Unit = {}
+    onNavigateToLkAccountBinding: () -> Unit = {},
+    onNavigateToLiveHistory: () -> Unit = {}
 ) {
     val context = LocalContext.current
     val loginRepository = remember { LoginRepository(context) }
@@ -133,6 +134,11 @@ fun ProfileScreen(
                 onClick = { 
                     onNavigateToChangePassword()
                 }
+            ),
+            MenuItem(
+                icon = Icons.Filled.History,
+                title = "直播回顾",
+                onClick = { onNavigateToLiveHistory() }
             ),
             MenuItem(
                 icon = Icons.Filled.Search,

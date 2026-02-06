@@ -379,11 +379,7 @@ fun NoteCardItem(card: NoteCard, navController: NavigationState, modifier: Modif
                     )
                     "live_params" -> navController.navigateTo(Screen.VoiceSettings)
                     //"live_review" -> navController.navigateTo(Screen.AILive)
-                    "live_review" -> navController.navigateToWebView(
-                        url = "/wap/addon/dsalive/pages/billing/list",
-                        context,
-                        title = "直播场次记录"
-                    )
+                    "live_review" -> navController.navigateToLiveHistory()
                     "card_activation" -> navController.navigateToCardActivation()
                     else -> {} // 默认情况不执行任何操作
                 }
