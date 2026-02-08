@@ -61,6 +61,9 @@ sealed class Screen(val route: String) {
     data object VoiceSettings : Screen("voice_settings") {
         fun createRoute() = "voice_settings"
     }
+    data object VoiceManagement : Screen("voice_management") {
+        fun createRoute() = "voice_management"
+    }
     data object VoiceCloning : Screen("voice_cloning") {
         fun createRoute() = "voice_cloning"
     }
@@ -110,6 +113,10 @@ class NavigationState {
 
     fun navigateToVoiceSettings() {
         currentScreen = Screen.VoiceSettings
+    }
+
+    fun navigateToVoiceManagement() {
+        currentScreen = Screen.VoiceManagement
     }
 
     fun navigateToVoiceCloning() {
@@ -172,6 +179,9 @@ class NavigationState {
                 currentScreen = Screen.Model
             }
             is Screen.VoiceSettings -> {
+                currentScreen = Screen.Model
+            }
+            is Screen.VoiceManagement -> {
                 currentScreen = Screen.Model
             }
             is Screen.VoiceCloning -> {
@@ -333,6 +343,14 @@ fun ScreenNavigation(
             onLogout = onLogout
         ) {
             com.danshuang.AiLive.ui.screens.VoiceSettingsScreen(
+                navController = navigationState
+            )
+        }
+        is Screen.VoiceManagement -> WithLoginProtection(
+            screenName = "VoiceManagement",
+            onLogout = onLogout
+        ) {
+            com.danshuang.AiLive.ui.screens.VoiceManagementScreen(
                 navController = navigationState
             )
         }

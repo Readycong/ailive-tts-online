@@ -372,11 +372,7 @@ fun NoteCardItem(card: NoteCard, navController: NavigationState, modifier: Modif
                 when (card.tag) {
                     "model" -> navController.navigateTo(Screen.Model)
                     "knowledge" -> navController.navigateTo(Screen.Knowledge)
-                    "voice_cloning" -> navController.navigateToWebView(
-                        url = "/wap/addon/dsalive/pages/voice/index",
-                        context,
-                        title = "音色管理"
-                    )
+                    "voice_cloning" -> navController.navigateTo(Screen.VoiceManagement)
                     "live_params" -> navController.navigateTo(Screen.VoiceSettings)
                     //"live_review" -> navController.navigateTo(Screen.AILive)
                     "live_review" -> navController.navigateToLiveHistory()

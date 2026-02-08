@@ -6,6 +6,7 @@ import com.danshuang.AiLive.data.model.ServerResponse
 import com.danshuang.AiLive.util.GlobalEventManager
 import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
+import com.google.gson.reflect.TypeToken
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.Response
@@ -65,18 +66,13 @@ class ApiResponseHandler {
             
             // 根据业务逻辑判断是否成功
             if (code == 1 && data != null) {
-                val parsedData = when (T::class) {
-                    String::class -> data as T
-                    Map::class -> data as T
-                    List::class, ArrayList::class -> data as T
-                    else -> {
-                        try {
-                            gson.fromJson(gson.toJson(data), T::class.java)
-                        } catch (e: Exception) {
-                            Log.e(tag, "$apiName: Data parsing failed", e)
-                            return@withContext createErrorResponse("数据解析失败: ${e.message}")
-                        }
-                    }
+                val parsedData = try {
+                    // 使用TypeToken来正确处理泛型类型
+                    val type = object : TypeToken<T>() {}.type
+                    gson.fromJson(gson.toJson(data), type) as T
+                } catch (e: Exception) {
+                    Log.e(tag, "$apiName: Data parsing failed", e)
+                    return@withContext createErrorResponse("数据解析失败: ${e.message}")
                 }
                 ServerResponse(code = code, msg = msg, data = parsedData)
             } else {

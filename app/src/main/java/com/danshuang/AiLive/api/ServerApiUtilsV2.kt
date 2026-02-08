@@ -4,6 +4,7 @@ import com.danshuang.AiLive.api.service.AuthApiService
 import com.danshuang.AiLive.api.service.DouyinApiService
 import com.danshuang.AiLive.api.service.KnowledgeApiService
 import com.danshuang.AiLive.api.service.ConfigApiService
+import com.danshuang.AiLive.api.service.VoiceApiService
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.data.model.LoginResult
@@ -15,6 +16,8 @@ import com.danshuang.AiLive.data.model.AiComment
 import com.danshuang.AiLive.data.model.ConfigItem
 import com.danshuang.AiLive.data.model.GreetingConfig
 import com.danshuang.AiLive.data.model.VoiceFileInfo
+import com.danshuang.AiLive.data.model.VoiceItem
+import com.danshuang.AiLive.data.model.SelectedVoiceData
 import kotlinx.coroutines.flow.first
 
 /**
@@ -27,6 +30,7 @@ class ServerApiUtilsV2(
     private val douyinApiService: DouyinApiService,
     private val knowledgeApiService: KnowledgeApiService,
     private val configApiService: ConfigApiService,
+    private val voiceApiService: VoiceApiService,
     private val tokenManager: TokenManager,
     private val loginRepository: LoginRepository,
     private val baseUrl: String
@@ -428,6 +432,32 @@ class ServerApiUtilsV2(
         return tokenManager.getTokenRemainingTime().first()
     }
     
+    // ============== 音色管理 ==============
+    
+    /**
+     * 获取当前选中的音色
+     */
+    suspend fun getSelectedVoice(): ServerResponse<SelectedVoiceData> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
+        return voiceApiService.getSelectedVoice(token)
+    }
+    
+    /**
+     * 获取全部音色列表
+     */
+    suspend fun getVoiceList(): ServerResponse<List<VoiceItem>> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
+        return voiceApiService.getVoiceList(token)
+    }
+    
+    /**
+     * 保存音色
+     */
+    suspend fun saveVoice(voiceType: String, emotion: String): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return voiceApiService.saveVoice(token, voiceType, emotion)
+    }
+    
     companion object {
         /**
          * 创建实例的工厂方法（用于非依赖注入的场景）
@@ -442,12 +472,14 @@ class ServerApiUtilsV2(
             val douyinApiService = DouyinApiService(tokenManager, baseUrl, context)
             val knowledgeApiService = KnowledgeApiService(tokenManager, baseUrl, context)
             val configApiService = ConfigApiService(tokenManager, baseUrl, context)
+            val voiceApiService = VoiceApiService(tokenManager, baseUrl, context)
             
             return ServerApiUtilsV2(
                 authApiService = authApiService,
                 douyinApiService = douyinApiService,
                 knowledgeApiService = knowledgeApiService,
                 configApiService = configApiService,
+                voiceApiService = voiceApiService,
                 tokenManager = tokenManager,
                 loginRepository = loginRepository,
                 baseUrl = baseUrl

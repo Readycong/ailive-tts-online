@@ -1,6 +1,13 @@
 package com.danshuang.AiLive.api.service
 
+import android.content.Context
+import com.danshuang.AiLive.api.client.BaseApiClient
+import com.danshuang.AiLive.data.manager.TokenManager
+import com.danshuang.AiLive.data.model.ServerResponse
 import com.danshuang.AiLive.data.model.VoiceFileInfo
+import com.danshuang.AiLive.data.model.VoiceItem
+import com.danshuang.AiLive.data.model.SelectedVoiceData
+import com.danshuang.AiLive.data.model.SaveVoiceRequest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import android.util.Log
@@ -9,7 +16,11 @@ import android.util.Log
  * 语音API服务
  * 负责处理与语音文件相关的API调用
  */
-class VoiceApiService {
+class VoiceApiService(
+    tokenManager: TokenManager,
+    private val baseUrl: String,
+    context: Context
+) : BaseApiClient(tokenManager, context) {
     
     companion object {
         private const val TAG = "VoiceApiService"
@@ -65,6 +76,87 @@ class VoiceApiService {
                 Log.e(TAG, "Failed to fetch voice files for stage: $stage", e)
                 throw e
             }
+        }
+    }
+    
+    /**
+     * 获取当前选中的音色
+     * GET /dsalive/voice/selected
+     */
+    suspend fun getSelectedVoice(token: String): ServerResponse<SelectedVoiceData> = withContext(Dispatchers.IO) {
+        val apiName = "GetSelectedVoice"
+        return@withContext try {
+            val url = "${baseUrl}/dsalive/voice/selected"
+            
+            responseHandler.logApiCall(apiName, url, "GET", null)
+            
+            val request = createGetRequest(url)
+                .addTokenHeader(token)
+                .build()
+            
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<SelectedVoiceData>(response, apiName, context)
+            
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "获取当前音色失败: ${e.message}", data = null)
+        }
+    }
+    
+    /**
+     * 获取全部音色列表
+     * GET /dsalive/voice/lists
+     */
+    suspend fun getVoiceList(token: String): ServerResponse<List<VoiceItem>> = withContext(Dispatchers.IO) {
+        val apiName = "GetVoiceList"
+        return@withContext try {
+            val url = "${baseUrl}/dsalive/voice/lists"
+            
+            responseHandler.logApiCall(apiName, url, "GET", null)
+            
+            val request = createGetRequest(url)
+                .addTokenHeader(token)
+                .build()
+            
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<List<VoiceItem>>(response, apiName, context)
+            
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "获取音色列表失败: ${e.message}", data = null)
+        }
+    }
+    
+    /**
+     * 保存音色
+     * POST /dsalive/voice/save
+     */
+    suspend fun saveVoice(
+        token: String,
+        voiceType: String,
+        emotion: String
+    ): ServerResponse<Any> = withContext(Dispatchers.IO) {
+        val apiName = "SaveVoice"
+        return@withContext try {
+            val url = "${baseUrl}/dsalive/voice/save"
+            val postData = mapOf(
+                "voice_type" to voiceType,
+                "emotion" to emotion
+            )
+            
+            responseHandler.logApiCall(apiName, url, "POST", postData)
+            
+            val requestBody = createJsonRequestBody(postData)
+            val request = createPostRequest(url, requestBody)
+                .addTokenHeader(token)
+                .build()
+            
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<Any>(response, apiName, context)
+            
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "保存音色失败: ${e.message}", data = null)
         }
     }
 }
