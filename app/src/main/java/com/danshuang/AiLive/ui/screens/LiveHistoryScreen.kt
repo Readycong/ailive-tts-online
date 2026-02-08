@@ -3,6 +3,7 @@ package com.danshuang.AiLive.ui.screens
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -492,7 +493,7 @@ fun LiveSessionCard(session: LiveSession, onClick: () -> Unit) {
                 horizontalArrangement = Arrangement.Start
             ) {
                 Text(
-                    text = "算力: ${session.usePoint}",
+                    text = "消耗算力: ${session.usePoint}",
                     fontSize = 14.sp,
                     color = Color.Gray
                 )
@@ -709,6 +710,14 @@ fun InteractionRecordCard(record: LiveInteractionRecord) {
                     text = "回复: ${record.answer}",
                     fontSize = 13.sp,
                     color = Color.DarkGray
+                )
+            }
+            if (record.usePoint != null) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "算力：${record.usePoint}",
+                    fontSize = 12.sp,
+                    color = Color.Gray
                 )
             }
         }
