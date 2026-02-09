@@ -293,7 +293,7 @@ fun ProfileScreen(
                                 
                                 Button(
                                     onClick = {
-                                        navigationState.navigateToWebView("/wap/app/pages/member/index", context, "会员服务")
+                                        navigationState.navigateToWebView("/wap/addon/dsalive/pages/qrcode-poster?page=app/pages/member/index", context, "会员服务")
                                     },
                                     colors = ButtonDefaults.buttonColors(
                                         containerColor = MaterialTheme.colorScheme.primary
