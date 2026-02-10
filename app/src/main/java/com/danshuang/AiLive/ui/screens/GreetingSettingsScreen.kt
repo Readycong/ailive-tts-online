@@ -136,7 +136,7 @@ fun GreetingSettingsScreen(
                             val maxUsers = maxOnlineUsers.toIntOrNull()
                             val delay = responseDelay.toIntOrNull()
                             
-                            maxOnlineUsersError = maxUsers == null || maxUsers < 0 || maxUsers > 100
+                            maxOnlineUsersError = maxUsers == null || maxUsers <= 0
                             responseDelayError = delay == null || delay < 0 || delay > 20
                             
                             if (!maxOnlineUsersError && !responseDelayError) {
