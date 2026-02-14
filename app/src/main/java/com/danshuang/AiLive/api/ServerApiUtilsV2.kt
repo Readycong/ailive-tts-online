@@ -5,6 +5,7 @@ import com.danshuang.AiLive.api.service.DouyinApiService
 import com.danshuang.AiLive.api.service.KnowledgeApiService
 import com.danshuang.AiLive.api.service.ConfigApiService
 import com.danshuang.AiLive.api.service.VoiceApiService
+import com.danshuang.AiLive.api.service.ProductApiService
 import com.danshuang.AiLive.data.manager.TokenManager
 import com.danshuang.AiLive.data.LoginRepository
 import com.danshuang.AiLive.data.model.LoginResult
@@ -18,6 +19,10 @@ import com.danshuang.AiLive.data.model.GreetingConfig
 import com.danshuang.AiLive.data.model.VoiceFileInfo
 import com.danshuang.AiLive.data.model.VoiceItem
 import com.danshuang.AiLive.data.model.SelectedVoiceData
+import com.danshuang.AiLive.data.model.ProductItem
+import com.danshuang.AiLive.data.model.ProductListData
+import com.danshuang.AiLive.data.model.AiDescriptionResult
+import com.danshuang.AiLive.data.model.ProductAddResult
 import kotlinx.coroutines.flow.first
 
 /**
@@ -31,6 +36,7 @@ class ServerApiUtilsV2(
     private val knowledgeApiService: KnowledgeApiService,
     private val configApiService: ConfigApiService,
     private val voiceApiService: VoiceApiService,
+    private val productApiService: ProductApiService,
     private val tokenManager: TokenManager,
     private val loginRepository: LoginRepository,
     private val baseUrl: String
@@ -458,6 +464,110 @@ class ServerApiUtilsV2(
         return voiceApiService.saveVoice(token, voiceType, emotion)
     }
     
+    // ============== 商品管理 ==============
+    
+    /**
+     * 获取商品列表
+     */
+    suspend fun fetchProductList(page: Int): ServerResponse<ProductListData> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
+        return productApiService.fetchProductList(token, page)
+    }
+    
+    /**
+     * 获取商品详情
+     */
+    suspend fun fetchProductDetail(id: Int): ServerResponse<ProductItem> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
+        return productApiService.fetchProductDetail(token, id)
+    }
+    
+    /**
+     * 新增商品
+     */
+    suspend fun addProduct(
+        productName: String,
+        price: String,
+        coverImage: String?,
+        coverImageBase64: String? = null,
+        description: String,
+        isOnline: Int,
+        enableAiVoice: Int,
+        stock: Int? = null
+    ): ServerResponse<ProductAddResult> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
+        return productApiService.addProduct(token, productName, price, coverImage, coverImageBase64, description, isOnline, enableAiVoice, stock)
+    }
+    
+    /**
+     * 编辑商品
+     */
+    suspend fun editProduct(
+        id: Int,
+        productName: String,
+        price: String,
+        coverImage: String?,
+        coverImageBase64: String? = null,
+        description: String,
+        isOnline: Int,
+        enableAiVoice: Int,
+        weight: Int? = null,
+        stock: Int? = null,
+        sort: Int? = null,
+        aiDescription: String? = null
+    ): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return productApiService.editProduct(token, id, productName, price, coverImage, coverImageBase64, description, isOnline, enableAiVoice, weight, stock, sort, aiDescription)
+    }
+    
+    /**
+     * 删除商品
+     */
+    suspend fun deleteProduct(id: Int): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return productApiService.deleteProduct(token, id)
+    }
+    
+    /**
+     * 切换上架状态
+     */
+    suspend fun toggleProductOnline(id: Int, isOnline: Int): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return productApiService.toggleOnline(token, id, isOnline)
+    }
+    
+    /**
+     * 切换AI讲解开关
+     */
+    suspend fun toggleProductAiVoice(id: Int, enableAiVoice: Int): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return productApiService.toggleAiVoice(token, id, enableAiVoice)
+    }
+    
+    /**
+     * 生成AI讲解文案
+     */
+    suspend fun generateProductAiDescription(id: Int): ServerResponse<AiDescriptionResult> {
+        val token = getTokenOrThrow() ?: return ServerResponse(code = 0, msg = "用户未登录", data = null)
+        return productApiService.generateAiDescription(token, id)
+    }
+    
+    /**
+     * 更新商品排序编号
+     */
+    suspend fun updateProductSort(id: Int, sort: Int): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return productApiService.updateProductSort(token, id, sort)
+    }
+    
+    /**
+     * 生成/更新商品卡AI讲品语音
+     */
+    suspend fun generateProductAiTts(id: Int, aiDescription: String): ServerResponse<Any> {
+        val token = getTokenOrThrow() ?: return createNotLoggedInResponse()
+        return productApiService.generateAiTts(token, id, aiDescription)
+    }
+    
     companion object {
         /**
          * 创建实例的工厂方法（用于非依赖注入的场景）
@@ -473,6 +583,7 @@ class ServerApiUtilsV2(
             val knowledgeApiService = KnowledgeApiService(tokenManager, baseUrl, context)
             val configApiService = ConfigApiService(tokenManager, baseUrl, context)
             val voiceApiService = VoiceApiService(tokenManager, baseUrl, context)
+            val productApiService = ProductApiService(tokenManager, baseUrl, context)
             
             return ServerApiUtilsV2(
                 authApiService = authApiService,
@@ -480,6 +591,7 @@ class ServerApiUtilsV2(
                 knowledgeApiService = knowledgeApiService,
                 configApiService = configApiService,
                 voiceApiService = voiceApiService,
+                productApiService = productApiService,
                 tokenManager = tokenManager,
                 loginRepository = loginRepository,
                 baseUrl = baseUrl

@@ -25,6 +25,8 @@ import com.danshuang.AiLive.ui.screens.HelpScreen
 import com.danshuang.AiLive.ui.screens.CardActivationScreen
 import com.danshuang.AiLive.ui.screens.WebViewScreen
 import com.danshuang.AiLive.ui.screens.LiveHistoryScreen
+import com.danshuang.AiLive.ui.screens.ProductListScreen
+import com.danshuang.AiLive.ui.screens.ProductEditScreen
 
 sealed class Screen(val route: String) {
     data object Home : Screen("home")
@@ -76,6 +78,12 @@ sealed class Screen(val route: String) {
     data object LiveHistory : Screen("live_history") {
         fun createRoute() = "live_history"
     }
+    data object ProductList : Screen("product_list") {
+        fun createRoute() = "product_list"
+    }
+    data object ProductEdit : Screen("product_edit/{productId}") {
+        fun createRoute(productId: Int) = "product_edit/$productId"
+    }
 }
 
 class NavigationState {
@@ -84,6 +92,7 @@ class NavigationState {
     var liveScriptKey by mutableStateOf<String?>(null)
     var webViewUrl by mutableStateOf<String?>(null)
     var webViewTitle by mutableStateOf<String?>(null)
+    var productEditId by mutableStateOf<Int?>(null)
     
     fun navigateTo(screen: Screen) {
         currentScreen = screen
@@ -159,6 +168,15 @@ class NavigationState {
         currentScreen = Screen.LiveHistory
     }
 
+    fun navigateToProductList() {
+        currentScreen = Screen.ProductList
+    }
+
+    fun navigateToProductEdit(productId: Int) {
+        productEditId = productId
+        currentScreen = Screen.ProductEdit
+    }
+
     fun navigateUp() {
         when (currentScreen) {
             is Screen.ContentEdit -> {
@@ -212,6 +230,13 @@ class NavigationState {
             }
             is Screen.LiveHistory -> {
                 currentScreen = Screen.Profile
+            }
+            is Screen.ProductList -> {
+                currentScreen = Screen.Model
+            }
+            is Screen.ProductEdit -> {
+                productEditId = null
+                currentScreen = Screen.ProductList
             }
             else -> {
                 currentScreen = Screen.Home
@@ -421,6 +446,27 @@ fun ScreenNavigation(
             LiveHistoryScreen(
                 onNavigateBack = { navigationState.navigateUp() }
             )
+        }
+        is Screen.ProductList -> WithLoginProtection(
+            screenName = "ProductList",
+            onLogout = onLogout
+        ) {
+            ProductListScreen(
+                navController = navigationState
+            )
+        }
+        is Screen.ProductEdit -> {
+            navigationState.productEditId?.let { productId ->
+                WithLoginProtection(
+                    screenName = "ProductEdit",
+                    onLogout = onLogout
+                ) {
+                    ProductEditScreen(
+                        navController = navigationState,
+                        productId = productId
+                    )
+                }
+            }
         }
     }
 }

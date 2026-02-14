@@ -123,6 +123,7 @@ fun MainAppNavigation(
             is Screen.CommentRestrictions, is Screen.VoiceSettings,
             is Screen.VoiceCloning, is Screen.ChangePassword,
             is Screen.Help, is Screen.AccountBinding, is Screen.CardActivation,
+            is Screen.ProductList, is Screen.ProductEdit,
             is Screen.WebView -> {
                 // 这些页面有明确的返回页面，使用navigateUp
                 navigationState.navigateUp()
@@ -151,6 +152,8 @@ fun MainAppNavigation(
                 navigationState.currentScreen !is Screen.VoiceManagement &&
                 navigationState.currentScreen !is Screen.AILive &&
                 navigationState.currentScreen !is Screen.WebView &&
+                navigationState.currentScreen !is Screen.ProductList &&
+                navigationState.currentScreen !is Screen.ProductEdit &&
                 navigationState.currentScreen !is Screen.CardActivation) {
                 NavigationBar(
                     containerColor = backgroundLight,

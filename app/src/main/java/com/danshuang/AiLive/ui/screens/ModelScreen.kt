@@ -275,12 +275,21 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Text(
-            text = "语音管理",
+            text = "其他管理",
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(bottom = 12.dp)
         )
         val quickVoiceCloningActions = listOf(
+            QuickActionVectorData(
+                title = "商品卡",
+                icon = Icons.Default.Face,
+                backgroundColor = Color(0xFF2196F3),
+                onClick = {
+                    navigationState.navigateToProductList()
+                }
+            ),
+
             QuickActionVectorData(
                 title = "音色管理",
                 icon = Icons.Default.Face,
