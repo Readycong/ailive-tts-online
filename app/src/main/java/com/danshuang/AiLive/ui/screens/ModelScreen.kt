@@ -13,6 +13,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Call
+import androidx.compose.material.icons.filled.CardGiftcard
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlayArrow
@@ -283,7 +284,7 @@ private fun QuickActionsSection(navigationState: NavigationState) {
         val quickVoiceCloningActions = listOf(
             QuickActionVectorData(
                 title = "商品卡",
-                icon = Icons.Default.Face,
+                icon = Icons.Default.CardGiftcard,
                 backgroundColor = Color(0xFF2196F3),
                 onClick = {
                     navigationState.navigateToProductList()

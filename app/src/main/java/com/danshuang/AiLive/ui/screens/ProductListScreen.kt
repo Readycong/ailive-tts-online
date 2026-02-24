@@ -111,6 +111,9 @@ fun ProductListScreen(
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     var currentSwipeId by remember { mutableStateOf<Int?>(null) }
     
+    // AI讲解切换Loading状态
+    var aiVoiceLoadingProductId by remember { mutableStateOf<Int?>(null) }
+    
     // 删除确认对话框状态
     var showDeleteDialog by remember { mutableStateOf(false) }
     var deletingProduct by remember { mutableStateOf<ProductItem?>(null) }
@@ -161,6 +164,7 @@ fun ProductListScreen(
     // 切换AI讲解状态
     fun toggleAiVoice(product: ProductItem) {
         scope.launch {
+            aiVoiceLoadingProductId = product.id
             try {
                 val newStatus = if (product.enableAiVoice == 1) 0 else 1
                 val response = serverApiUtils.toggleProductAiVoice(product.id, newStatus)
@@ -175,6 +179,8 @@ fun ProductListScreen(
                 }
             } catch (e: Exception) {
                 snackbarMessage = "操作失败：${e.message}"
+            } finally {
+                aiVoiceLoadingProductId = null
             }
         }
     }
@@ -280,6 +286,7 @@ fun ProductListScreen(
                             product = product,
                             wapBaseUrl = wapBaseUrl,
                             currentSwipeId = currentSwipeId,
+                            isAiVoiceLoading = aiVoiceLoadingProductId == product.id,
                             onSwipeStateChange = { currentSwipeId = it },
                             onCardClick = { navController.navigateToProductEdit(product.id) },
                             onSortClick = {
@@ -355,6 +362,7 @@ private fun ProductCard(
     product: ProductItem,
     wapBaseUrl: String,
     currentSwipeId: Int?,
+    isAiVoiceLoading: Boolean = false,
     onSwipeStateChange: (Int?) -> Unit,
     onCardClick: () -> Unit,
     onSortClick: () -> Unit,
@@ -528,17 +536,27 @@ private fun ProductCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
-                        .clickable { onAiVoiceClick() },
+                        .clickable(enabled = !isAiVoiceLoading) { onAiVoiceClick() },
                     shape = RoundedCornerShape(4.dp),
                     color = if (product.enableAiVoice == 1) AiVoiceEnabledBackground else AiVoiceDisabledBackground
                 ) {
-                    Text(
-                        text = product.aiVoiceText,
-                        color = Color.White,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                    )
+                    if (isAiVoiceLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                                .size(16.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                    } else {
+                        Text(
+                            text = product.aiVoiceText,
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
                 }
             }
         }

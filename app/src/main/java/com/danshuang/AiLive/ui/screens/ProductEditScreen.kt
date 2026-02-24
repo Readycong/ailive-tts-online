@@ -80,6 +80,8 @@ import java.io.ByteArrayOutputStream
 // 颜色定义
 private val AiDescriptionBackground = Color(0xFFE3F2FD)
 private val SwitchEnabledColor = Color(0xFF4CAF50)
+private val CardElevation = 2.dp
+private val SectionTitleColor = Color(0xFF1976D2)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -348,8 +350,9 @@ fun ProductEditScreen(
                 Text(
                     text = "基本信息",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    modifier = Modifier.padding(16.dp)
+                    fontSize = 18.sp,
+                    color = SectionTitleColor,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
                 
                 Card(
@@ -358,16 +361,18 @@ fun ProductEditScreen(
                         .padding(horizontal = 16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         // 产品图
                         FormRow(label = "产品图：") {
                             Box(
                                 modifier = Modifier
-                                    .size(60.dp)
-                                    .clip(CircleShape)
+                                    .size(80.dp)
+                                    .clip(RoundedCornerShape(12.dp))
                                     .background(Color(0xFFF5F5F5))
+                                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(12.dp))
                                     .clickable { imagePickerLauncher.launch("image/*") },
                                 contentAlignment = Alignment.Center
                             ) {
@@ -397,12 +402,23 @@ fun ProductEditScreen(
                                     }
                                     // 占位符
                                     else -> {
-                                        Icon(
-                                            Icons.Default.CameraAlt,
-                                            contentDescription = "选择图片",
-                                            modifier = Modifier.size(24.dp),
-                                            tint = Color.Gray
-                                        )
+                                        Column(
+                                            horizontalAlignment = Alignment.CenterHorizontally,
+                                            verticalArrangement = androidx.compose.foundation.layout.Arrangement.Center
+                                        ) {
+                                            Icon(
+                                                Icons.Default.Image,
+                                                contentDescription = "选择图片",
+                                                modifier = Modifier.size(32.dp),
+                                                tint = Color(0xFF9E9E9E)
+                                            )
+                                            Text(
+                                                text = "上传",
+                                                fontSize = 10.sp,
+                                                color = Color(0xFF9E9E9E),
+                                                modifier = Modifier.padding(top = 4.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -415,27 +431,43 @@ fun ProductEditScreen(
                             OutlinedTextField(
                                 value = productName,
                                 onValueChange = { productName = it },
-                                placeholder = { Text("商品名称") },
+                                placeholder = { Text("请输入商品名称", color = Color(0xFFBDBDBD)) },
                                 modifier = Modifier.fillMaxWidth(),
-                                singleLine = true
+                                singleLine = true,
+                                shape = RoundedCornerShape(8.dp)
                             )
                         }
                         
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = Color(0xFFF0F0F0)
+                        )
                         
                         // 价格
                         FormRow(label = "价　格：") {
                             OutlinedTextField(
                                 value = price,
                                 onValueChange = { price = it },
-                                placeholder = { Text("0.00") },
+                                placeholder = { Text("0.00", color = Color(0xFFBDBDBD)) },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal)
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                shape = RoundedCornerShape(8.dp),
+                                leadingIcon = {
+                                    Text(
+                                        text = "¥",
+                                        fontSize = 16.sp,
+                                        color = MaterialTheme.colorScheme.primary,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                }
                             )
                         }
                         
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = Color(0xFFF0F0F0)
+                        )
                         
                         // 上架
                         FormRow(label = "上　架：") {
@@ -448,7 +480,10 @@ fun ProductEditScreen(
                             )
                         }
                         
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = Color(0xFFF0F0F0)
+                        )
                         
                         // 库存
                         FormRow(label = "库　存：") {
@@ -459,16 +494,25 @@ fun ProductEditScreen(
                                 },
                                 modifier = Modifier.fillMaxWidth(),
                                 singleLine = true,
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                shape = RoundedCornerShape(8.dp),
+                                suffix = { Text("件", color = Color.Gray) }
                             )
                         }
                         
-                        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 12.dp),
+                            color = Color(0xFFF0F0F0)
+                        )
                         
                         // 权重
                         FormRow(label = "权　重：") {
                             Row(
-                                verticalAlignment = Alignment.CenterVertically
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
+                                    .padding(horizontal = 8.dp)
                             ) {
                                 IconButton(
                                     onClick = { if (weight > 1) weight-- },
@@ -477,13 +521,14 @@ fun ProductEditScreen(
                                     Icon(
                                         Icons.Default.Remove,
                                         contentDescription = "减少",
-                                        tint = if (weight > 1) MaterialTheme.colorScheme.primary else Color.Gray
+                                        tint = if (weight > 1) MaterialTheme.colorScheme.primary else Color(0xFFBDBDBD)
                                     )
                                 }
                                 
                                 Text(
                                     text = weight.toString(),
-                                    fontSize = 16.sp,
+                                    fontSize = 18.sp,
+                                    fontWeight = FontWeight.Medium,
                                     modifier = Modifier.padding(horizontal = 16.dp)
                                 )
                                 
@@ -505,8 +550,9 @@ fun ProductEditScreen(
                 Text(
                     text = "产品描述",
                     fontWeight = FontWeight.Bold,
-                    fontSize = 16.sp,
-                    modifier = Modifier.padding(horizontal = 16.dp)
+                    fontSize = 18.sp,
+                    color = SectionTitleColor,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                 )
                 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -517,7 +563,8 @@ fun ProductEditScreen(
                         .padding(horizontal = 16.dp),
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surface
-                    )
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = CardElevation)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         OutlinedTextField(
@@ -525,16 +572,17 @@ fun ProductEditScreen(
                             onValueChange = { 
                                 if (it.length <= 200) description = it
                             },
-                            placeholder = { Text("产品描述、关键字") },
+                            placeholder = { Text("请输入产品描述、关键字", color = Color(0xFFBDBDBD)) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .height(120.dp),
-                            maxLines = 5
+                            maxLines = 5,
+                            shape = RoundedCornerShape(8.dp)
                         )
                         
                         Text(
                             text = "${description.length}/200",
-                            color = Color.Gray,
+                            color = if (description.length > 180) Color(0xFFFF6B6B) else Color(0xFF9E9E9E),
                             fontSize = 12.sp,
                             modifier = Modifier
                                 .align(Alignment.End)
@@ -550,32 +598,71 @@ fun ProductEditScreen(
                     onClick = { generateAiDescription() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    enabled = isEditMode && !isGeneratingAi
+                        .padding(horizontal = 16.dp)
+                        .height(48.dp),
+                    enabled = isEditMode && !isGeneratingAi,
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     if (isGeneratingAi) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(if (isGeneratingAi) "生成中..." else if (!aiDescription.isNullOrBlank()) "重新生成AI讲解稿" else "生成AI讲解稿")
+                    Text(
+                        if (isGeneratingAi) "生成中..." else if (!aiDescription.isNullOrBlank()) "🔄 重新生成AI讲解稿" else "✨ 生成AI讲解稿",
+                        fontWeight = FontWeight.Medium
+                    )
                 }
                 
                 Spacer(modifier = Modifier.height(16.dp))
                 
                 // AI讲解稿编辑区域
-                OutlinedTextField(
-                    value = aiDescription ?: "",
-                    onValueChange = { aiDescription = it },
-                    placeholder = { Text("若此处为空，将使用产品描述进行讲解。AI将生成约300字讲解稿") },
+                Card(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .height(180.dp),
-                    maxLines = 10
-                )
+                        .padding(horizontal = 16.dp),
+                    colors = CardDefaults.cardColors(
+                        containerColor = AiDescriptionBackground.copy(alpha = 0.3f)
+                    ),
+                    elevation = CardDefaults.cardElevation(defaultElevation = CardElevation)
+                ) {
+                    Column(modifier = Modifier.padding(12.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Text(
+                                text = "AI讲解稿",
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = Color(0xFF1976D2)
+                            )
+                            Spacer(modifier = Modifier.weight(1f))
+                            Text(
+                                text = "约300字",
+                                fontSize = 12.sp,
+                                color = Color(0xFF757575)
+                            )
+                        }
+                        OutlinedTextField(
+                            value = aiDescription ?: "",
+                            onValueChange = { aiDescription = it },
+                            placeholder = { Text("若此处为空，将使用产品描述进行讲解", color = Color(0xFFBDBDBD)) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(160.dp),
+                            maxLines = 10,
+                            shape = RoundedCornerShape(8.dp),
+                            colors = androidx.compose.material3.OutlinedTextFieldDefaults.colors(
+                                unfocusedContainerColor = Color.White,
+                                focusedContainerColor = Color.White
+                            )
+                        )
+                    }
+                }
                 
                 Spacer(modifier = Modifier.height(12.dp))
                 
@@ -584,17 +671,23 @@ fun ProductEditScreen(
                     onClick = { generateAiTts() },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    enabled = isEditMode && !aiDescription.isNullOrBlank() && !isGeneratingTts
+                        .padding(horizontal = 16.dp)
+                        .height(48.dp),
+                    enabled = isEditMode && !aiDescription.isNullOrBlank() && !isGeneratingTts,
+                    shape = RoundedCornerShape(12.dp)
                 ) {
                     if (isGeneratingTts) {
                         CircularProgressIndicator(
                             modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.primary
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                     }
-                    Text(if (isGeneratingTts) "提交中..." else "生成/更新商品卡讲品语音")
+                    Text(
+                        if (isGeneratingTts) "提交中..." else "🎙️ 生成/更新商品卡讲品语音",
+                        fontWeight = FontWeight.Medium
+                    )
                 }
                 
                 Spacer(modifier = Modifier.height(32.dp))
@@ -614,8 +707,9 @@ private fun FormRow(
     ) {
         Text(
             text = label,
-            color = Color.Gray,
+            color = Color(0xFF616161),
             fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
             modifier = Modifier.width(70.dp)
         )
         
