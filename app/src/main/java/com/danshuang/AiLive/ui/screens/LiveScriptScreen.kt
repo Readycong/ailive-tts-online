@@ -11,6 +11,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.FileCopy
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -381,13 +382,12 @@ fun LiveScriptScreen(
             title = { Text(if (editingItem != null) "编辑话术" else "添加话术") },
             text = {
                 Column(
-                    modifier = Modifier.padding(8.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    modifier = Modifier.padding(0.dp),
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     TextField(
                         value = editContent,
                         onValueChange = { editContent = it },
-                        label = { Text("话术内容") },
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(150.dp),
@@ -397,17 +397,27 @@ fun LiveScriptScreen(
                 }
             },
             confirmButton = {
-                Button(
-                    onClick = saveContent,
-                    enabled = !isSaving && editContent.isNotBlank()
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    if (isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(16.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("保存")
+                    Button(
+                        onClick = { /* TODO: AI改写功能 */ },
+                        enabled = !isSaving && editContent.isNotBlank()
+                    ) {
+                        Text("AI改写")
+                    }
+                    Button(
+                        onClick = saveContent,
+                        enabled = !isSaving && editContent.isNotBlank()
+                    ) {
+                        if (isSaving) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(16.dp),
+                                strokeWidth = 2.dp
+                            )
+                        } else {
+                            Text("保存")
+                        }
                     }
                 }
             },
@@ -530,7 +540,7 @@ fun KnowledgeScriptCard(
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
         ) {
             Column(
-                modifier = Modifier.padding(16.dp),
+                modifier = Modifier.padding(start = 8.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Text(
@@ -539,21 +549,46 @@ fun KnowledgeScriptCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
 
-                // 时间戳格式化显示
-                if (item.updateTime > 0) {
-                    val updateTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.updateTime))
-                    Text(
-                        text = "更新于: $updateTimeFormatted",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
-                } else {
-                    val createTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.createTime))
-                    Text(
-                        text = "创建于: $createTimeFormatted",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(0.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // AI仿写按钮
+                    TextButton(
+                        onClick = { /* TODO: AI仿写功能 */ },
+                        colors = ButtonDefaults.textButtonColors(
+                            contentColor = MaterialTheme.colorScheme.primary
+                        )
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.FileCopy,
+                            contentDescription = null,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            "AI仿写",
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+
+                    // 时间戳格式化显示
+                    if (item.updateTime > 0) {
+                        val updateTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.updateTime))
+                        Text(
+                            text = "更新于: $updateTimeFormatted",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    } else {
+                        val createTimeFormatted = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()).format(Date(item.createTime))
+                        Text(
+                            text = "创建于: $createTimeFormatted",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
                 }
             }
         }
