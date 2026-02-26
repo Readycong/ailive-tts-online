@@ -16,6 +16,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -26,6 +30,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
@@ -104,7 +109,7 @@ fun VoiceSettingsScreen(
                     }
                 },
                 actions = {
-                    IconButton(
+                    OutlinedButton(
                         onClick = {
                             // 保存设置到全局变量
                             VoiceSettings.applySettings(
@@ -125,13 +130,18 @@ fun VoiceSettingsScreen(
                             )
                             
                             navController.navigateUp()
-                        }
+                        },
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
+                        Icon(
+                            imageVector = Icons.Default.Save,
+                            contentDescription = null,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
                         Text(text = "保存", fontWeight = FontWeight.Bold)
-//                        Icon(
-//                            imageVector = Icons.Default.Check,
-//                            contentDescription = "保存"
-//                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(

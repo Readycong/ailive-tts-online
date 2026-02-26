@@ -30,6 +30,8 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Remove
+import androidx.compose.material.icons.filled.Save
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -305,9 +307,12 @@ fun ProductEditScreen(
                     }
                 },
                 actions = {
-                    TextButton(
+                    OutlinedButton(
                         onClick = { saveProduct() },
-                        enabled = isFormValid && !isSaving
+                        enabled = isFormValid && !isSaving,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.padding(end = 8.dp)
                     ) {
                         if (isSaving) {
                             CircularProgressIndicator(
@@ -315,9 +320,14 @@ fun ProductEditScreen(
                                 strokeWidth = 2.dp
                             )
                         } else {
+                            Icon(
+                                imageVector = Icons.Default.Save,
+                                contentDescription = null,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(4.dp))
                             Text(
                                 "保存",
-                                color = if (isFormValid) MaterialTheme.colorScheme.primary else Color.Gray,
                                 fontWeight = FontWeight.Bold
                             )
                         }

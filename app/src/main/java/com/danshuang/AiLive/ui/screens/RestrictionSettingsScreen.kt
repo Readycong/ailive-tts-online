@@ -10,7 +10,9 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalContext
@@ -155,24 +157,32 @@ fun RestrictionSettingsScreen(
                 actions = {
                     // 保存按钮
                     if (restrictionState.hasUnsavedChanges) {
-                        IconButton(
+                        OutlinedButton(
                             onClick = saveConfig,
-                            enabled = !restrictionState.isSaving
+                            enabled = !restrictionState.isSaving,
+                            shape = RoundedCornerShape(8.dp),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                            modifier = Modifier.padding(end = 8.dp)
                         ) {
                             if (restrictionState.isSaving) {
                                 CircularProgressIndicator(
-                                    modifier = Modifier.size(20.dp),
+                                    modifier = Modifier.size(18.dp),
                                     strokeWidth = 2.dp
                                 )
                             } else {
-                                Icon(Icons.Default.Save, "保存")
+                                Text("保存", fontWeight = FontWeight.Bold)
                             }
                         }
                     }
                     
                     // 刷新按钮
-                    IconButton(onClick = reloadConfig) {
-                        Icon(Icons.Default.Refresh, "刷新")
+                    OutlinedButton(
+                        onClick = reloadConfig,
+                        shape = RoundedCornerShape(8.dp),
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary),
+                        modifier = Modifier.padding(end = 8.dp)
+                    ) {
+                        Text("刷新", fontWeight = FontWeight.Bold)
                     }
                 }
             )
