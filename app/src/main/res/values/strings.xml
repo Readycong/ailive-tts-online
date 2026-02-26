@@ -1,12 +1,13 @@
 <resources>
     <string name="app_name">Ai主播V2</string>
     <string name="app_logo">https://www.huichuang100.com/android/v2/img/ai-logo-tr.png</string>
-    <string name="api_base_url">http://192.168.1.188/index.php/api</string>
+    <string name="api_base_url2">http://192.168.1.188/index.php/api</string>
     <string name="api_base_url1">https://www.huichuang100.com/devapi</string>
-    <string name="api_base_url2">https://www.huichuang100.com/index.php/api</string>
+    <string name="api_base_url">https://www.huichuang100.com/index.php/api</string>
     <string name="image_base_url">https://www.huichuang100.com/</string>
     <string name="file_base_url">https://www.huichuang100.com/</string>
-    <string name="wap_base_url">http://192.168.1.188/</string>
+    <string name="wap_base_url2">http://192.168.1.188/</string>
+    <string name="wap_base_url">https://www.huichuang100.com/</string>
     <string name="site_id">100014</string>
     <string name="api_timeout">20</string>
     <string name="douyin_search_pattern">https://www.douyin.com/search/%s?type=user</string>

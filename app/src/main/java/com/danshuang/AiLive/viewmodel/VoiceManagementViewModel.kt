@@ -105,11 +105,23 @@ class VoiceManagementViewModel(
      */
     fun selectVoice(voice: VoiceItem) {
         _tempSelectedVoice.value = voice
-        // 如果音色支持情感，设置第一个情感为默认值；否则设置为"通用"
-        if (voice.enable_emotion == 1 && voice.emotions.isNotEmpty()) {
-            _tempSelectedEmotion.value = voice.emotions[0].emotion
+        
+        // 如果选择的是当前服务端保存的音色，恢复服务端保存的情感值
+        val savedVoiceId = _selectedVoice.value?.voice_info?.voice_id
+        if (savedVoiceId == voice.voice_id) {
+            // 恢复服务端保存的情感值
+            _tempSelectedEmotion.value = if (_selectedVoice.value?.emotion.isNullOrEmpty()) {
+                "通用"
+            } else {
+                _selectedVoice.value?.emotion ?: "通用"
+            }
         } else {
-            _tempSelectedEmotion.value = "通用"
+            // 选择其他音色，使用第一个情感作为默认值
+            if (voice.enable_emotion == 1 && voice.emotions.isNotEmpty()) {
+                _tempSelectedEmotion.value = voice.emotions[0].emotion
+            } else {
+                _tempSelectedEmotion.value = "通用"
+            }
         }
     }
 
@@ -145,7 +157,7 @@ class VoiceManagementViewModel(
                     // 更新当前选中的音色
                     _selectedVoice.value = SelectedVoiceData(
                         voice_type = voice.voice_type,
-                        emotion = _tempSelectedEmotion.value,
+                       emotion = _tempSelectedEmotion.value,
                         voice_info = com.danshuang.AiLive.data.model.VoiceInfo(
                             voice_id = voice.voice_id,
                             voice_name = voice.voice_name,

@@ -34,6 +34,7 @@ import com.danshuang.AiLive.api.service.KnowledgeApiService
 import com.danshuang.AiLive.api.ServerApiUtilsV2
 import com.danshuang.AiLive.data.model.KnowledgeItem
 import com.danshuang.AiLive.config.AppConfig
+import com.danshuang.AiLive.api.service.AiScriptingResponse
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
@@ -71,6 +72,8 @@ fun LiveScriptScreen(
     // 状态管理
     var isLoading by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
+    var isAiProcessing by remember { mutableStateOf(false) }
+    var aiProcessingMessage by remember { mutableStateOf("AI处理中...") }
     var snackbarMessage by remember { mutableStateOf<String?>(null) }
     var showSnackbar by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
@@ -127,6 +130,7 @@ fun LiveScriptScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var editingItem by remember { mutableStateOf<KnowledgeItem?>(null) }
     var editContent by remember { mutableStateOf("") }
+    var previousEditDialogState by remember { mutableStateOf(false) }
 
     // 获取当前用户的douyinId
     suspend fun getCurrentDouyinId(): String? {
@@ -224,6 +228,146 @@ fun LiveScriptScreen(
         }
     }
 
+    // AI 仿写功能
+    val aiCopyItem: (KnowledgeItem) -> Unit = { item ->
+        scope.launch {
+            // 检查字数是否达到20字
+            if (item.answer.length < 20) {
+                snackbarMessage = "AI仿写的原话术需要至少20个字，当前话术太简单了"
+                showSnackbar = true
+                return@launch
+            }
+
+            isAiProcessing = true
+            aiProcessingMessage = "AI仿写中..."
+            try {
+                val currentToken = tokenManager.currentToken.first()
+                
+                if (currentToken != null) {
+                    val response = knowledgeApiService.aiScripting(
+                        token = currentToken,
+                        id = item.id,
+                        mode = "copy"
+                    )
+                    
+                    if (response.isSuccess) {
+                        snackbarMessage = "AI仿写成功"
+                        
+                        // 重新获取列表数据
+                        val refreshResponse = serverApiUtils.fetchKbItems(typeId)
+                        if (refreshResponse.isSuccess && refreshResponse.data != null) {
+                            scriptList = refreshResponse.data
+                        }
+                    } else {
+                        snackbarMessage = "AI仿写失败: ${response.msg}"
+                    }
+                } else {
+                    snackbarMessage = "未登录"
+                }
+            } catch (e: Exception) {
+                snackbarMessage = "AI仿写失败: ${e.message}"
+            } finally {
+                isAiProcessing = false
+                showSnackbar = true
+            }
+        }
+    }
+
+    // AI 改写功能
+    val aiBeautifyItem: () -> Unit = {
+        scope.launch {
+            isAiProcessing = true
+            aiProcessingMessage = "AI改写中..."
+            try {
+                val currentToken = tokenManager.currentToken.first()
+                
+                if (currentToken == null) {
+                    snackbarMessage = "未登录"
+                    isAiProcessing = false
+                    showSnackbar = true
+                    return@launch
+                }
+
+                // 获取或创建话术ID
+                val itemId: Number = if (editingItem != null) {
+                    // 更新现有话术
+                    val saveResponse = knowledgeApiService.updateKbItem(
+                        token = currentToken,
+                        typeId = typeId,
+                        id = editingItem!!.id,
+                        question = editingItem!!.question,
+                        answer = editContent
+                    )
+                    if (!saveResponse.isSuccess) {
+                        snackbarMessage = "保存失败: ${saveResponse.msg}"
+                        isAiProcessing = false
+                        showSnackbar = true
+                        return@launch
+                    }
+                    editingItem!!.id
+                } else {
+                    // 新建话术，先保存获取ID
+                    val addResponse = knowledgeApiService.addKbItem(
+                        token = currentToken,
+                        typeId = typeId,
+                        question = title,
+                        answer = editContent
+                    )
+                    if (!addResponse.isSuccess) {
+                        snackbarMessage = "保存失败: ${addResponse.msg}"
+                        isAiProcessing = false
+                        showSnackbar = true
+                        return@launch
+                    }
+                    // 从响应中获取新创建的ID
+                    val newId = addResponse.data as? Number
+                    if (newId != null) {
+                        // 创建 KnowledgeItem 以便后续保存使用
+                        editingItem = KnowledgeItem(
+                            id = newId,
+                            typeId = typeId,
+                            question = title,
+                            answer = editContent,
+                            createTime = System.currentTimeMillis(),
+                            updateTime = System.currentTimeMillis()
+                        )
+                        newId
+                    } else {
+                        snackbarMessage = "获取新话术ID失败"
+                        isAiProcessing = false
+                        showSnackbar = true
+                        return@launch
+                    }
+                }
+
+                // 调用 AI 改写接口
+                val aiResponse = knowledgeApiService.aiScripting(
+                    token = currentToken,
+                    id = itemId,
+                    mode = "beautify"
+                )
+
+                if (aiResponse.isSuccess && aiResponse.data != null) {
+                    // 将 AI 返回的内容显示在编辑框中
+                    val aiDescription = aiResponse.data.ai_description
+                    if (!aiDescription.isNullOrBlank()) {
+                        editContent = aiDescription
+                        snackbarMessage = "AI改写成功"
+                    } else {
+                        snackbarMessage = "AI改写返回内容为空"
+                    }
+                } else {
+                    snackbarMessage = "AI改写失败: ${aiResponse.msg}"
+                }
+            } catch (e: Exception) {
+                snackbarMessage = "AI改写失败: ${e.message}"
+            } finally {
+                isAiProcessing = false
+                showSnackbar = true
+            }
+        }
+    }
+
     // 显示Snackbar
     LaunchedEffect(showSnackbar) {
         if (showSnackbar && snackbarMessage != null) {
@@ -234,6 +378,21 @@ fun LiveScriptScreen(
             showSnackbar = false
             snackbarMessage = null
         }
+    }
+
+    // 监听编辑对话框关闭，刷新列表
+    LaunchedEffect(showEditDialog) {
+        // 当对话框从打开变为关闭时刷新列表
+        if (previousEditDialogState && !showEditDialog) {
+            val currentToken = tokenManager.currentToken.first()
+            if (currentToken != null) {
+                val refreshResponse = serverApiUtils.fetchKbItems(typeId)
+                if (refreshResponse.isSuccess && refreshResponse.data != null) {
+                    scriptList = refreshResponse.data
+                }
+            }
+        }
+        previousEditDialogState = showEditDialog
     }
 
     Scaffold(
@@ -316,10 +475,12 @@ fun LiveScriptScreen(
                                 }
                             }
                         },
+                        onAiCopyClick = { aiCopyItem(item) },
                         currentSwipeId = currentSwipeId,
                         onSwipeStateChange = { newSwipeId ->
                             currentSwipeId = newSwipeId
-                        }
+                        },
+                        isAiProcessing = isAiProcessing
                     )
                 }
             }
@@ -372,6 +533,52 @@ fun LiveScriptScreen(
                     }
                 }
             }
+
+            // AI 处理全屏遮罩
+            if (isAiProcessing) {
+                Dialog(
+                    onDismissRequest = { },
+                    properties = DialogProperties(
+                        dismissOnBackPress = false,
+                        dismissOnClickOutside = false,
+                        usePlatformDefaultWidth = false
+                    )
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Card(
+                            modifier = Modifier.size(140.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface
+                            )
+                        ) {
+                            Box(
+                                modifier = Modifier.fillMaxSize(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Column(
+                                    horizontalAlignment = Alignment.CenterHorizontally,
+                                    verticalArrangement = Arrangement.Center
+                                ) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(40.dp),
+                                        strokeWidth = 3.dp
+                                    )
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Text(
+                                        text = aiProcessingMessage,
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -401,8 +608,8 @@ fun LiveScriptScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
-                        onClick = { /* TODO: AI改写功能 */ },
-                        enabled = !isSaving && editContent.isNotBlank()
+                        onClick = { aiBeautifyItem() },
+                        enabled = !isSaving && !isAiProcessing && editContent.isNotBlank()
                     ) {
                         Text("AI改写")
                     }
@@ -440,8 +647,10 @@ fun KnowledgeScriptCard(
     item: KnowledgeItem,
     onDeleteClick: () -> Unit,
     onEditClick: () -> Unit,
+    onAiCopyClick: () -> Unit,
     currentSwipeId: Number?,
-    onSwipeStateChange: (Number?) -> Unit
+    onSwipeStateChange: (Number?) -> Unit,
+    isAiProcessing: Boolean = false
 ) {
     var offsetX by remember { mutableStateOf(0f) }
     val maxSwipeOffset = -300f
@@ -556,7 +765,8 @@ fun KnowledgeScriptCard(
                 ) {
                     // AI仿写按钮
                     TextButton(
-                        onClick = { /* TODO: AI仿写功能 */ },
+                        onClick = { onAiCopyClick() },
+                        enabled = !isAiProcessing,
                         colors = ButtonDefaults.textButtonColors(
                             contentColor = MaterialTheme.colorScheme.primary
                         )

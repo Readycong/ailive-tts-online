@@ -236,4 +236,48 @@ class KnowledgeApiService(
             deleteKbItem(token, id)
         }
     }
+
+    /**
+     * AI 仿写/改写接口
+     * @param token 用户token
+     * @param id 记录ID
+     * @param mode 模式（copy=AI仿写, beautify=AI改写）
+     * @return 包含 ai_description 和 id 的响应
+     */
+    suspend fun aiScripting(
+        token: String,
+        id: Number,
+        mode: String
+    ): ServerResponse<AiScriptingResponse> = withContext(Dispatchers.IO) {
+        val apiName = "AiScripting"
+        return@withContext try {
+            val url = "${baseUrl}/dscrm/dylive-android/ai-scripting"
+            val postData = mapOf(
+                "id" to id,
+                "mode" to mode
+            )
+
+            responseHandler.logApiCall(apiName, url, "POST", postData)
+
+            val requestBody = createJsonRequestBody(postData)
+            val request = createPostRequest(url, requestBody)
+                .addTokenHeader(token)
+                .build()
+
+            val response = executeRequestAndHandleResponse(request, apiName)
+            responseHandler.handleResponse<AiScriptingResponse>(response, apiName, context)
+
+        } catch (e: Exception) {
+            responseHandler.logApiError(apiName, e)
+            ServerResponse(code = 0, msg = "AI处理失败: ${e.message}", data = null)
+        }
+    }
 }
+
+/**
+ * AI 仿写/改写响应数据类
+ */
+data class AiScriptingResponse(
+    val ai_description: String?,
+    val id: Number?
+)
