@@ -242,7 +242,7 @@ fun AILiveScreen(
             lastScrollTime = System.currentTimeMillis()
         } else if (!listState.isScrollInProgress) {
             // 滚动停止后等待一段时间确保稳定
-            delay(3000) // 缩短延迟时间到300ms
+            delay(300) // 缩短延迟时间到300ms
             userScrolling = false
             forceScrollToBottom = false // 重置强制滚动标记
 
@@ -331,7 +331,7 @@ fun AILiveScreen(
                         // 滚动到WebView位置
                         coroutineScope.launch {
                             // 延迟一小段时间确保UI更新完成
-                            delay(1000)
+                            delay(100)
                             // 滚动到LazyColumn的最后一项（WebView位置）
                             listState.animateScrollToItem(
                                 index = 2, // 0: SwitchControlSection, 1: LiveMessageList, 2: WebViewControlSection

@@ -218,7 +218,7 @@ fun AccountBindingScreen(
         bindingResult?.let { result ->
             if (result.success) {
                 // 绑定成功后延迟1.5秒再返回上一页，让用户看到成功提示
-                kotlinx.coroutines.delay(1500)
+                //kotlinx.coroutines.delay(1500)
                 navController.navigateUp()
             }
         }
@@ -234,7 +234,7 @@ fun AccountBindingScreen(
             // 如果有真实的抖音URL，等待WebView加载并提取信息
             if (userHomeUrl.contains("douyin.com") || userHomeUrl.contains("v.douyin.com")) {
                 // 等待WebView加载并提取信息，设置超时
-                kotlinx.coroutines.delay(10000) // 10秒超时
+                kotlinx.coroutines.delay(5000) // 10秒超时
                 if (extractionStatus == ExtractionStatus.LOADING) {
                     // 超时后标记为提取失败
                     extractionStatus = ExtractionStatus.ERROR

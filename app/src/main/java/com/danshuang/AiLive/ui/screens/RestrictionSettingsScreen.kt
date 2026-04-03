@@ -92,7 +92,6 @@ fun RestrictionSettingsScreen(
     // 自动隐藏重复提示
     LaunchedEffect(showDuplicateWarning) {
         if (showDuplicateWarning) {
-            delay(3000)
             showDuplicateWarning = false
         }
     }

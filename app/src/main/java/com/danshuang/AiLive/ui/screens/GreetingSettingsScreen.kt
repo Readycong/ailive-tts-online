@@ -123,7 +123,6 @@ fun GreetingSettingsScreen(
             
             if (result.isSuccess) {
                 snackbarHostState.showSnackbar("招呼设置保存成功")
-                delay(1500) // 让用户看到成功提示
                 navController.navigateUp()
             } else {
                 snackbarHostState.showSnackbar("保存失败: ${result.msg}")

@@ -79,7 +79,7 @@ fun ChangePasswordScreen(
                         duration = SnackbarDuration.Short
                     )
                     // 延迟一下再返回，让用户看到成功提示
-                    kotlinx.coroutines.delay(1500)
+                    //kotlinx.coroutines.delay(1500)
                     onBack()
                 } else {
                     // 显示失败提示
