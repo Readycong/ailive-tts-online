@@ -67,16 +67,18 @@ class VoiceManagementViewModel(
                     _selectedVoice.value = selectedResponse.data
                     // 初始化临时选择
                     val voiceInfo = selectedResponse.data.voice_info
-                    _tempSelectedVoice.value = VoiceItem(
-                        voice_id = voiceInfo.voice_id,
-                        voice_name = voiceInfo.voice_name,
-                        voice_desc = voiceInfo.voice_desc,
-                        voice_type = voiceInfo.voice_type,
-                        enable_emotion = voiceInfo.enable_emotion,
-                        emotions = voiceInfo.emotions,
-                        audio_url = voiceInfo.audio_url,
-                        avatar_url = voiceInfo.avatar_url
-                    )
+                    if (voiceInfo!=null) {
+                        _tempSelectedVoice.value = VoiceItem(
+                            voice_id = voiceInfo.voice_id,
+                            voice_name = voiceInfo.voice_name,
+                            voice_desc = voiceInfo.voice_desc,
+                            voice_type = voiceInfo.voice_type,
+                            enable_emotion = voiceInfo.enable_emotion,
+                            emotions = voiceInfo.emotions,
+                            audio_url = voiceInfo.audio_url,
+                            avatar_url = voiceInfo.avatar_url
+                        )
+                    }
                     // 如果返回的emotion为空，设置为"通用"
                     _tempSelectedEmotion.value = if (selectedResponse.data.emotion.isEmpty()) {
                         "通用"

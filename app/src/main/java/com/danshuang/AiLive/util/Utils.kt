@@ -18,9 +18,11 @@ class Utils {
         val userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/136.0.0.0 Safari/537.36"
         val script = """
 (function() {
-    var infoObj = document.querySelector("#user_detail_element")
-    var liveStatus = infoObj.querySelector("div > div:nth-child(2) > div").innerText.trim() == '直播中'
-    var liveUrl = document.querySelector("#user_detail_element > div > div > div:nth-child(1) > div > a")
+    infoObj = document.querySelector("#user_detail_element")
+    liveStatusElement = infoObj.querySelector("div > div:nth-child(2) > div > div > div");
+    liveStatus = liveStatusElement ? liveStatusElement.innerText == '直播中' : false;
+        
+    liveUrl = document.querySelector("#user_detail_element").querySelector("a")
     return {
             js: "user_detail_element", 
             "load": infoObj ? "FOUND" : "ERROR", 
@@ -34,7 +36,7 @@ class Utils {
                                         (function() {
     try {
         console.log('开始提取抖音账户信息...');
-        var infoObj = document.querySelector("#user_detail_element")
+        infoObj = document.querySelector("#user_detail_element")
         if (!infoObj) {
             console.log('未找到 #user_detail_element 元素');
             return {

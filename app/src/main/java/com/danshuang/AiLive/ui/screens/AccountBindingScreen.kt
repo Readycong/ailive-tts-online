@@ -994,7 +994,7 @@ private fun WebViewControlSection(
                                         (function() {
     try {
         console.log('开始提取抖音账户信息...');
-        var infoObj = document.querySelector("#user_detail_element")
+        infoObj = document.querySelector("#user_detail_element")
         if (!infoObj) {
             console.log('未找到 #user_detail_element 元素');
             return {
@@ -1007,13 +1007,13 @@ private fun WebViewControlSection(
             }
         }
         console.log('找到用户信息元素，开始解析...');
-        var liveStatusElement = infoObj.querySelector("div > div:nth-child(2) > div");
-        var liveStatus = liveStatusElement ? liveStatusElement.innerText == '直播中' : false;
-        var nicknameElement = infoObj.querySelector("div:nth-child(2) > div:nth-child(2) > div");
-        var userIdElement = infoObj.querySelector("div:nth-child(2) > div:nth-child(2) > p > span");
-        var avatarElement = document.querySelector("#search-result-container > div:nth-child(3) > ul > li:nth-child(1) > div > a");
+        liveStatusElement = infoObj.querySelector("div > div:nth-child(2) > div > div > div");
+        liveStatus = liveStatusElement ? liveStatusElement.innerText == '直播中' : false;
+        nicknameElement = infoObj.querySelector("div > div.LAXO9MqZ > div > div.WP5BQ83v.u81xJT68.VUXdOe0c.cUO_XMSJ > div.j8V94otY > div.REOLM3RC > h1 > span > span > span > span > span > span");
+        userIdElement = infoObj.querySelector("div > div.LAXO9MqZ > div > div.WP5BQ83v.u81xJT68.VUXdOe0c.cUO_XMSJ > div.j8V94otY > p");
+        avatarElement = document.querySelector("#user_detail_element img");
         
-        var result = {
+        result = {
             js: "user_detail_element", 
             load: "FOUND", 
             status: liveStatus ? 'PLAYING' : 'NO', 
@@ -1053,13 +1053,14 @@ private fun WebViewControlSection(
                                                 gson.fromJson(jsonResult, Map::class.java)
                                                     ?.let { jsonMap ->
                                                         val nickname = jsonMap["nickname"]?.toString()?.split("\n")?.firstOrNull() ?: "未知用户"
-                                                        val userId = jsonMap["id"]?.toString() ?: ""
+                                                        val userId = jsonMap["id"]?.toString()?.split("\n")[0] ?: ""
                                                         val isLive = jsonMap["status"]?.toString() == "PLAYING"
 
-                                                        var html = jsonMap["html"]?.toString() ?: ""
-                                                        html = html.substring(html.indexOf("\"$userId") - 2048)
-                                                        val avatarMatch = Regex("avatar300Url:(https:[^,]*)").find(html.replace("\\\"", ""))
-                                                        val avatar = avatarMatch?.groupValues?.get(1)?.replace("\\u0026", "&") ?: ""
+//                                                        var html = jsonMap["html"]?.toString() ?: ""
+//                                                        html = html.substring(html.indexOf("\"$userId") - 2048)
+//                                                        val avatarMatch = Regex("avatar300Url:(https:[^,]*)").find(html.replace("\\\"", ""))
+//                                                        val avatar = avatarMatch?.groupValues?.get(1)?.replace("\\u0026", "&") ?: ""
+                                                        val avatar = jsonMap["avatar"]?.toString() ?: "";
 
 
                                                         println("提取成功 - 昵称: $nickname, 用户ID: $userId, 直播状态: $isLive")
